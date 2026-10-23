@@ -14,14 +14,17 @@ Labels as in `r-code.md` (CRAN / house). Reasons and sources: `docs/standards.md
   Quarto or pkgdown site), read from the page, like the colours.
 - **house:** deterministic drawing: seeded RNG, no `Math.random()`, no clock-driven drawing; drawn in code in the
   theme's colours; no AI-generated images.
-- How maps reach Shiny, Quarto and pkgdown (htmlwidgets or the package's own output binding) is not decided yet; see
-  the Design issue "Decide how stagemap draws in Shiny, Quarto and pkgdown".
+- **house:** maps are an htmlwidget around stagemap's own engine (#7). The engine has its own API (`mount`,
+  `update`, `resize`, `destroy`) and never depends on htmlwidgets; the widget binding calls `mount`, `update` and
+  `resize`. Markup comes from a `stagemap_html()` hook that ignores htmlwidgets' `style` argument, so sizes travel as
+  `data-*` attributes. stagemap's code never uses `htmlwidgets::JS()` or `onRender()`, so htmlwidgets' runtime
+  `eval()` runs only if a user adds them. Reasons: `docs/standards.md`, section 3.
 - **house:** one global namespace (`window.stagemap`), guard against loading twice, state kept per element, several
   maps per page, no listeners left behind.
 - **house:** the engine is versioned with the package (`window.stagemap.version`, passed from R).
-- **house:** configuration through `data-*` attributes or a `<script type="application/json">` block. No `eval`,
-  `new Function`, inline `<script>`, inline `style=` for layout or `javascript:` URLs (stagemap adds no inline script
-  of its own; Shiny itself still uses some).
+- **house:** configuration through `data-*` attributes or a `<script type="application/json">` block. No `eval`
+  (except htmlwidgets' runtime, above), `new Function`, inline `<script>`, inline `style=` for layout or `javascript:`
+  URLs (stagemap adds no inline script of its own; Shiny itself still uses some).
 - **house:** panels follow Bootstrap's CSS variables (`--bs-body-color`, `--bs-body-bg`, `--bs-border-color`) by
   default; public colour hooks use the `--stagemap-*` prefix and win over them; private custom properties use
   `--_stagemap-*`. Follow the page for dark mode
