@@ -161,13 +161,25 @@ The engine is most of what a user sees, so it has its own rules. All of these ar
 
 **Architecture**
 
-- How maps reach Shiny, Quarto and pkgdown (htmlwidgets or the package's own output binding) is not decided yet: it is
-  the Design epic's first question, after looking at how other chart packages are built.
+- Maps reach Shiny, Quarto and pkgdown as an **htmlwidget wrapped around stagemap's own engine** (#7, to be
+  revisited once the engine is written). htmlwidgets brings printing in documents, `saveWidget()`, the RStudio viewer
+  and maps inside reactable cells; the engine keeps stagemap's drawing in one place.
+- The engine is plain JS with its own API: `mount`, `update`, `resize` and `destroy`. The htmlwidget binding calls
+  `mount`, `update` and `resize` (htmlwidgets has no destroy hook; `destroy` serves re-renders and a later own
+  binding). The engine never depends on htmlwidgets, so the wrapper can later be replaced by stagemap's own Shiny
+  output binding (dropping a hard dependency) without changing the engine or the R functions.
+- The widget's markup comes from a `stagemap_html()` hook that ignores htmlwidgets' `style` argument, so sizes travel
+  as `data-*` attributes rather than an inline `style=` in the markup. (htmlwidgets' runtime still sets sizes through
+  `el.style` in standalone pages, such as `saveWidget()` output and the RStudio viewer.)
+- shiny stays in `Suggests`: maps work in Quarto, R Markdown and pkgdown without it.
+- One accepted exception to "no `eval`" below: htmlwidgets' own runtime uses `eval()` for `JS()` and `onRender()`.
+  stagemap's own R and JS code never uses `JS()` or `onRender()`; a user who adds them opts into that `eval()`.
 - One namespace, `window.stagemap`. Guard against double loading, keep state per element, support several maps on
   one page, and leave no global listeners behind.
 - The engine is versioned with the package (`window.stagemap.version` is the package version, passed from R).
 - Configuration comes through `data-*` attributes (or a `<script type="application/json">` data block).
-- No `eval`, no `new Function`, no inline `<script>` of our own, no inline `style=` for layout.
+- No `eval` (except htmlwidgets' runtime, above), no `new Function`, no inline `<script>` of our own, no inline
+  `style=` for layout.
 
 **Theming**
 
@@ -239,11 +251,11 @@ widget's rendered output (section 6). Every change in `inst/www/` adds an entry 
 
 **Dependencies:**
 
-- Keep `Imports` small: checkmate, cli, htmltools, jsonlite and shiny. Each additional import needs a
-  reason (**house**).
+- Keep `Imports` small: checkmate, cli, htmltools, htmlwidgets and jsonlite once the engine lands (see section 3).
+  Each additional import needs a reason (**house**).
 - Call functions as `pkg::fn()`. No `library()` or `require()` in package code (**CRAN**).
-- Optional and development packages use `Suggests`: bslib (>= 0.7.0), chromote, covr, golem, knitr, later, lifecycle,
-  promises, rmarkdown, shinytest2 (>= 0.5.0), testthat (>= 3.0.0) and withr. Optional features check availability
+- Optional and development packages use `Suggests`: shiny (maps work in documents without it), chromote, covr,
+  shinytest2 (>= 0.5.0), testthat (>= 3.0.0) and withr; more as features need them. Optional features check availability
   with `requireNamespace()` before use. Tests use `skip_if_not_installed()` (**CRAN**).
 - Avoid `:::` into shiny or bslib: it is fragile, and reviewers flag it (**CRAN** for base packages, house for the
   rest).
