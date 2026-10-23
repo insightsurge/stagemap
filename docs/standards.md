@@ -255,8 +255,8 @@ widget's rendered output (section 6). Every change in `inst/www/` adds an entry 
   Each additional import needs a reason (**house**).
 - Call functions as `pkg::fn()`. No `library()` or `require()` in package code (**CRAN**).
 - Optional and development packages use `Suggests`: shiny (maps work in documents without it), chromote, covr,
-  shinytest2 (>= 0.5.0), testthat (>= 3.0.0) and withr; more as features need them. Optional features check availability
-  with `requireNamespace()` before use. Tests use `skip_if_not_installed()` (**CRAN**).
+  shinytest2 (>= 0.5.0), testthat (>= 3.0.0) and withr; more as features need them. Optional features check
+  availability with `requireNamespace()` before use. Tests use `skip_if_not_installed()` (**CRAN**).
 - Avoid `:::` into shiny or bslib: it is fragile, and reviewers flag it (**CRAN** for base packages, house for the
   rest).
 
