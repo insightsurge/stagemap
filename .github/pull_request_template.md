@@ -1,8 +1,7 @@
-<!-- Keep the sections that apply and delete the rest. Keep each short. British English; plain words first.
-Use public examples and made-up data. Remove private data, credentials, machine paths and private links from text,
-output and screenshots. Describe the change and the checks, without tool credits or conversation links.
-Read AGENTS.md and the matching .claude/rules/ files; CLAUDE.md points to the same contributor rules.
-Contributors open issues and work on them. The package creator decides versions, releases and merges. -->
+<!-- Delete the sections that don't apply and keep the rest short. Follow Public text and the contributor workflow:
+https://github.com/insightsurge/stagemap/blob/main/AGENTS.md#public-text
+https://github.com/insightsurge/stagemap/blob/main/.github/CONTRIBUTING.md#workflow
+AGENTS.md indexes the matching rule files. -->
 
 ## In brief
 <!-- One plain sentence on what changes and why, then a few bullets for a reader with no context. -->
@@ -37,13 +36,10 @@ Delete if the sections above cover it. -->
 <!-- For each command you ran, report its result, exit code and any FAIL or SKIP summary lines.
 Name checks you did not run and why. Do not mark an unrun check as passed.
 Only repeatable checks belong in the table; one-off observations go in Notes below.
-Run Rscript tools/cran-gate.R (fast mode) before every commit: format, docs in sync, lint, returns, spelling, pkgdown index,
-R CMD check without tests: 0 errors, 0 warnings, 0 notes.
-Rscript tools/cran-gate.R tests is required before a PR touching R/ or tests/: coverage at least 70%,
-not lower than main, and every added runnable R line covered. PARTIAL runs are not merge evidence;
-exit code 3 needs the package creator's decision. Merge evidence is a tests or full run exiting 0.
-See tools/README.md.
-The package creator handles release checks, including full mode; a contribution does not require a release. -->
+Choose checks and evidence using:
+https://github.com/insightsurge/stagemap/blob/main/tools/README.md
+https://github.com/insightsurge/stagemap/blob/main/.claude/rules/tests.md
+Release checks belong to the package creator; a contribution does not require a release. -->
 
 | Command | Result and exit code, or not run and why |
 | --- | --- |
@@ -54,15 +50,26 @@ The package creator handles release checks, including full mode; a contribution 
 For labels you cannot apply, list the suggested labels in Notes so the package creator can apply them. -->
 
 - [ ] The linked issue's done-when checklist is met.
-- [ ] One type label and the relevant area labels are set or suggested in Notes; CI is green.
+- [ ] Labels are set or suggested under [the workflow][workflow];
+      [CI requirements][ci] are met.
 - [ ] I have reviewed the whole diff, understand the changes and can explain the checks reported above.
-- [ ] User-facing changes have a `NEWS.md` bullet ending with `(#issue)`; release headings and versions are left to the package creator.
-- [ ] Behaviour changes have BDD tests (`describe()` / `it()`); visible Shiny changes have shinytest2 tests. New or changed R argument checks use checkmate and are tested.
-- [ ] Public API changes have `breaking-change`, a NEWS entry and a deprecation plan where required by `AGENTS.md`.
+- [ ] User-facing changes meet the [NEWS rules][newsmd].
+- [ ] Behaviour and argument checks meet the [test rules][tests] and
+      [R code rules][r-code].
+- [ ] Public API changes meet the [breaking-change rule][api-changes].
 - [ ] JS/CSS changes keep meaning off colour alone and honour reduced motion; the changed visual behaviour has been tried with reduced motion on and off.
-- [ ] New `inst/` files have the required licence and `inst/COPYRIGHTS` entries; their presence in the built tarball has been checked using the gate's `full` mode.
-- [ ] Docs, exports or examples changed: `Rscript tools/build-site.R` and `pkgdown::check_pkgdown()` have been run locally, and the site has been viewed in light and dark. Site CI runs from `main` only.
+- [ ] New shipped files meet the [acceptance checklist][bundled-files].
+- [ ] Docs, exports and examples meet the [website checks][website].
 - [ ] Public instruction changes agree across `AGENTS.md`, `CLAUDE.md`, `.claude/` and `.github/CONTRIBUTING.md`, and contain only contributor-facing guidance.
 
-Notes: <!-- One-off observations, browser/OS versions, screenshots,
-suggested labels, or spelling words needing the package creator's agreement. Do not add WORDLIST entries yourself. -->
+Notes: <!-- One-off observations, browser/OS versions, screenshots, labels, or spelling words for review.
+Follow https://github.com/insightsurge/stagemap/blob/main/AGENTS.md#public-text. -->
+
+[bundled-files]: https://github.com/insightsurge/stagemap/blob/main/.claude/rules/bundled-files.md
+[ci]: https://github.com/insightsurge/stagemap/blob/main/.claude/rules/ci.md
+[api-changes]: https://github.com/insightsurge/stagemap/blob/main/.claude/rules/description-news.md#breaking-changes
+[newsmd]: https://github.com/insightsurge/stagemap/blob/main/.claude/rules/description-news.md#newsmd
+[r-code]: https://github.com/insightsurge/stagemap/blob/main/.claude/rules/r-code.md
+[website]: https://github.com/insightsurge/stagemap/blob/main/.claude/rules/roxygen.md#website
+[tests]: https://github.com/insightsurge/stagemap/blob/main/.claude/rules/tests.md
+[workflow]: https://github.com/insightsurge/stagemap/blob/main/.github/CONTRIBUTING.md#workflow
