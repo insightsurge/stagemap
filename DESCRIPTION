@@ -1,0 +1,31 @@
+Package: stagemap
+Title: Relation Maps for 'Shiny' and 'Quarto'
+Version: 0.0.0.9000
+Authors@R: 
+    person("Harsh", "Verma", email = "analyticswithharsh@gmail.com", role = c("aut", "cre", "cph"))
+Description: Draws relation maps: things placed by stage and lane, joined by
+    links whose kind sets their style, with functions that trace and check
+    the map. In early development: the package holds a placeholder function
+    while the real functions are designed.
+License: MIT + file LICENSE
+URL: https://insightsurge.github.io/stagemap/, https://github.com/insightsurge/stagemap
+BugReports: https://github.com/insightsurge/stagemap/issues
+Depends: 
+    R (>= 4.1.0)
+Imports: 
+    checkmate,
+    cli
+Suggests: 
+    chromote,
+    covr,
+    shiny,
+    shinytest2 (>= 0.5.0),
+    testthat (>= 3.0.0),
+    withr
+Config/cran-gate/coverage: 70
+Config/cran-gate/extra-dirs: tools
+Config/testthat/edition: 3
+Encoding: UTF-8
+Language: en-GB
+Roxygen: list(markdown = TRUE)
+Config/roxygen2/version: 8.1.0

@@ -1,0 +1,54 @@
+# pkgdown site, with the same look as mascot's: Hanken Grotesk and JetBrains Mono (self-hosted, OFL,
+# pkgdown/assets/fonts/), teal on a cool ground in light and dark. The colours below are repeated as tokens in pkgdown/extra.css, which also holds
+# the glow, the reading width and the component styles: change both together.
+url: https://insightsurge.github.io/stagemap/   # GitHub Pages
+# docs/ holds the project's own notes, so the site builds into site/ (git- and build-ignored).
+destination: site
+
+template:
+  bootstrap: 5
+  light-switch: true
+  bslib:
+    bg: "#F5FAFC"
+    fg: "#172E36"
+    body-bg-dark: "#101E22"
+    body-color-dark: "#E7F3F5"
+    primary: "#145C68"
+    secondary: "#3C5861"
+    success: "#1D6B45"
+    info: "#2F5F86"
+    warning: "#7A5A12"
+    danger: "#A33A30"
+    link-color: "#145C68"
+    link-color-dark: "#8CE1E4"
+    base_font: "Hanken Grotesk"
+    heading_font: "Hanken Grotesk"
+    code_font: "JetBrains Mono"
+    font-size-root: "17px"
+    line-height-base: 1.65
+    headings-font-weight: 650
+    border-radius: "0.6rem"
+    border-radius-sm: "0.35rem"
+    border-radius-lg: "0.8rem"
+    link-underline-offset: "0.2em"
+
+# pkgdown links the code of conduct and the contributing guide in the home page sidebar by itself, and builds
+# SECURITY.html from .github/SECURITY.md, but has no sidebar entry for it.
+home:
+  links:
+    - text: Security policy
+      href: SECURITY.html
+
+navbar:
+  structure:
+    left: [reference, news]
+    right: [search, github, lightswitch]
+
+reference:
+  - title: Package
+    contents:
+      - stagemap-package
+  - title: Placeholder
+    desc: Lets the package build and publish its site while the real functions are designed; it will be removed.
+    contents:
+      - hello_stagemap
