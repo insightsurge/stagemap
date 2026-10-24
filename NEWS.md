@@ -8,3 +8,4 @@
 * `sm_lanes()` sets lane order, including empty bands (#14).
 * `sm_stages()` sets stage order, including empty columns (#14).
 * `sm_status()` sets badge text for built-in and custom status words (#14).
+* `sm_svg()` writes a map as an SVG image, or returns it as text, drawn in R with no extra packages, in a light or dark theme (#16).
