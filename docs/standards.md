@@ -326,6 +326,9 @@ checks that the gate fails that step.
 
 What each workflow runs, and the gate mode that reproduces it locally: `tools/README.md` ("The gate and CI").
 
+A ruleset on `main` blocks force-pushes and deleting the branch; it does not require passing checks, so the rule is:
+CI green, then ask before merging.
+
 Every pull request runs the full matrix (macOS, Windows and four Ubuntu R versions); keep new jobs on Ubuntu unless
 the platform is the point.
 

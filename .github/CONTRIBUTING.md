@@ -33,9 +33,9 @@ To report a bug or suggest an idea, open an issue with one of the issue forms.
 6. **The package creator merges** once CI is green. Pull requests are squash-merged, so the pull request title
    becomes the commit message on `main`: keep it a Conventional Commit.
 
-Changes reach `main` through a pull request; the required checks must pass. Never force-push, push to `main`, or use
-`--no-verify`. Never edit `renv/` or `LICENSE` by hand. Generated documentation follows the
-[roxygen rules][roxygen].
+Changes reach `main` through pull requests, and a ruleset stops anyone from force-pushing to `main` or deleting it.
+Never force-push, push to `main`, or use `--no-verify`. Never edit `renv/` or `LICENSE` by hand. Generated
+documentation follows the [roxygen rules][roxygen].
 CI on a pull request from a fork waits for a maintainer to approve the run. Leave "Allow edits by maintainers" on,
 so a maintainer can fix a small thing (a typo or a failing format check) on your branch.
 

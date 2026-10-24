@@ -71,8 +71,9 @@ Build and check pkgdown for docs, exports or examples, view light and dark, and 
 see [website checks](.claude/rules/roxygen.md#website).
 
 ## Workflow
-Start with an issue and its branch. Use Conventional Commits, the PR template and the required labels;
-the package creator merges green PRs. See the [workflow](.github/CONTRIBUTING.md#workflow).
+Start with an issue and its branch. Use Conventional Commits, the PR template and the required labels.
+CI green, then **the package creator merges**. Changes reach `main` only through pull requests; a ruleset blocks
+force-pushes to `main` and its deletion. See the [workflow](.github/CONTRIBUTING.md#workflow).
 
 ## Issues and pull requests
 - When a decision changes an issue's plan, edit its description; add dated comments for progress. A PR ticks the
