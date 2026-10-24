@@ -2,11 +2,10 @@
 % Please edit documentation in R/stagemap-package.R
 \docType{package}
 \name{stagemap-package}
-\alias{stagemap}
 \alias{stagemap-package}
 \title{stagemap: Relation Maps for 'Shiny' and 'Quarto'}
 \description{
-Draws relation maps: things placed by stage and lane, joined by links whose kind sets their style, with functions that trace and check the map. In early development: the package holds a placeholder function while the real functions are designed.
+Builds relation maps from nodes placed by stage and lane and links that join them. Checks node identifiers, link endpoints and column values, and provides a text summary of the map.
 }
 \seealso{
 Useful links:

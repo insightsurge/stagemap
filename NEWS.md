@@ -1,3 +1,3 @@
 # stagemap 0.0.0.9000
 
-* Package skeleton while the real functions are designed: no user-facing features yet (#5).
+* `stagemap()` builds a map object from nodes and links data frames and checks them, naming the rows that are wrong (#13).

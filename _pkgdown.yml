@@ -48,7 +48,6 @@ reference:
   - title: Package
     contents:
       - stagemap-package
-  - title: Placeholder
-    desc: Lets the package build and publish its site while the real functions are designed; it will be removed.
+  - title: Build a map
     contents:
-      - hello_stagemap
+      - stagemap
