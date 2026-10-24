@@ -59,3 +59,6 @@ reference:
       - sm_kind
       - sm_groups
       - sm_status
+  - title: Lay out a map
+    contents:
+      - sm_layout
