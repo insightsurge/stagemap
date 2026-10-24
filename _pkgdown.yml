@@ -62,3 +62,6 @@ reference:
   - title: Lay out a map
     contents:
       - sm_layout
+  - title: Draw a map
+    contents:
+      - sm_svg
