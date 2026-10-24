@@ -295,7 +295,11 @@ describe("compute_layout()", {
     checked_state <- list(items = data.frame(stage = 1L))
     for (bad in list("1", NA_real_, Inf, numeric())) {
       expect_error(layout_link_anchors(checked_state, bad), "cross")
+      expect_error(layout_spread_anchors(checked_state, bad, data.frame()), "cross")
     }
+    expect_error(layout_spread_anchors(NULL, numeric(), data.frame()), "state")
+    expect_error(layout_spread_anchors(checked_state, 0, NULL), "anchors")
+    expect_error(layout_spread_anchors(checked_state, 0, data.frame(from = NA_integer_)), "anchors")
     expect_error(layout_links(NULL, list()), "state")
     expect_error(layout_links(list(checked = TRUE), NULL), "placed")
     expect_error(layout_number("1"), "x")
@@ -305,14 +309,14 @@ describe("compute_layout()", {
 })
 
 describe("link paths", {
-  it("spreads parallel anchors in link order within each route and node pair", {
+  it("spreads parallel anchors together with other ends sharing the same side", {
     nodes <- data.frame(id = c("a", "b", "c"), stage = c("A", "B", "B"))
     links <- data.frame(
       from = c("a", "b", "a", "a", "b"),
       to = c("b", "a", "c", "b", "a"),
       kind = c("x", "x", "x", "y", "y")
     )
-    # Interleave another pair and the reverse route to check that each group has its own offsets.
+    # Interleave another pair and the reverse route to exercise five ends on a and four on b.
     for (direction in c("LR", "TB")) {
       layout <- compute_layout(stagemap(nodes, links) |> sm_layout(direction, "data", spacing = 1.5))
       cross_axis <- if (direction == "LR") 2L else 1L
@@ -328,15 +332,19 @@ describe("link paths", {
         anchors <- c(segment$start[cross_axis], segment$end[cross_axis])
         expect_true(all(anchors >= position[ends] + 4))
         expect_true(all(anchors <= position[ends] + size[ends] - 4))
-        base <- position[ends] + size[ends] * if (i %in% c(2L, 5L)) 0.75 else 0.5
-        # A 9 px step gives offsets -4.5 and 4.5; the unrelated pair stays centred.
-        offset <- c(-4.5, -4.5, 0, 4.5, 4.5)[i]
-        expect_equal(anchors, base + offset)
+        base <- position[ends] + size[ends] / 2
+        # LR fills the 29 px between the insets; TB has room for the full 18 px step.
+        offsets <- if (direction == "LR") {
+          cbind(c(-14.5, 4.83, 14.5, -7.25, 14.5), c(-14.5, 0, 0, -4.83, 7.25))
+        } else {
+          cbind(c(-36, 9, 36, -18, 27), c(-27, 0, 0, -9, 18))
+        }
+        expect_equal(anchors, round(base + offsets[i, ], 2))
       }
     }
   })
 
-  it("clamps crowded parallel anchors at least four pixels inside both nodes", {
+  it("fits crowded parallel anchors at least four pixels inside both nodes without overlap", {
     nodes <- data.frame(id = c("a", "b"), stage = c("A", "B"))
     for (direction in c("LR", "TB")) {
       for (backward in c(FALSE, TRUE)) {
@@ -352,7 +360,102 @@ describe("link paths", {
         ends <- vapply(paths, function(path) path[[1L]]$end[axis], numeric(1))
         expect_equal(range(starts), c(position[from] + 4, position[from] + size[from] - 4))
         expect_equal(range(ends), c(position[to] + 4, position[to] + size[to] - 4))
+        expect_length(unique(starts), 13L)
+        expect_length(unique(ends), 13L)
       }
+    }
+  })
+
+  it("separates the incoming arc and outgoing link on the Limit test exit side", {
+    nodes <- data.frame(
+      id = c("Audit test", "Limit test", "Limit test result"),
+      stage = c("Tests", "Tests", "Results")
+    )
+    links <- data.frame(from = c("Audit test", "Limit test"), to = c("Limit test", "Limit test result"))
+    for (direction in c("LR", "TB")) {
+      layout <- compute_layout(stagemap(nodes, links) |> sm_layout(direction, "data"))
+      arc <- path_segments(layout$links$path[1L])[[1L]]
+      outgoing <- path_segments(layout$links$path[2L])[[1L]]
+      node <- layout$nodes[2L, ]
+      axis <- if (direction == "LR") 1L else 2L
+      cross_axis <- 3L - axis
+      position <- if (direction == "LR") node$y else node$x
+      size <- if (direction == "LR") node$height else node$width
+      edge <- if (direction == "LR") node$x + node$width else node$y + node$height
+      attachments <- c(arc$end[cross_axis], outgoing$start[cross_axis])
+      expect_equal(c(arc$end[axis], outgoing$start[axis]), rep(edge, 2L))
+      expect_equal(attachments, position + size / 2 + c(-6, 6))
+      expect_true(all(attachments >= position + 4 & attachments <= position + size - 4))
+      expect_identical(compute_layout(stagemap(nodes, links) |> sm_layout(direction, "data")), layout)
+    }
+  })
+
+  it("orders three outgoing attachments by target position rather than link order", {
+    nodes <- data.frame(id = c("source", "top", "middle", "bottom"), stage = c("A", "B", "B", "B"))
+    links <- data.frame(from = "source", to = c("bottom", "top", "middle"))
+    for (direction in c("LR", "TB")) {
+      for (spacing in c(0.25, 1)) {
+        layout <- compute_layout(stagemap(nodes, links) |> sm_layout(direction, "data", spacing))
+        axis <- if (direction == "LR") 2L else 1L
+        position <- if (direction == "LR") layout$nodes$y else layout$nodes$x
+        size <- if (direction == "LR") layout$nodes$height else layout$nodes$width
+        paths <- lapply(layout$links$path, path_segments)
+        starts <- vapply(paths, function(path) path[[1L]]$start[axis], numeric(1))
+        ends <- vapply(paths, function(path) path[[1L]]$end[axis], numeric(1))
+        # Three ends at spacing 1 or 0.25 have room for steps of 12 px or 3 px.
+        expect_equal(starts, position[1L] + size[1L] / 2 + c(12, -12, 0) * spacing)
+        expect_equal(order(starts), c(2L, 3L, 1L))
+        expect_equal(ends, (position + size / 2)[c(4L, 2L, 3L)])
+      }
+    }
+  })
+
+  it("orders long-link ends by the nearest virtual slot in either direction", {
+    nodes <- data.frame(id = c("shared", "top", "bottom"), stage = c("A", "C", "C"))
+    for (direction in c("LR", "TB")) {
+      for (backward in c(FALSE, TRUE)) {
+        links <- if (backward) {
+          data.frame(from = c("bottom", "top"), to = "shared")
+        } else {
+          data.frame(from = "shared", to = c("bottom", "top"))
+        }
+        map <- stagemap(nodes, links) |> sm_stages(c("A", "B", "C")) |> sm_layout(direction, "data")
+        layout <- compute_layout(map)
+        axis <- if (direction == "LR") 2L else 1L
+        position <- if (direction == "LR") layout$nodes$y else layout$nodes$x
+        size <- if (direction == "LR") layout$nodes$height else layout$nodes$width
+        paths <- lapply(layout$links$path, path_segments)
+        slots <- vapply(paths, function(path) path[[2L]]$start[axis], numeric(1))
+        attachments <- if (backward) {
+          vapply(paths, function(path) path[[3L]]$end[axis], numeric(1))
+        } else {
+          vapply(paths, function(path) path[[1L]]$start[axis], numeric(1))
+        }
+        # The bottom target's link gets the first slot in stage B, above the top target's slot.
+        expect_lt(slots[1L], slots[2L])
+        expect_equal(attachments, position[1L] + size[1L] / 2 + c(-6, 6))
+      }
+    }
+  })
+
+  it("keeps literal paths unchanged when every node side has at most one link end", {
+    nodes <- data.frame(id = c("a", "b", "c", "d"), stage = c("A", "B", "C", "C"))
+    links <- data.frame(from = c("a", "c", "c"), to = c("b", "b", "d"))
+    expected <- list(
+      LR = c(
+        "M 184 66.5 C 220 66.5, 220 66.5, 256 66.5",
+        "M 496 75.75 C 460 75.75, 460 75.75, 424 75.75",
+        "M 664 66.5 C 700 66.5, 700 119.5, 664 119.5"
+      ),
+      TB = c(
+        "M 220 53 C 220 89, 220 89, 220 125",
+        "M 262 234 C 262 198, 262 198, 262 162",
+        "M 220 271 C 220 307, 404 307, 404 271"
+      )
+    )
+    for (direction in c("LR", "TB")) {
+      layout <- compute_layout(stagemap(nodes, links) |> sm_layout(direction, "data"))
+      expect_identical(layout$links$path, expected[[direction]])
     }
   })
 
@@ -390,16 +493,16 @@ describe("link paths", {
     }
   })
 
-  it("groups opposite same-stage directions by their unordered node pair", {
+  it("spreads opposite same-stage directions together on their shared exit sides", {
     nodes <- data.frame(id = c("a", "b"), stage = "A")
     links <- data.frame(from = c("a", "b"), to = c("b", "a"))
     layout <- compute_layout(stagemap(nodes, links) |> sm_layout(order = "data"))
     paths <- lapply(layout$links$path, path_segments)
     centres <- layout$nodes$y + layout$nodes$height / 2
-    expect_equal(paths[[1L]][[1L]]$start[2L], centres[1L] - 3)
-    expect_equal(paths[[1L]][[1L]]$end[2L], centres[2L] - 3)
-    expect_equal(paths[[2L]][[1L]]$start[2L], centres[2L] + 3)
-    expect_equal(paths[[2L]][[1L]]$end[2L], centres[1L] + 3)
+    expect_equal(paths[[1L]][[1L]]$start[2L], centres[1L] - 6)
+    expect_equal(paths[[1L]][[1L]]$end[2L], centres[2L] - 6)
+    expect_equal(paths[[2L]][[1L]]$start[2L], centres[2L] + 6)
+    expect_equal(paths[[2L]][[1L]]$end[2L], centres[1L] + 6)
   })
 
   it("gives longer same-stage spans larger bulges and breaks tied spans by link order", {
@@ -460,15 +563,15 @@ describe("link paths", {
       a <- layout$nodes[1L, ]
       b <- layout$nodes[2L, ]
       if (direction == "LR") {
-        start <- c(a$x + a$width, a$y + a$height / 2)
-        end <- c(b$x, b$y + b$height / 2)
-        back_start <- c(b$x, b$y + 3 * b$height / 4)
-        back_end <- c(a$x + a$width, a$y + 3 * a$height / 4)
+        start <- c(a$x + a$width, a$y + a$height / 2 - 6)
+        end <- c(b$x, b$y + b$height / 2 - 6)
+        back_start <- c(b$x, b$y + b$height / 2 + 6)
+        back_end <- c(a$x + a$width, a$y + a$height / 2 + 6)
       } else {
-        start <- c(a$x + a$width / 2, a$y + a$height)
-        end <- c(b$x + b$width / 2, b$y)
-        back_start <- c(b$x + 3 * b$width / 4, b$y)
-        back_end <- c(a$x + 3 * a$width / 4, a$y + a$height)
+        start <- c(a$x + a$width / 2 - 6, a$y + a$height)
+        end <- c(b$x + b$width / 2 - 6, b$y)
+        back_start <- c(b$x + b$width / 2 + 6, b$y)
+        back_end <- c(a$x + a$width / 2 + 6, a$y + a$height)
       }
       expect_true(startsWith(layout$links$path[1L], paste("M", paste(layout_number(start), collapse = " "))))
       expect_true(startsWith(layout$links$path[2L], paste("M", paste(layout_number(back_start), collapse = " "))))

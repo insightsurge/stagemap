@@ -342,7 +342,46 @@ layout_number <- function(x) {
   result
 }
 
-#' Separate parallel anchors and nest same-stage arcs by their span
+#' Spread link ends along shared node sides using their next points
+#' @noRd
+layout_spread_anchors <- function(state, cross, anchors) {
+  checkmate::assert_list(state, names = "unique")
+  checkmate::assert_numeric(cross, len = nrow(state$items), any.missing = FALSE, finite = TRUE)
+  checkmate::assert_data_frame(anchors, any.missing = FALSE)
+  n <- nrow(anchors)
+  # Freeze neighbouring anchors so the order of processing sides cannot affect their ranking.
+  ends <- data.frame(
+    node = c(anchors$from, anchors$to),
+    side = c(ifelse(anchors$route == "backward", "entry", "exit"), ifelse(anchors$route == "forward", "entry", "exit")),
+    link = rep(seq_len(n), 2L),
+    next_cross = c(anchors$end, anchors$start)
+  )
+  for (i in seq_len(n)) {
+    chain <- state$chains[[i]]
+    if (length(chain) > 2L) {
+      ends$next_cross[i] <- cross[chain[2L]]
+      ends$next_cross[n + i] <- cross[chain[length(chain) - 1L]]
+    }
+  }
+  positions <- c(anchors$start, anchors$end)
+  groups <- paste(ends$node, ends$side, sep = ":", recycle0 = TRUE)
+  for (group in unique(groups)) {
+    rows <- which(groups == group)
+    k <- length(rows)
+    if (k == 1L) {
+      next
+    }
+    rows <- rows[order(ends$next_cross[rows], ends$link[rows], method = "radix")]
+    node <- ends$node[rows[1L]]
+    step <- min(12 * state$settings$spacing, (state$items$cross_size[node] - 8) / (k - 1L))
+    positions[rows] <- cross[node] + (seq_len(k) - (k + 1) / 2) * step
+  }
+  anchors$start <- positions[seq_len(n)]
+  anchors$end <- positions[n + seq_len(n)]
+  anchors
+}
+
+#' Spread anchors on shared sides and nest same-stage arcs by their span
 #' @noRd
 layout_link_anchors <- function(state, cross) {
   checkmate::assert_list(state, names = "unique")
@@ -354,28 +393,21 @@ layout_link_anchors <- function(state, cross) {
   route <- ifelse(first < last, "forward", ifelse(first > last, "backward", "same"))
   start <- cross[from] + ifelse(route == "backward", state$items$cross_size[from] / 4, 0)
   end <- cross[to] + ifelse(route == "backward", state$items$cross_size[to] / 4, 0)
-  groups <- paste(pmin(from, to), pmax(from, to), route, sep = ":", recycle0 = TRUE)
-  for (group in unique(groups)) {
-    rows <- which(groups == group)
-    offset <- (seq_along(rows) - (length(rows) + 1) / 2) * 6 * state$settings$spacing
-    start[rows] <- pmax(
-      cross[from[rows]] - state$items$cross_size[from[rows]] / 2 + 4,
-      pmin(start[rows] + offset, cross[from[rows]] + state$items$cross_size[from[rows]] / 2 - 4)
-    )
-    end[rows] <- pmax(
-      cross[to[rows]] - state$items$cross_size[to[rows]] / 2 + 4,
-      pmin(end[rows] + offset, cross[to[rows]] + state$items$cross_size[to[rows]] / 2 - 4)
-    )
-  }
+  anchors <- layout_spread_anchors(
+    state,
+    cross,
+    data.frame(from = from, to = to, route = route, start = start, end = end)
+  )
   half_gap <- state$settings$stage_gap * state$settings$spacing / 2
   bulge <- rep(half_gap, length(from))
   same <- which(route == "same")
   for (stage in unique(first[same])) {
     rows <- same[first[same] == stage]
-    rows <- rows[order(abs(end[rows] - start[rows]), rows, method = "radix")]
+    rows <- rows[order(abs(anchors$end[rows] - anchors$start[rows]), rows, method = "radix")]
     bulge[rows] <- half_gap * (0.35 + 0.65 * seq_along(rows) / length(rows))
   }
-  data.frame(from = from, to = to, route = route, start = start, end = end, bulge = bulge)
+  anchors$bulge <- bulge
+  anchors
 }
 
 #' Route links through straight stage slots and compute the middle mark
