@@ -80,6 +80,9 @@ force-pushes to `main` and its deletion. See the [workflow](.github/CONTRIBUTING
   boxes it delivers and says which stay open ([workflow](.github/CONTRIBUTING.md#workflow)).
 - Report checks in the PR template's [Checks](.github/pull_request_template.md#checks) table, as summary lines
   without local paths.
+- **Docs follow behaviour:** a change to how something works updates every text that describes it (help pages, README,
+  NEWS, `docs/`, `tools/README.md`, rules files) in the same pull request. Search for the old wording and list the
+  search terms in the pull request.
 
 ## Working as an agent
 - Work only in the worktree or branch you were given. Don't commit, push, merge or open PRs unless the task says
