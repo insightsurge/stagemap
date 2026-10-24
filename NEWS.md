@@ -6,6 +6,9 @@
 * `sm_kinds()` sets and combines styles for named link kinds (#14).
 * `sm_layout()` sets the direction, the order of nodes within a stage and the spacing; the layout is computed in R and is the same on every run (#15).
 * `sm_lanes()` sets lane order, including empty bands (#14).
+* `sm_missing()` finds nodes without a direct link to a chosen stage (#20).
+* `sm_orphans()` finds nodes with no links (#20).
 * `sm_stages()` sets stage order, including empty columns (#14).
 * `sm_status()` sets badge text for built-in and custom status words (#14).
 * `sm_svg()` writes a map as an SVG image, or returns it as text, drawn in R with no extra packages, in a light or dark theme (#16).
+* `sm_trace()` follows links from a node, with direction, kind and depth limits (#20).
