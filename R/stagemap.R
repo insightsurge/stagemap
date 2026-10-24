@@ -13,8 +13,8 @@
 #'   `kind` (defaults to `"link"` when absent; missing values are not allowed) and
 #'   `label` (missing labels are allowed). Duplicate links with the same `from`,
 #'   `to` and `kind` are dropped with a warning. `NULL`, the default, means no links.
-#' @param ... For `stagemap()`, must be empty: later options are named arguments
-#'   after it. Not used by `format()` and `print()`.
+#' @param ... For `stagemap()`, must be empty: set meaning with the `sm_*()`
+#'   functions. Not used by `format()` and `print()`.
 #' @param x A `stagemap` object to format or print.
 #' @returns `stagemap()` returns a `stagemap` object holding the checked nodes and
 #'   links; print it for a summary. `format()` returns the summary as a character
@@ -151,7 +151,9 @@ stagemap <- function(nodes, links = NULL, ...) {
 
 #' Internal map contract for layout, drawing and trace functions
 #'
-#' Later functions read these fields directly; keep their names and order stable.
+#' Later functions use resolve_stages(), resolve_lanes(), resolve_kinds(),
+#' resolve_groups() and resolve_status() rather than reading settings directly.
+#' Keep field names and order stable.
 #' Inputs have already been checked and normalised by the public constructor.
 #'
 #' @param nodes A plain data frame with row names 1..n. Columns `id`, `label`,
@@ -162,11 +164,12 @@ stagemap <- function(nodes, links = NULL, ...) {
 #'   `kind` are character; `label` is character and may contain `NA`. Every `from`
 #'   and `to` is a node id; `kind` is never missing. No self-links or duplicate
 #'   combinations of `from`, `to` and `kind` remain. Other columns are kept.
-#' @param stages Stage definitions; `NULL` until set by an `sm_*()` function.
-#' @param lanes Lane definitions; `NULL` until set by an `sm_*()` function.
-#' @param kinds Link kind definitions; `NULL` until set by an `sm_*()` function.
-#' @param groups Group definitions; `NULL` until set by an `sm_*()` function.
-#' @param status Status definitions; `NULL` until set by an `sm_*()` function.
+#' @param stages A character vector of stage names in order, or `NULL` for defaults.
+#' @param lanes A character vector of lane names in order, or `NULL` for defaults.
+#' @param kinds A named list of `stagemap_kind` objects, or `NULL` for defaults.
+#' @param groups A list of named character vectors `colours` and `labels`, or
+#'   `NULL` for defaults.
+#' @param status A named character vector of badge text, or `NULL` for defaults.
 #' @param options A list of map options, initially empty.
 #' @returns A `stagemap` list with the fields above in argument order.
 #' @noRd
@@ -182,12 +185,17 @@ new_stagemap <- function(
 ) {
   checkmate::assert_data_frame(nodes, min.rows = 1)
   checkmate::assert_data_frame(links)
-  checkmate::assert_list(stages, null.ok = TRUE)
-  checkmate::assert_list(lanes, null.ok = TRUE)
-  checkmate::assert_list(kinds, null.ok = TRUE)
-  checkmate::assert_list(groups, null.ok = TRUE)
-  checkmate::assert_list(status, null.ok = TRUE)
+  checkmate::assert_character(stages, null.ok = TRUE)
+  checkmate::assert_character(lanes, null.ok = TRUE)
+  checkmate::assert_list(kinds, types = "stagemap_kind", names = "unique", null.ok = TRUE)
+  checkmate::assert_list(groups, len = 2, names = "unique", null.ok = TRUE)
+  checkmate::assert_character(status, any.missing = FALSE, names = "unique", null.ok = TRUE)
   checkmate::assert_list(options)
+  if (!is.null(groups)) {
+    checkmate::assert_names(names(groups), identical.to = c("colours", "labels"))
+    checkmate::assert_character(groups$colours, any.missing = FALSE, names = "unique")
+    checkmate::assert_character(groups$labels, any.missing = FALSE, names = "unique")
+  }
   structure(
     list(
       nodes = nodes,
@@ -259,16 +267,17 @@ format.stagemap <- function(x, ...) {
   # These closures consume the enclosing method's checked map.
   count_text <- function(n, noun) paste(n, paste0(noun, if (n == 1L) "" else "s"))
   list_text <- function(value, title) {
-    values <- if (is.factor(value)) levels(value) else unique(value)
+    values <- unique(value)
     shown <- paste(values[seq_len(min(length(values), 8L))], collapse = ", ")
     more <- if (length(values) > 8L) paste0(", and ", length(values) - 8L, " more") else ""
     paste0(title, " (", length(values), "): ", shown, more)
   }
   c(
     paste0("<stagemap> ", count_text(nrow(x$nodes), "node"), ", ", count_text(nrow(x$links), "link")),
-    list_text(x$nodes$stage, "Stages"),
-    if ("lane" %in% names(x$nodes)) list_text(x$nodes$lane, "Lanes"),
-    if (nrow(x$links)) list_text(x$links$kind, "Kinds")
+    list_text(resolve_stages(x), "Stages"),
+    if ("lane" %in% names(x$nodes)) list_text(resolve_lanes(x), "Lanes"),
+    if (nrow(x$links)) list_text(x$links$kind, "Kinds"),
+    if ("group" %in% names(x$nodes)) list_text(resolve_groups(x)$group, "Groups")
   )
 }
 

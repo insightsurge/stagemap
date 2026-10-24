@@ -51,3 +51,11 @@ reference:
   - title: Build a map
     contents:
       - stagemap
+  - title: Say what a map means
+    contents:
+      - sm_stages
+      - sm_lanes
+      - sm_kinds
+      - sm_kind
+      - sm_groups
+      - sm_status

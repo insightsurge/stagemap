@@ -67,7 +67,7 @@ abort_dots <- function(extras, n, valid, call, fn, positional) {
   hint <- if (length(valid)) {
     "Name the optional arguments: {.arg {valid}}."
   } else {
-    "{.fn {fn}} takes only {.and {.arg {positional}}}."
+    "{.fn {fn}} takes only {.and {.arg {positional}}}; set the rest with the {.code sm_*()} functions."
   }
   cli::cli_abort(
     c(message, "i" = hint),

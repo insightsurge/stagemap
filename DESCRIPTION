@@ -13,7 +13,8 @@ Depends:
     R (>= 4.1.0)
 Imports: 
     checkmate,
-    cli
+    cli,
+    grDevices
 Suggests: 
     chromote,
     covr,

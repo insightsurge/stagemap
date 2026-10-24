@@ -2,4 +2,10 @@
 
 S3method(format,stagemap)
 S3method(print,stagemap)
+export(sm_groups)
+export(sm_kind)
+export(sm_kinds)
+export(sm_lanes)
+export(sm_stages)
+export(sm_status)
 export(stagemap)
