@@ -91,7 +91,7 @@ Add one bullet for each user-facing change, in the same pull request. Write it f
 with the function or feature, and end with the issue number:
 
 ```md
-* `stagemap()` gains a `direction` argument for top-to-bottom maps (#30).
+* `sm_svg()` gains a `width` argument (#123).
 ```
 
 Where new bullets go and what is left out: the [NEWS rules][newsmd]. Release headings and versions belong to the
