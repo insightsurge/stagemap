@@ -3,10 +3,9 @@ Title: Relation Maps for 'Shiny' and 'Quarto'
 Version: 0.0.0.9000
 Authors@R: 
     person("Harsh", "Verma", email = "analyticswithharsh@gmail.com", role = c("aut", "cre", "cph"))
-Description: Draws relation maps: things placed by stage and lane, joined by
-    links whose kind sets their style, with functions that trace and check
-    the map. In early development: the package holds a placeholder function
-    while the real functions are designed.
+Description: Builds relation maps from nodes placed by stage and lane and
+    links that join them. Checks node identifiers, link endpoints and column
+    values, and provides a text summary of the map.
 License: MIT + file LICENSE
 URL: https://insightsurge.github.io/stagemap/, https://github.com/insightsurge/stagemap
 BugReports: https://github.com/insightsurge/stagemap/issues

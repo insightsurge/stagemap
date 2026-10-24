@@ -11,8 +11,8 @@ means something, such as built, reviewed, tested by or depends on. The same data
 node, find things with no link, check coverage, and see the impact of a change. Maps are meant for Shiny apps, Quarto
 documents, slides and dashboards, and package websites, and as a static image for PowerPoint, Word and PDF.
 
-**Status:** early development; `stagemap` is the working name. The package holds a placeholder function while the
-real functions are designed, and is not on CRAN. Scope and plans:
+**Status:** early development; `stagemap` is the working name. The package builds and checks a map object; drawing
+comes next. It is not on CRAN. Scope and plans:
 [`docs/scope.md`](https://github.com/insightsurge/stagemap/blob/main/docs/scope.md).
 
 The coverage badge counts the R code the tests run. The JavaScript engine that will draw the maps in the browser is
