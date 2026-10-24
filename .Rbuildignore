@@ -23,4 +23,5 @@
 ^stagemap_.*\.tar\.gz$
 ^tools$
 ^biome\.json$
+^codecov\.yml$
 ^site$
