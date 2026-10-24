@@ -1,5 +1,5 @@
 # Derived from https://github.com/r-lib/actions/tree/v2/examples (pkgdown.yaml).
-# Builds the pkgdown site from main only (a rule, #127): on every push to main, and by hand on main. Never on pull
+# Builds the pkgdown site from main only: on every push to main, and by hand on main. Never on pull
 # requests: a site build may need packages that pull requests from outside contributors can't install. Deploys the
 # site to GitHub Pages (https://insightsurge.github.io/stagemap/; the repository's Pages source is "GitHub Actions").
 on:
@@ -20,7 +20,8 @@ jobs:
     # A run started by hand on another branch does nothing: the site is built from main only.
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-26.04  # pinned, like the repo's other workflows
-    timeout-minutes: 30  # renders every article, then deploys (longest recent run: 4 min)
+    timeout-minutes: 45  # renders the site, then deploys (1-2 min), plus room for a slow package mirror (installing R
+    # alone once took 22 min here)
     permissions:
       contents: read
       pages: write     # publish to GitHub Pages
