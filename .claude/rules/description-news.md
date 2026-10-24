@@ -28,7 +28,7 @@ Labels as in `r-code.md` (CRAN / house). Reasons and sources: `docs/standards.md
   keep `# stagemap 0.0.0.9000`:
   R's NEWS check finds no entries under a "development version" heading without a released version below it.
 - **house:** one change per bullet, written for users, present tense, starting with the function or feature,
-  ending with the issue or PR number: `` `stagemap()` gains a `direction` argument for top-to-bottom maps (#30).``
+  ending with the issue or PR number: `` `sm_svg()` gains a `width` argument (#123).``
   Where one function has several changes, one bullet per function with indented sub-bullets for its arguments and
   details is allowed; mark experimental items with *Experimental*.
   Credit outside contributors (`(@user, #123)`). With more than a handful of bullets, group under

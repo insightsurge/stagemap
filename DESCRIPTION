@@ -5,7 +5,8 @@ Authors@R:
     person("Harsh", "Verma", email = "analyticswithharsh@gmail.com", role = c("aut", "cre", "cph"))
 Description: Builds relation maps from nodes placed by stage and lane and
     links that join them. Checks node identifiers, link endpoints and column
-    values, and provides a text summary of the map.
+    values, lays the map out the same way on every run and writes it as an
+    SVG image.
 License: MIT + file LICENSE
 URL: https://insightsurge.github.io/stagemap/, https://github.com/insightsurge/stagemap
 BugReports: https://github.com/insightsurge/stagemap/issues
