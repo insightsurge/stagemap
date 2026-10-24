@@ -9,7 +9,12 @@ Labels as in `r-code.md` (CRAN / house). Reasons and sources: `docs/standards.md
 
 - **house:** coverage of at least 70% of lines (`Rscript tools/cran-gate.R tests`; the limit is
   `Config/cran-gate/coverage` in `DESCRIPTION`, which CI reads too; CRAN itself does not check coverage); a PR never
-  lowers it. `# nocov` only for code that truly can't run in a test, with the reason beside it.
+  lowers it. Every added runnable line in `R/` must run in a test (`new_lines`). `# nocov` is only for code that truly
+  cannot run in a test, with the reason beside it. covr measures R code only; Shiny behaviour tests cover JS.
+- **house:** merge evidence is a `tests` or `full` gate run exiting 0. PARTIAL runs (`--steps`, `--filter`,
+  `--no-coverage`) are not evidence. Exit code 3 means all failing tests passed on re-run: it needs the package
+  creator's acceptance. Before an agent reports done, run both `fast` and `tests`; report summary lines, failures
+  and anything not run with its reason. Local results do not replace CI.
 - **house:** testthat 3rd edition, BDD style: one test file per R file (`R/layout.R` → `tests/testthat/test-layout.R`);
   `describe("stagemap()", { it("places each node in its stage", { ... }) })`, with `describe()` naming the
   function or behaviour and `it()` stating the expected behaviour in plain words; `# Given / # When / # Then`

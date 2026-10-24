@@ -67,7 +67,7 @@ jobs:
           upload-snapshots: true
           build_args: 'c("--no-manual", "--compact-vignettes=gs+qpdf")'
 
-  # One check name for the branch ruleset to require: it fails unless every matrix job above succeeded.
+  # One check name a branch ruleset could require: it fails unless every matrix job above succeeded.
   R-CMD-check:
     needs: check
     if: always()
