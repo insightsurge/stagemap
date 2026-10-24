@@ -4,6 +4,7 @@
 * `sm_groups()` sets group colours and legend labels (#14).
 * `sm_kind()` describes a link's line, colour, width, arrow and middle mark (#14).
 * `sm_kinds()` sets and combines styles for named link kinds (#14).
+* `sm_layout()` sets the direction, the order of nodes within a stage and the spacing; the layout is computed in R and is the same on every run (#15).
 * `sm_lanes()` sets lane order, including empty bands (#14).
 * `sm_stages()` sets stage order, including empty columns (#14).
 * `sm_status()` sets badge text for built-in and custom status words (#14).

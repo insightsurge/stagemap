@@ -34,6 +34,7 @@ Other meaning:
 \code{\link[=sm_kind]{sm_kind()}},
 \code{\link[=sm_kinds]{sm_kinds()}},
 \code{\link[=sm_lanes]{sm_lanes()}},
+\code{\link[=sm_layout]{sm_layout()}},
 \code{\link[=sm_status]{sm_status()}}
 }
 \concept{meaning}
