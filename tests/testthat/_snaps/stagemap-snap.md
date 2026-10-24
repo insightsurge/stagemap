@@ -7,6 +7,7 @@
       Stages (3): Requirement, Test, Result
       Lanes (2): Safety, Usability
       Kinds (2): verifies, produces
+      Groups (2): Safety, Usability
 
 # stagemap output / explains a missing column
 
@@ -32,5 +33,5 @@
     Condition
       Error in `stagemap()`:
       ! Unexpected arguments: "foo".
-      i `stagemap()` takes only `nodes` and `links`.
+      i `stagemap()` takes only `nodes` and `links`; set the rest with the `sm_*()` functions.
 

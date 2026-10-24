@@ -1,3 +1,9 @@
 # stagemap 0.0.0.9000
 
 * `stagemap()` builds a map object from nodes and links data frames and checks them, naming the rows that are wrong (#13).
+* `sm_groups()` sets group colours and legend labels (#14).
+* `sm_kind()` describes a link's line, colour, width, arrow and middle mark (#14).
+* `sm_kinds()` sets and combines styles for named link kinds (#14).
+* `sm_lanes()` sets lane order, including empty bands (#14).
+* `sm_stages()` sets stage order, including empty columns (#14).
+* `sm_status()` sets badge text for built-in and custom status words (#14).

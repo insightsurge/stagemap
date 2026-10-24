@@ -26,8 +26,8 @@ naming existing node ids. Self-links are not allowed. Optional columns are
 \code{label} (missing labels are allowed). Duplicate links with the same \code{from},
 \code{to} and \code{kind} are dropped with a warning. \code{NULL}, the default, means no links.}
 
-\item{...}{For \code{stagemap()}, must be empty: later options are named arguments
-after it. Not used by \code{format()} and \code{print()}.}
+\item{...}{For \code{stagemap()}, must be empty: set meaning with the \verb{sm_*()}
+functions. Not used by \code{format()} and \code{print()}.}
 
 \item{x}{A \code{stagemap} object to format or print.}
 }

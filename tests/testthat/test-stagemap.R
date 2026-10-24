@@ -29,7 +29,8 @@ describe("stagemap()", {
         "<stagemap> 4 nodes, 2 links",
         "Stages (3): Requirement, Test, Result",
         "Lanes (2): Safety, Usability",
-        "Kinds (2): verifies, produces"
+        "Kinds (2): verifies, produces",
+        "Groups (2): Safety, Usability"
       )
     )
     output <- capture.output(visible <- withVisible(print(map)))
@@ -67,7 +68,7 @@ describe("stagemap()", {
     expect_identical(map$links$label, NA_character_)
     expect_identical(
       format(map),
-      c("<stagemap> 2 nodes, 1 link", "Stages (2): Y, Z", "Lanes (3): A, B, C", "Kinds (1): link")
+      c("<stagemap> 2 nodes, 1 link", "Stages (2): Y, Z", "Lanes (3): A, B, C", "Kinds (1): link", "Groups (1): g")
     )
     expect_identical(
       format(stagemap(data.frame(id = "a", stage = "S"))),
@@ -262,13 +263,28 @@ describe("new_stagemap()", {
     expect_identical(new_stagemap(map$nodes, map$links), map)
     expect_error(new_stagemap(1, map$links), "nodes")
     expect_error(new_stagemap(map$nodes, 1), "links")
-    for (field in c("stages", "lanes", "kinds", "groups", "status", "options")) {
+    valid <- list(
+      stages = "S",
+      lanes = "L",
+      kinds = list(example = sm_kind()),
+      groups = list(colours = c(g = "#FF0000"), labels = c(g = "Group")),
+      status = c(pass = "Done"),
+      options = list()
+    )
+    for (field in names(valid)) {
       args <- list(nodes = map$nodes, links = map$links)
       args[[field]] <- 1
       expect_error(do.call(new_stagemap, args), field)
-      args[[field]] <- list(example = "value")
+      args[[field]] <- valid[[field]]
       expect_identical(do.call(new_stagemap, args)[[field]], args[[field]])
     }
+    expect_error(new_stagemap(map$nodes, map$links, kinds = list(sm_kind())), "kinds")
+    expect_error(new_stagemap(map$nodes, map$links, kinds = list(a = "solid")), "kinds")
+    expect_error(new_stagemap(map$nodes, map$links, groups = list(colours = character())), "groups")
+    expect_error(new_stagemap(map$nodes, map$links, groups = list(a = character(), b = character())), "names")
+    expect_error(new_stagemap(map$nodes, map$links, groups = list(colours = 1, labels = character())), "colours")
+    expect_error(new_stagemap(map$nodes, map$links, groups = list(colours = character(), labels = 1)), "labels")
+    expect_error(new_stagemap(map$nodes, map$links, status = "Done"), "status")
   })
 })
 
