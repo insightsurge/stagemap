@@ -68,20 +68,41 @@ browser, say) fails many tests with the same message, the line names it once as 
 
 ### The gate and CI
 
-Only `lint.yaml` runs the gate itself; the other jobs run R CMD check or covr directly. The last column is the gate
+`lint.yaml` and `check-no-suggests.yaml` run the gate itself; the other jobs run R CMD check or covr directly. The last column is the gate
 mode that checks the same thing locally, which is the evidence when CI can't run (no Actions minutes).
 
 | Workflow | What it runs | Locally |
 |---|---|---|
-| `R-CMD-check.yaml` | `R CMD check --as-cran`, failing on any note, with `NOT_CRAN` unset (Chrome tests skip). On every pull request, push to `main`, every Monday and on demand: macOS and Windows (R release) and Ubuntu (R devel, release, previous release and 4.1) | the `check_full` step of `full` |
-| `test-coverage.yaml` | The tests with `NOT_CRAN: true` (Chrome tests run) and the coverage limit from `DESCRIPTION` (on a pull request, the higher of the base branch's limit and the PR's own, so a pull request cannot lower the limit by editing `DESCRIPTION`; changes to this workflow are reviewed like any other change) | `tests` |
-| `check-no-suggests.yaml` | R CMD check with the required packages only, as CRAN also checks | `nosuggests` |
+| `R-CMD-check.yaml` | `R CMD check --as-cran`, failing on any note, with `NOT_CRAN` false (browser tests skip, as on CRAN) and the whole test output when a test fails. On every pull request, push to `main`, every Monday and on demand: macOS and Windows (R release) and Ubuntu (R devel, release, previous release and 4.1) | the `check_full` step of `full` |
+| `test-coverage.yaml` | The tests without Chrome (`NOT_CRAN` false) under covr, and the coverage limit from `DESCRIPTION` (on a pull request, the higher of the base branch's limit and the PR's own, so a pull request cannot lower the limit by editing `DESCRIPTION`; changes to this workflow are reviewed like any other change) | `tests` (a superset: it runs the browser tests too, under covr, so its coverage is higher) |
+| `browser-tests.yaml` | The test files that hold the tests CRAN skips (the browser tests in `test-*-browser.R` and the snapshot tests in `test-*-snap.R`), with Chrome and `NOT_CRAN: true`, on Ubuntu with R release and R 4.1, one line per test file as it finishes; fails when a test fails or one of those tests skips. The `browser-tests` check passes only when both R versions pass | `tests` |
+| `check-no-suggests.yaml` | The gate in `nosuggests` mode on a library with only the hard dependencies (plus rcmdcheck, testthat, knitr and rmarkdown): R CMD check with only what the check needs on the library path, so a Suggests package that is installed but not needed stays hidden; a skipped check fails the job | `nosuggests` |
 | `lint.yaml` | The gate in `lint` mode, with Air and Biome at pinned versions | `lint` |
 | `pkgdown.yaml` | `pkgdown::check_pkgdown()` and the site build, from `main` only | `Rscript tools/build-site.R` |
 | `gitleaks.yml` | A scan for committed secrets | |
 
-Dependabot keeps the actions current. The gate's `new_lines` step has
+A pull request that changes only documentation (the README, `docs/`, the website's articles and settings, the issue
+forms and the repository's notes) starts the R jobs and skips their steps (`.github/scripts/r-changes.sh`), so every
+check still reports. Dependabot keeps the actions current. The gate's `new_lines` step has
 no CI job: it needs the branch's base, which CI's shallow checkout lacks, so it runs locally.
+
+**The CI report comment.** On a pull request, one comment, rewritten as each workflow finishes, sums up what CI found,
+in a Tests and a Code style section:
+
+- `test-coverage.yaml`: the line coverage without the browser tests, the limit from `DESCRIPTION` and the
+  difference from the latest successful run on `main`; the added `R/` lines that the job's tests don't run (a report,
+  not a check: a browser test may run them, and the gate's `new_lines` step is the check); or why nothing was measured.
+- `browser-tests.yaml`, per R version: the counts, the failing and skipped tests, the slowest test files and the files
+  much slower than on `main` (at least 25% and 10 seconds).
+- `lint.yaml`: passed or failed. lintr's findings show inline in the pull request's "Files changed".
+
+Each job writes its part to its job summary (on the run's page) and keeps it as an artifact; a small `report` job at the
+end of each of those workflows gathers the parts of the pull request's commit into the comment
+(`.github/actions/pr-report-comment`, set up in `.github/pr-report.json`). Pull requests from forks and from
+Dependabot get the job summaries only: their token can't write to the pull request. The figures from `main` are
+artifacts that its runs keep for 90 days; when there is none, the comment says so. A re-run job replaces its part;
+when a re-run job stops before it writes one (a failed checkout, say), the earlier attempt's part stays, and the
+footer's run state (failure, cancelled) is the sign.
 
 ### Changing the gate
 

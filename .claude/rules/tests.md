@@ -15,8 +15,9 @@ Labels as in `r-code.md` (CRAN / house). Reasons and sources: `docs/standards.md
   `--no-coverage`) are not evidence. Exit code 3 means all failing tests passed on re-run: it needs the package
   creator's acceptance. Before an agent reports done, run both `fast` and `tests`; report summary lines, failures
   and anything not run with its reason. Local results do not replace CI.
-- **house:** testthat 3rd edition, BDD style: one test file per R file (`R/layout.R` → `tests/testthat/test-layout.R`);
-  `describe("stagemap()", { it("places each node in its stage", { ... }) })`, with `describe()` naming the
+- **house:** testthat 3rd edition, BDD style: one test file per R file (`R/layout.R` → `tests/testthat/test-layout.R`),
+  plus `test-layout-browser.R` for its browser tests and `test-layout-snap.R` for its snapshot tests when it has them
+  (the next bullets); `describe("stagemap()", { it("places each node in its stage", { ... }) })`, with `describe()` naming the
   function or behaviour and `it()` stating the expected behaviour in plain words; `# Given / # When / # Then`
   where it helps. Cover the happy path, every checkmate assertion (a test that it fails with a clear message),
   edge cases and every bug fix.
@@ -29,7 +30,16 @@ Labels as in `r-code.md` (CRAN / house). Reasons and sources: `docs/standards.md
   else can show it.
 - **CRAN:** every shinytest2 or chromote test starts with `testthat::skip_on_cran()`,
   `testthat::skip_if_not_installed("shinytest2")` and a skip when `chromote::find_chrome()` is `NULL`. CRAN has
-  asked that no package uses Chrome when tested on CRAN. CI runs them (`NOT_CRAN=true` in the coverage job).
+  asked that no package uses Chrome when tested on CRAN. CI runs them in the `browser-tests` job (`NOT_CRAN: true`).
+- **house:** the tests CRAN skips live in files of their own, and nothing else does: browser tests (shinytest2,
+  chromote, or any helper that starts Chrome or calls `skip_on_cran()`) in `test-<name>-browser.R`, snapshot tests
+  (`expect_snapshot()` skips itself on CRAN) in `test-<name>-snap.R`. The `browser-tests` job runs exactly those
+  files and fails on any skip; R CMD check runs the rest. `test-helper-layout.R` fails when a test is in the wrong
+  file (an argument check inside `expect_error()` may stay in the plain file: it fails before Chrome starts). A
+  helper used only by one file's tests stays at the top of that file; one that a plain file and its `-browser.R` or
+  `-snap.R` file both need goes in `helper-<name>.R`, which loads for every test file.
 - **CRAN:** tests use only declared packages and guard Suggests (`skip_if_not_installed()`); no network; files go
   to `withr::local_tempdir()`; nothing is left behind; at most 2 cores.
 - **house:** keep JS logic small and push decisions into R, where they can be unit-tested.
+- **house:** each test file runs on its own: testthat runs the files in two processes at once
+  (`Config/testthat/parallel`), in any order, so a file never relies on what another file set up or left behind.
