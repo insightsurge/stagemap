@@ -33,6 +33,12 @@ To report a bug or suggest an idea, open an issue with one of the issue forms.
 6. **The package creator merges** once CI is green. Pull requests are squash-merged, so the pull request title
    becomes the commit message on `main`: keep it a Conventional Commit.
 
+Update every text that describes what you changed, in the same pull request: help pages (through roxygen), articles,
+the README, `NEWS.md` and the examples; workflow comments, `tools/README.md` and the rules files; and any other page,
+function or file that describes the behaviour, including ones added later. It works both ways: if you edit an article,
+guide or example, check that the help page still agrees. Search the repository for the old wording and list the search
+terms in the pull request.
+
 Changes reach `main` through pull requests, and a ruleset stops anyone from force-pushing to `main` or deleting it.
 Never force-push, push to `main`, or use `--no-verify`. Never edit `renv/` or `LICENSE` by hand. Generated
 documentation follows the [roxygen rules][roxygen].
