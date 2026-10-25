@@ -31,7 +31,8 @@ Labels as in `r-code.md` (CRAN / house). Reasons and sources: `docs/standards.md
 - **house:** in a shinytest2 test, wait for the server's answer, not for the page to change: the browser changes at
   once and the server answers a moment later, and an older page may already hold the text you wait for. Wait until
   the output is no longer busy (`aria-busy`) and carries the stamp the server wrote for this request (a `data-*`
-  attribute; see `js-css.md`), with `app$wait_for_js()`. Don't wait for a Shiny silent validation error (a
+  attribute; see `js-css.md`), with `app$wait_for_js()`; for a slow button, click it and read its click number in one
+  `app$get_js()`, then wait for that number. Write these waits once, as helpers in `helper-<name>.R`. Don't wait for a Shiny silent validation error (a
   `shiny:error` with an empty message): it is not the answer. Never `app$set_inputs()` an input to the value it
   already has: shinytest2 then waits 30 s for an output change that never comes, silently; check the value instead.
   Wait until nothing else is drawing before a check, so another output's redraw can't make it pass by chance.
