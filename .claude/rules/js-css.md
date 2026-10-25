@@ -21,6 +21,13 @@ Labels as in `r-code.md` (CRAN / house). Reasons and sources: `docs/standards.md
   `eval()` runs only if a user adds them. Reasons: `docs/standards.md`, section 3.
 - **house:** one global namespace (`window.stagemap`), guard against loading twice, state kept per element, several
   maps per page, no listeners left behind.
+- **house:** in Shiny, the page shows when it is waiting for the server: the widget or control is busy
+  (`aria-busy="true"`) from the user's action until the server's answer arrives, and the server stamps what it drew
+  (a `data-*` attribute naming the request), so tests and code wait for "not busy and stamped with X". A busy button
+  gets `aria-disabled="true"` and CSS, not `disabled`, which moves keyboard focus to the page. Style the children of
+  Shiny's HTML outputs, not the output itself: it is `display: contents`, so its own CSS does nothing although
+  `getComputedStyle()` reports it. After showing a panel that was hidden, call `Shiny.bindAll(panel)`: Shiny may miss
+  the change and leave its outputs suspended. Copy-to-clipboard copies after the server's answer, not on the click.
 - **house:** the engine is versioned with the package (`window.stagemap.version`, passed from R).
 - **house:** configuration through `data-*` attributes or a `<script type="application/json">` block. No `eval`
   (except htmlwidgets' runtime, above), `new Function`, inline `<script>`, inline `style=` for layout or `javascript:`

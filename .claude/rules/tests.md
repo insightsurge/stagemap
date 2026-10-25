@@ -28,12 +28,21 @@ Labels as in `r-code.md` (CRAN / house). Reasons and sources: `docs/standards.md
   function passed to `AppDriver$new()`; `withr::defer(app$stop())`. Assert on values, DOM state, `data-*`
   attributes, the `role="status"` text and engine state read with `app$get_js()`; screenshots only when nothing
   else can show it.
+- **house:** in a shinytest2 test, wait for the server's answer, not for the page to change: the browser changes at
+  once and the server answers a moment later, and an older page may already hold the text you wait for. Wait until
+  the output is no longer busy (`aria-busy`) and carries the stamp the server wrote for this request (a `data-*`
+  attribute; see `js-css.md`), with `app$wait_for_js()`. Don't wait for a Shiny silent validation error (a
+  `shiny:error` with an empty message): it is not the answer. Never `app$set_inputs()` an input to the value it
+  already has: shinytest2 then waits 30 s for an output change that never comes, silently; check the value instead.
+  Wait until nothing else is drawing before a check, so another output's redraw can't make it pass by chance.
 - **CRAN:** every shinytest2 or chromote test starts with `testthat::skip_on_cran()`,
   `testthat::skip_if_not_installed("shinytest2")` and a skip when `chromote::find_chrome()` is `NULL`. CRAN has
   asked that no package uses Chrome when tested on CRAN. CI runs them in the `browser-tests` job (`NOT_CRAN: true`).
 - **house:** the tests CRAN skips live in files of their own, and nothing else does: browser tests (shinytest2,
   chromote, or any helper that starts Chrome or calls `skip_on_cran()`) in `test-<name>-browser.R`, snapshot tests
-  (`expect_snapshot()` skips itself on CRAN) in `test-<name>-snap.R`. The `browser-tests` job runs exactly those
+  (`expect_snapshot()` skips itself on CRAN) in `test-<name>-snap.R`. A `-snap.R` file holds only `expect_snapshot()`
+  calls: CRAN skips the whole file, so a plain expectation there would never run on CRAN; put it in `test-<name>.R`
+  The `browser-tests` job runs exactly those
   files and fails on any skip; R CMD check runs the rest. `test-helper-layout.R` fails when a test is in the wrong
   file (an argument check inside `expect_error()` may stay in the plain file: it fails before Chrome starts). A
   helper used only by one file's tests stays at the top of that file; one that a plain file and its `-browser.R` or
