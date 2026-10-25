@@ -43,7 +43,7 @@ In short: `fast` while working, `tests` before a PR, `full` before a release.
 | Option | Use it to | Merge evidence? |
 |---|---|---|
 | `--steps tests,coverage` | Run only some of the mode's checks, for example after an interrupted run | No: PARTIAL |
-| `--filter layout` | Run only the test files whose names match, while fixing one test | No: PARTIAL |
+| `--filter layout` | Run only the test files whose names match, while fixing one test | PARTIAL: only for a small follow-up (below) |
 | `--no-coverage` | Run the tests without covr, more quickly | No: PARTIAL |
 | `--no-retry` | Skip the re-run of failing test files, to see the raw failure | Yes |
 | `--out <folder>` | Put the run folder somewhere else (or set `CRAN_GATE_OUT`) | Yes |
@@ -51,8 +51,9 @@ In short: `fast` while working, `tests` before a PR, `full` before a release.
 | `--help` | Show every option and the exit codes | Nothing runs |
 | `--update-wordlist` | Add the unknown words to `inst/WORDLIST`, only after the package creator agrees to them | Yes |
 
-A **PARTIAL** run is useful while working, but it isn't proof. Merge evidence is a full `tests` (or `full`) run that
-exits with 0.
+A **PARTIAL** run is useful while working, but on its own it isn't proof. Merge evidence is a full `tests` (or
+`full`) run that exits with 0; a small follow-up that adds no `R/` lines may instead show `fast` and a `--filter` run
+of the test files it touches ([test rules](../.claude/rules/tests.md)).
 
 ### Exit codes
 
@@ -63,12 +64,18 @@ exits with 0.
 | 2 | The gate couldn't judge the package: a tool is missing or a setting is wrong |
 | 3 | Only tests failed, and every one passed when re-run: probably a flake. Never merge evidence without the package creator's word |
 
+In `tests` and `full` the suite runs once, under covr, and that one run gives both the test results and the coverage.
+The run sets `TESTTHAT_IS_CHECKING`, as testthat's `test_check()` does under R CMD check, so the tests behave as they
+do there (shinytest2, for one, then loads the installed package in its app processes instead of the source).
+If covr itself fails after the suite has run (while merging what it measured, say), the coverage line FAILs with
+covr's message and points to `tests.log`; the gate does not run the suite a second time to get a percentage.
+
 When tests fail, the gate re-runs the failing files once in a fresh R session. When one broken thing (a closed
 browser, say) fails many tests with the same message, the line names it once as a "cascade".
 
 ### The gate and CI
 
-`lint.yaml` and `check-no-suggests.yaml` run the gate itself; the other jobs run R CMD check or covr directly. The last column is the gate
+`lint.yaml` and `check-no-suggests.yaml` run the gate itself; the other jobs run R CMD check, covr, testthat or the site build directly. The last column is the gate
 mode that checks the same thing locally, which is the evidence when CI can't run (no Actions minutes).
 
 | Workflow | What it runs | Locally |

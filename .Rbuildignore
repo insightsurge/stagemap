@@ -19,6 +19,7 @@
 ^renv$
 ^renv\.lock$
 ^\.Rprofile$
+^\.Rhistory$
 ^.*\.Rcheck$
 ^stagemap_.*\.tar\.gz$
 ^tools$

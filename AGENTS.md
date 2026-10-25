@@ -54,8 +54,8 @@ Tracked files, commits, branch names, issues, pull requests and comments are pub
 ## Quality gate
 Run the gate instead of calling `devtools::check()`, lintr or Air yourself;
 [tools/README.md](tools/README.md) gives commands, modes, timing and exit codes.
-- Evidence is a complete `tests` run that exits 0; say plainly which checks failed or did not run
-  ([tests](.claude/rules/tests.md)).
+- Evidence fits the change: a complete `tests` run that exits 0, or for a small follow-up the fast gate and the
+  touched test files ([tests](.claude/rules/tests.md)); say plainly which checks failed or did not run.
 - Format R with Air and JS/CSS with Biome; see [R formatting](.claude/rules/r-code.md#formatting)
   and [JS/CSS](.claude/rules/js-css.md).
 - The gate is maintained upstream and never edited here; see [maintenance](.claude/rules/ci.md).
