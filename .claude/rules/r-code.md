@@ -36,8 +36,8 @@ Labels: **CRAN** = CRAN policy, Writing R Extensions or R CMD check (no exceptio
   `R/stagemap-package.R`; never `@import` a whole package.
 - **CRAN:** every package used is declared in `DESCRIPTION` (R CMD check warns otherwise); strong dependencies
   must be on CRAN. **house:** keep `Imports` minimal; each additional import needs a reason.
-- **CRAN:** code, examples and tests run on R 4.1 (`Depends: R (>= 4.1.0)`): no base R functions added later, such
-  as `%||%` (base R from 4.4; take it from a package, as above). Only CI's R 4.1 jobs catch them.
+- **house:** code, examples and tests run on the oldest R in `Depends` (now 4.1.0): no base R functions added later,
+  such as `%||%` (base R from 4.4; take it from a package, as above). Only CI's oldest-R jobs catch them.
   Optional features use `Suggests` and check with `rlang::check_installed()` or `requireNamespace()` before use
   (CRAN also checks without Suggests).
 - **CRAN:** no `library()`, `require()` or `attach()` in package code.

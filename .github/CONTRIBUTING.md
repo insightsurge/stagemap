@@ -56,8 +56,8 @@ are in [tools/README.md][gate].
 
 - `fast` checks formatting (Air and Biome), that `man/` and `NAMESPACE` match the roxygen2 comments, lint, that every
   export has `@returns`, spelling, and `R CMD check --as-cran` without the tests.
-- `tests` runs the tests with `NOT_CRAN=true`, so the Chrome tests run, and then measures coverage. Coverage must be
-  at least 70%.
+- `tests` runs the tests once under covr with `NOT_CRAN=true`, so the Chrome tests run, and that run gives the
+  coverage. Coverage must be at least 70%.
 - The gate prints one `PASS`, `FAIL` or `SKIP` line for each step, then a summary, and keeps a run folder with one
   log per step (its path is printed). Open a log only for a failing step.
 - Unknown words fail the spelling step: list them in your PR; the package creator adds agreed ones to
@@ -83,7 +83,8 @@ The [standards][standards] explain the reasons and sources behind these rules.
 
 ## Tests
 
-Tests use testthat in BDD style, one test file per R file, with coverage at least 70%: see the [test rules][tests].
+Tests use testthat in BDD style, one test file per R file (plus `-browser` and `-snap` files for the tests CRAN
+skips), with coverage at least 70%: see the [test rules][tests].
 
 ## NEWS.md
 

@@ -86,6 +86,8 @@ Package-specific condition classes let callers catch stagemap conditions without
 | Guard Suggests; check without them | CRAN | INTS |
 | Temporary test files and cleanup | CRAN | INTS |
 | R coverage of at least 70% (not measured by CRAN) | house | - |
+| Snapshot files hold only `expect_snapshot()` calls | house | testthat docs |
+| Code, examples and tests run on the oldest R in `Depends` (4.1) | house | - |
 
 ### 1.6 JavaScript, CSS, fonts and third-party files
 
@@ -272,6 +274,9 @@ use plain words in help pages:
   of the drawn elements), `data-*` attributes and the `role="status"` text. Because frames are deterministic, a hash of
   the draw calls is a stable target across operating systems. A pixel hash is only for one pinned Chrome. Apps live
   in `tests/testthat/apps/<name>/app.R`.
+- **Browser tests wait for the server's answer, not for the page to change.** The page marks a widget busy until the
+  server's stamp matches the request, and tests wait for "not busy and stamped"; waiting for text passes on an older
+  page that already shows it. The [test rules][tests] and the [engine rules][js-css] list the details.
 - Chrome skips respect CRAN's request; app cleanup avoids leftover processes. See the
   [Shiny test rules](https://github.com/insightsurge/stagemap/blob/main/.claude/rules/tests.md).
 - **Files:** use temporary test directories; see [test rules][tests].
@@ -293,7 +298,7 @@ run it:
 |---|---|---|
 | Editor settings (`.claude/settings.json`) | While an assistant works in the repo: permission rules deny force-push, pushes to `main`, `--no-verify` and hand edits to `NAMESPACE`, `man/`, `renv/`, `LICENSE`; merging a PR (`gh pr merge`) asks for confirmation each time; attribution lines are off. Formatting is a one-line instruction (`air format .`) | In place |
 | The gate (`Rscript tools/cran-gate.R`, section 7.2) | On demand, before a commit or PR | In place |
-| CI | On every PR and push to `main` (the full platform matrix on `main`, weekly and on demand); it cannot be skipped | In place |
+| CI | On every PR and push to `main`, weekly and on demand, with the full platform matrix each time; it cannot be skipped | In place |
 
 Editor permission guards do not replace checks. See the
 [contributor workflow](https://github.com/insightsurge/stagemap/blob/main/.github/CONTRIBUTING.md#workflow) for
@@ -339,7 +344,7 @@ superseded runs (except a release, and secret scans on `main`). Every job has a 
 longest recent run, so a hung step can't hold a runner for hours. Actions from `actions/` and `r-lib/` are pinned by
 major tag; other third-party actions by full commit SHA with a `# vX.Y.Z` comment, because a tag can be moved and a
 SHA cannot. Dependabot updates both kinds and rewrites the version comment. Keep the Air and Biome versions in
-`lint.yaml` and `gate-self-test.yaml` in step with the local installs and with `biome.json`.
+`lint.yaml` in step with the local installs and with `biome.json`.
 
 ### 7.4 Tools
 
@@ -372,7 +377,6 @@ SHA cannot. Dependabot updates both kinds and rewrites the version comment. Keep
 | Left out | Why |
 |---|---|
 | Pre-commit framework | One maintainer and no shared clone yet; it needs a Python tool. The gate and CI cover the same checks. Revisit when others commit |
-| Codecov | Local and CI coverage checks already enforce the [test policy][tests]; an upload can be added later |
 | Screenshot tests in the test suite and CI | They differ between operating systems and Chrome versions. Values, DOM state and draw-call hashes are stable. |
 | jest or vitest | JS logic is kept small and tested through shinytest2. `node --test` is the fallback if pure functions grow |
 | TypeScript and a build step | Only needed for TypeScript or npm libraries. Plain JS is its own source and needs no Node in CI |

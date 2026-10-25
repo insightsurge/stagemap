@@ -40,7 +40,7 @@ Reasons and sources: `docs/standards.md`. What each workflow runs, and the gate 
   means one process. Never more than two. On CRAN, testthat takes the number of workers from `getOption("Ncpus")`,
   then `TESTTHAT_CPUS`, then two. R CMD check notes CPU time over 2.5 times elapsed time, as CRAN does
   (`_R_CHECK_TEST_TIMING_CPU_TO_ELAPSED_THRESHOLD_`): read the tests' CPU and elapsed times in its output and keep the
-  ratio well below that (mascot's is about 2).
+  ratio well below that.
 - Never `continue-on-error`, never weaken a check to get green: fix the cause, or ask the package creator.
 - A new check goes into the gate in mascot first (with its self-test probe there), then reaches stagemap with the
   next copy.
