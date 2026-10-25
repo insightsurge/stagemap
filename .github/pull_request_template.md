@@ -60,7 +60,7 @@ For labels you cannot apply, list the suggested labels in Notes so the package c
 - [ ] JS/CSS changes keep meaning off colour alone and honour reduced motion; the changed visual behaviour has been tried with reduced motion on and off.
 - [ ] New shipped files meet the [acceptance checklist][bundled-files].
 - [ ] Docs, exports and examples meet the [website checks][website].
-- [ ] Public instruction changes agree across `AGENTS.md`, `CLAUDE.md`, `.claude/` and `.github/CONTRIBUTING.md`, and contain only contributor-facing guidance.
+- [ ] Every text that describes the changed behaviour is updated: help pages, articles, README, NEWS, examples; workflow comments, `tools/README.md`, `AGENTS.md`, `CLAUDE.md`, `.claude/`, `.github/CONTRIBUTING.md`, `docs/`; and any other page, function or file that describes it, including ones added later. Public instructions hold only contributor-facing guidance. Search terms used for the old wording: 
 
 Notes: <!-- One-off observations, browser/OS versions, screenshots, labels, or spelling words for review.
 Follow https://github.com/insightsurge/stagemap/blob/main/AGENTS.md#public-text. -->
