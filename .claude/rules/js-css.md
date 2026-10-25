@@ -29,7 +29,9 @@ Labels as in `r-code.md` (CRAN / house). Reasons and sources: `docs/standards.md
   gets `aria-disabled="true"` and CSS, not `disabled`, which moves keyboard focus to the page. Style the children of
   Shiny's HTML outputs, not the output itself: it is `display: contents`, so its own CSS does nothing although
   `getComputedStyle()` reports it. After showing a panel that was hidden, call `Shiny.bindAll(panel)`: Shiny may miss
-  the change and leave its outputs suspended. Copy-to-clipboard copies after the server's answer, not on the click.
+  the change and leave its outputs suspended. When an editor or panel opens, start its controls from the values the
+  live widget already uses, not from values the server pushes in: a slow answer would overwrite what the visitor
+  typed meanwhile. Copy-to-clipboard copies after the server's answer, not on the click.
 - **house:** the engine is versioned with the package (`window.stagemap.version`, passed from R).
 - **house:** configuration through `data-*` attributes or a `<script type="application/json">` block. No `eval`
   (except htmlwidgets' runtime, above), `new Function`, inline `<script>`, inline `style=` for layout or `javascript:`
