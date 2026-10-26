@@ -40,6 +40,9 @@ four kinds of test file, their first lines, where each runs, how to run them): `
   `shiny:error` with an empty message): it is not the answer. Never `app$set_inputs()` an input to the value it
   already has: shinytest2 then waits 30 s for an output change that never comes, silently; check the value instead.
   Wait until nothing else is drawing before a check, so another output's redraw can't make it pass by chance.
+- **house:** every action in a Shiny view (copy, download, build, a linked control) gets one browser test of "do X,
+  then Y at once": change a colour, then click Copy without waiting, and check that the copied code has the new colour.
+  Waiting between the two steps hides exactly the bugs the rules in `js-css.md` ("two clocks") prevent.
 - **CRAN:** no shinytest2 or chromote test runs on CRAN or without Chrome: its file starts with
   `skip_without_chrome()` (`helper-chrome.R`: it skips on CRAN, without chromote or withr, and when
   `chromote::find_chrome()` is `NULL`), and a shinytest2 test also skips without shinytest2. CRAN has asked that no

@@ -54,6 +54,9 @@ Labels: **CRAN** = CRAN policy, Writing R Extensions or R CMD check (no exceptio
   Do not call `set.seed()` inside functions (take a `seed` argument), `options(warn = -1)` or `installed.packages()`.
 - **CRAN:** send no data about the user's session anywhere.
 - **CRAN:** R code is ASCII only: write other characters as `"\uXXXX"`.
+- **house:** Shiny server code holds the truth and answers in order: what the page shows, copies or builds comes from
+  server state; an action waits for the inputs still pending; the server never echoes the control the user just used;
+  and its updates carry a revision so the page can drop an older one (the five rules in `js-css.md`).
 - **house:** names: snake case, no camelCase aliases; `use_*()` is only for project setup. Check each new exported
   name against base R, shiny, bslib and ggplot2 first. (The naming scheme for stagemap's functions is a Design
   decision.)

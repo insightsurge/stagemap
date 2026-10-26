@@ -32,6 +32,17 @@ Labels as in `r-code.md` (CRAN / house). Reasons and sources: `docs/standards.md
   the change and leave its outputs suspended. When an editor or panel opens, start its controls from the values the
   live widget already uses, not from values the server pushes in: a slow answer would overwrite what the visitor
   typed meanwhile. Copy-to-clipboard copies after the server's answer, not on the click.
+- **house:** in Shiny the browser runs ahead of the server ("two clocks"), so a quick user can get an answer that
+  belongs to an earlier choice. Five rules, with their tests in `tests.md`:
+  1. The server holds the truth: what a page shows, copies, downloads or builds comes from server state, never from
+     the page.
+  2. An action (copy, download, build, check) first sends the inputs still waiting (debounced inputs, typing), and
+     the server answers only after it has applied them.
+  3. Never echo the control the user just used: when two controls are linked, the server updates only the other one.
+  4. A late answer can't undo a newer choice: server updates carry a revision number, and the page ignores one older
+     than what it already shows.
+  5. Busy means "until my own result is drawn": a busy control waits for the stamp of its own request (above), not for
+     Shiny to go idle.
 - **house:** the engine is versioned with the package (`window.stagemap.version`, passed from R).
 - **house:** configuration through `data-*` attributes or a `<script type="application/json">` block. No `eval`
   (except htmlwidgets' runtime, above), `new Function`, inline `<script>`, inline `style=` for layout or `javascript:`

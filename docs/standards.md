@@ -277,6 +277,13 @@ use plain words in help pages:
 - **Browser tests wait for the server's answer, not for the page to change.** The page marks a widget busy until the
   server's stamp matches the request, and tests wait for "not busy and stamped"; waiting for text passes on an older
   page that already shows it. The [test rules][tests] and the [engine rules][js-css] list the details.
+- **The server holds the truth, and answers in order.** In Shiny the browser runs ahead of the server, and a user who
+  acts quickly can get an answer meant for an earlier choice. In mascot's example app this showed up as code copied
+  for an older colour, a late update undoing a newer pick, and tests that failed only now and then on CI
+  ([mascot#548](https://github.com/insightsurge/mascot/issues/548),
+  [mascot#574](https://github.com/insightsurge/mascot/issues/574)). The [engine rules][js-css] set five rules (server
+  state is the truth, actions wait for pending inputs, no echo of the control just used, revisions, busy until the
+  own result is drawn), and each action gets a "do X, then Y at once" browser test.
 - Chrome skips respect CRAN's request; app cleanup avoids leftover processes. See the
   [Shiny test rules](https://github.com/insightsurge/stagemap/blob/main/.claude/rules/tests.md).
 - **The tests CRAN skips have files of their own** (`-browser.R`, `-snap.R`, `-extended.R`;
