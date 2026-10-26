@@ -25,4 +25,5 @@
 ^tools$
 ^biome\.json$
 ^codecov\.yml$
+^tests/README\.md$
 ^site$
