@@ -2,6 +2,7 @@
 paths:
   - "R/**/*.R"
   - "tools/**/*.R"
+  - "inst/examples/**/*.R"
 ---
 
 # R code
@@ -36,6 +37,8 @@ Labels: **CRAN** = CRAN policy, Writing R Extensions or R CMD check (no exceptio
   `R/stagemap-package.R`; never `@import` a whole package.
 - **CRAN:** every package used is declared in `DESCRIPTION` (R CMD check warns otherwise); strong dependencies
   must be on CRAN. **house:** keep `Imports` minimal; each additional import needs a reason.
+- **house:** code, examples and tests run on the oldest R in `Depends` (now 4.1.0): no base R functions added later,
+  such as `%||%` (base R from 4.4; take it from a package, as above). Only CI's oldest-R jobs catch them.
   Optional features use `Suggests` and check with `rlang::check_installed()` or `requireNamespace()` before use
   (CRAN also checks without Suggests).
 - **CRAN:** no `library()`, `require()` or `attach()` in package code.
@@ -55,3 +58,31 @@ Labels: **CRAN** = CRAN policy, Writing R Extensions or R CMD check (no exceptio
 - **house:** names: snake case, no camelCase aliases; `use_*()` is only for project setup. Check each new exported
   name against base R, shiny, bslib and ggplot2 first. (The naming scheme for stagemap's functions is a Design
   decision.)
+
+## Shiny apps (the widget in Shiny, and any app the package ships)
+The page changes at once and the server answers a moment later, so a click can act on an earlier state. Debounced
+inputs, Copy of code the server generates, controls the server sets back and frames that load later all open that gap
+(mascot hit each of them: [mascot#548](https://github.com/insightsurge/mascot/issues/548),
+[mascot#574](https://github.com/insightsurge/mascot/issues/574)). Reasons: `docs/standards.md`, section 3, "Shiny
+apps". The page side of each rule is in `js-css.md`.
+1. **house:** the server holds the truth: what the app copies, builds or shows as a result (code, a map, a check)
+   comes from server state, never from values read in the page. A control may show a choice the server hasn't had
+   yet. Example: Copy copies the text of `output$map_code`, drawn from the server's `map()`, not the controls' values.
+2. **house:** an action collects waiting inputs first: Copy, Download, Build and Check send any input still waiting
+   (a debounced input, typing that hasn't paused) before their own event, and so does a choice that redraws those
+   inputs (another map or theme); the server applies them first (a higher observer `priority`) and answers the action
+   only after that.
+3. **house:** never echo the control the user just used: when two controls show the same choice, the server updates
+   only the other one. Only the user's own changes count as choices: not a value the server set, not the value a
+   control reports when it is drawn again, and not an input nested inside a linked control (only the control's own
+   input counts). Example: a change of `input$stage` calls `updateSelectInput(session, "stage_list", selected =
+   input$stage)` and leaves `stage` alone.
+4. **house:** a late answer can't undo a newer choice: an update the server sends to a control carries the revision of
+   the choice it answers, and the page ignores one older than its latest choice; a control that has sent no revision
+   yet counts as revision 0. Inputs drawn again carry the number of their drawing, so the server drops an edit from
+   an older one. Example: `session$sendInputMessage("stage_list", list(value = stage(), revision = revision))`.
+5. **house:** busy means "until my own result is drawn": a busy button stays busy until its output shows the mark of
+   its own click and any frame in it has loaded, or the output shows an error; not until Shiny goes idle. The click
+   number is kept with the result it built, never read again from the input.
+
+The test for these rules ("do X, then Y at once") is in `tests.md`.

@@ -21,6 +21,31 @@ Labels as in `r-code.md` (CRAN / house). Reasons and sources: `docs/standards.md
   `eval()` runs only if a user adds them. Reasons: `docs/standards.md`, section 3.
 - **house:** one global namespace (`window.stagemap`), guard against loading twice, state kept per element, several
   maps per page, no listeners left behind.
+- **house:** in Shiny, the page shows when it is waiting for the server: the widget or control is busy
+  (`aria-busy="true"`) from the user's action until the server's answer arrives, and the server stamps what it drew
+  (a `data-*` attribute naming the request), so tests and code wait for "not busy and stamped with X". The server
+  sends the stamp from `session$onFlushed(..., once = TRUE)`, so it never reaches the page before what it stands for;
+  a slow button numbers each click and its output is stamped with that number. A busy button
+  gets `aria-disabled="true"` and CSS, not `disabled`, which moves keyboard focus to the page. Style the children of
+  Shiny's HTML outputs, not the output itself: it is `display: contents`, so its own CSS does nothing although
+  `getComputedStyle()` reports it. After showing a panel that was hidden, call `Shiny.bindAll(panel)`: Shiny may miss
+  the change and leave its outputs suspended. When an editor or panel opens, start its controls from the values the
+  live widget already uses, not from values the server pushes in: a slow answer would overwrite what the visitor
+  typed meanwhile. Copy-to-clipboard copies after the server's answer, not on the click.
+- **house:** the page script of the widget in Shiny, and of any Shiny app the package ships, keeps the page and the
+  server in step. The five rules, with their server side, are in `r-code.md`, "Shiny apps"; in the page:
+  1. what the page copies or shows as a result is what the server drew, never a value it reads from its own controls
+     (Copy copies the code output's text once the server has answered the click);
+  2. an action, and a choice that redraws inputs, sends any input still waiting before its own event
+     (`Shiny.setInputValue(id, el.value)`: an immediate `setInputValue()` cancels the input's pending debounce);
+  3. a value the server sets on a control, the value a control reports when it is bound, and an input nested inside a
+     linked control don't count as the user's choice and aren't sent back as one;
+  4. the page numbers its choices and ignores a server update whose revision is older than its latest choice
+     (`if (msg.revision < latest) return;`), but still applies new options such an update carries (a select's list
+     for another map);
+  5. a busy button waits for the mark of its own click and for any frame in the result to load, or for a visible
+     error on its output (a silent validation error is no answer), not for `shiny:idle` or `shiny:value`, which come
+     before the value is drawn.
 - **house:** the engine is versioned with the package (`window.stagemap.version`, passed from R).
 - **house:** configuration through `data-*` attributes or a `<script type="application/json">` block. No `eval`
   (except htmlwidgets' runtime, above), `new Function`, inline `<script>`, inline `style=` for layout or `javascript:`

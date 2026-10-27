@@ -1,17 +1,19 @@
 #!/usr/bin/env Rscript
-# cran-gate version: 2026-10-24
+# cran-gate version: 2026-10-25
 # CRAN gate: one command that says whether an R package would pass CRAN's checks, before you submit it.
 #
 #   Rscript <path to this file> [fast|tests|full|lint|nosuggests] [options]   (--help lists the options)
 #
-#   fast  (default) tools, style, docs in sync, \value, spelling, R CMD check --as-cran without tests
+#   fast  (default) tools, style, docs in sync, \value, spelling, pkgdown, R CMD check --as-cran without tests
 #   tests           tools, tests (NOT_CRAN=true, so tests that CRAN skips run too), coverage and new lines
-#   full            everything: fast steps, tests, coverage, new lines, CRAN-like check with tests, built tarball
+#   full            everything: fast steps, tests, coverage, new lines, CRAN-like check with tests, built tarball and
+#                   the check without Suggests
 #   lint            the quick static steps only: tools, style, docs in sync, \value, spelling
 #   nosuggests      R CMD check with only the hard dependencies on the library path (CI's check-no-suggests job)
 #
 # In `tests` and `full` the suite runs ONCE, under covr, and the same run gives the test results and the coverage
-# (a package whose tests/ is not the standard testthat layout falls back to a plain run plus a separate covr run).
+# (a package whose tests/ is not the standard testthat layout falls back to a plain run plus a separate covr run). If
+# covr itself fails after that run, the coverage step FAILs with covr's message; the suite is not run a second time.
 # --no-coverage runs the suite plainly, without covr (quicker, no coverage); --no-retry skips the re-run below.
 # When tests fail, the failing files are re-run once in a fresh R process without covr: if every one then passes, the
 # line says so ("probable flake") and the gate exits 3; each retried failure is appended to flakes.tsv beside the run
@@ -243,7 +245,8 @@ step_biome <- function(uses, log) {
 # roxygen2 version on another machine doesn't count as out-of-date docs.
 docs_snapshot <- function() {
   files <- c("NAMESPACE", list.files("man", full.names = TRUE))
-  files <- files[file.exists(files)]
+  # Files only: a folder such as man/figures (a package logo) has no checksum, and NA != NA would count as a change.
+  files <- files[file.exists(files) & !dir.exists(files)]
   hashes <- unname(tools::md5sum(files))
   desc <- readLines("DESCRIPTION", warn = FALSE)
   desc <- desc[!grepl("^(RoxygenNote|Config/roxygen2/version):", desc)]
@@ -668,7 +671,9 @@ single_run_ok <- function(state) {
 }
 
 # One covr run that executes the suite against the installed package and saves testthat's results. Returns them;
-# the coverage object is left in state$cov for the coverage step.
+# the coverage object is left in state$cov for the coverage step. When covr errors after the suite has run (the
+# results are saved), its message and this log are left in state$covr_error, so the coverage step can report them
+# instead of running the suite a second time.
 tests_under_covr <- function(run_dir, txt, log, state) {
   checkmate::assert_directory_exists(run_dir, access = "w")
   checkmate::assert_string(txt)
@@ -677,7 +682,12 @@ tests_under_covr <- function(run_dir, txt, log, state) {
   pkg <- read.dcf("DESCRIPTION", fields = "Package")[[1]]
   rds <- file.path(run_dir, "tests.rds")
   unlink(rds)
+  state$covr_error <- NULL
   code <- c(
+    # testthat's test_check(), which R CMD check and covr's own tests run use, sets this; test_dir() doesn't. Without
+    # it, shinytest2 finds the source package and makes each app process pkgload::load_all() it, which re-runs covr's
+    # load hook there: covr clears what it has counted, and its merge later fails or reads a far lower percentage.
+    "Sys.setenv(TESTTHAT_IS_CHECKING = 'true')",
     sprintf(
       paste0(
         "res <- testthat::test_dir(%s, package = %s, load_package = 'installed', ",
@@ -698,6 +708,7 @@ tests_under_covr <- function(run_dir, txt, log, state) {
       if (!file.exists(rds)) {
         stop(first_message_line(conditionMessage(e)), call. = FALSE)
       }
+      state$covr_error <- list(message = conditionMessage(e), log = log)
       NULL
     }
   )
@@ -801,6 +812,22 @@ step_coverage <- function(uses, settings, log, state) {
   }
   withr::local_envvar(NOT_CRAN = "true")
   cov <- state$cov
+  if (!is.null(state$covr_error)) {
+    # The suite already ran under covr and covr failed afterwards (merging its trace files, say). Running the suite
+    # again would take as long as the first run and could fail the same way, so say what covr said instead.
+    message <- gsub("\\s*\n\\s*", " ", trimws(state$covr_error$message))
+    return(
+      result(
+        "FAIL",
+        paste0(
+          "covr failed after the tests ran under it (the suite is not run again): ",
+          first_message_line(message),
+          "; details: ",
+          state$covr_error$log
+        )
+      )
+    )
+  }
   if (!inherits(cov, "coverage")) {
     if (identical(unname(state$statuses["tests"]), "FAIL")) {
       return(result("SKIP", "tests failed, and covr gives no percentage when a test fails"))

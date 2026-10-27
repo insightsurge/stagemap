@@ -33,6 +33,13 @@ To report a bug or suggest an idea, open an issue with one of the issue forms.
 6. **The package creator merges** once CI is green. Pull requests are squash-merged, so the pull request title
    becomes the commit message on `main`: keep it a Conventional Commit.
 
+Update every text that describes what you changed, in the same pull request: help pages (through roxygen), articles,
+the README, `NEWS.md` and the examples; workflow comments, `tools/README.md`, `.github/workflows/README.md`,
+`tests/README.md` and the rules files; and any other page,
+function or file that describes the behaviour, including ones added later. It works both ways: if you edit an article,
+guide or example, check that the help page still agrees. Search the repository for the old wording and list the search
+terms in the pull request.
+
 Changes reach `main` through pull requests, and a ruleset stops anyone from force-pushing to `main` or deleting it.
 Never force-push, push to `main`, or use `--no-verify`. Never edit `renv/` or `LICENSE` by hand. Generated
 documentation follows the [roxygen rules][roxygen].
@@ -56,8 +63,8 @@ are in [tools/README.md][gate].
 
 - `fast` checks formatting (Air and Biome), that `man/` and `NAMESPACE` match the roxygen2 comments, lint, that every
   export has `@returns`, spelling, and `R CMD check --as-cran` without the tests.
-- `tests` runs the tests with `NOT_CRAN=true`, so the Chrome tests run, and then measures coverage. Coverage must be
-  at least 70%.
+- `tests` runs the tests once under covr with `NOT_CRAN=true`, so the Chrome tests run, and that run gives the
+  coverage. Coverage must be at least 70%.
 - The gate prints one `PASS`, `FAIL` or `SKIP` line for each step, then a summary, and keeps a run folder with one
   log per step (its path is printed). Open a log only for a failing step.
 - Unknown words fail the spelling step: list them in your PR; the package creator adds agreed ones to
@@ -83,7 +90,9 @@ The [standards][standards] explain the reasons and sources behind these rules.
 
 ## Tests
 
-Tests use testthat in BDD style, one test file per R file, with coverage at least 70%: see the [test rules][tests].
+Tests use testthat in BDD style, one test file per R file (plus `-browser`, `-snap` and `-extended` files for the
+tests CRAN skips), with coverage at least 70%: see the [test rules][tests]. How the tests are organised, and how to
+run them as CRAN does: [`tests/README.md`](https://github.com/insightsurge/stagemap/blob/main/tests/README.md).
 
 ## NEWS.md
 

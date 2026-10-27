@@ -86,6 +86,8 @@ Package-specific condition classes let callers catch stagemap conditions without
 | Guard Suggests; check without them | CRAN | INTS |
 | Temporary test files and cleanup | CRAN | INTS |
 | R coverage of at least 70% (not measured by CRAN) | house | - |
+| Snapshot files hold only `expect_snapshot()` calls | house | testthat docs |
+| Code, examples and tests run on the oldest R in `Depends` (4.1) | house | - |
 
 ### 1.6 JavaScript, CSS, fonts and third-party files
 
@@ -191,6 +193,39 @@ The engine is most of what a user sees, so it has its own rules. All of these ar
 The docs say "stagemap adds no inline script of its own". They do not say it works under any strict CSP, because Shiny
 itself still uses inline scripts.
 
+**Shiny apps: the page and the server in step**
+
+The widget in a Shiny app, and any Shiny app the package ships, follow five rules, in the [R code rules][r-code]
+("Shiny apps") with their page side in the [JS/CSS rules][js-css]. In a Shiny app the page changes at once and the
+server answers a moment later. Most of the time the gap is too short to matter, but a quick click lands inside it, and
+so does any click on a slow connection or a busy server. Several things widen it: a debounced input (a colour picker
+reports a change only after a pause), Copy of code the server generates, a control the server sets back after the user
+moved it, and a frame that loads its page after the server has drawn it. mascot's example app had bugs of each kind,
+and tests that failed only now and then on CI
+([mascot#548](https://github.com/insightsurge/mascot/issues/548),
+[mascot#574](https://github.com/insightsurge/mascot/issues/574)); stagemap sets the rules before its first Shiny view.
+
+1. The server holds the truth. When the page copies or shows as a result a value it reads from its own controls, a
+   click can use a value the server has not seen, or miss one it has. Only server state is the same for the page, the
+   code and the tests. Controls themselves may show a choice the server hasn't had yet.
+2. An action collects waiting inputs first. A debounced input holds its value back for a moment; Copy in that moment
+   copies the previous value and says "Copied". Sending the waiting value first, and answering the action only after
+   it, costs nothing when nothing is waiting. A choice that draws the inputs again is an action too: an edit still
+   waiting when the inputs are replaced would otherwise be lost.
+3. Never echo the control the user just used. When the server sets the same control back, its answer to the first of
+   two quick choices arrives after the second and undoes it. For the same reason a value the server set, or the
+   value a control reports when it is drawn again, is not a choice: either can undo a reset made just before.
+4. A late answer can't undo a newer choice. Updates that reach the page out of step with the user's choices (a slow
+   connection, two linked controls) carry the revision of the choice they answer, so the page can drop an old one.
+   Inputs drawn again are numbered the same way, so an edit made on the previous drawing can't change the new one.
+5. Busy means "until my own result is drawn". Shiny's `shiny:value` and idle events come before the value is drawn,
+   and an answer to an earlier click or a settings change can look like this click's result. A mark the server draws
+   into the result, with the number of the click it answers, says exactly when it is done; a visible error on the
+   output ends the wait too.
+
+These bugs pass every test that waits for the server after each step, so each action also gets a browser test that
+makes a change and fires the action at once (section 6).
+
 **Keep JS small**: decisions live in R, where they can be unit-tested. JS is tested through shinytest2 and the
 widget's rendered output (section 6). Engine change notes follow the [JS/CSS rule][js-css].
 
@@ -272,8 +307,27 @@ use plain words in help pages:
   of the drawn elements), `data-*` attributes and the `role="status"` text. Because frames are deterministic, a hash of
   the draw calls is a stable target across operating systems. A pixel hash is only for one pinned Chrome. Apps live
   in `tests/testthat/apps/<name>/app.R`.
+- **Browser tests wait for the server's answer, not for the page to change.** The page marks a widget busy until the
+  server's stamp matches the request, and tests wait for "not busy and stamped"; waiting for text passes on an older
+  page that already shows it. The [test rules][tests] and the [engine rules][js-css] list the details.
+- **"Do X, then Y at once."** Every action in a Shiny app or view the package ships (Copy, Download, Build, Check, a
+  busy button) gets one browser test that makes a change and fires the action without waiting for the server in
+  between, then checks that the action used the change. A test that waits after each step lets the server catch up,
+  so it passes with the bugs of section 3, "Shiny apps", still in place. How: `tests/README.md`.
 - Chrome skips respect CRAN's request; app cleanup avoids leftover processes. See the
   [Shiny test rules](https://github.com/insightsurge/stagemap/blob/main/.claude/rules/tests.md).
+- **The tests CRAN skips have files of their own** (`-browser.R`, `-snap.R`, `-extended.R`;
+  [tests/README.md](https://github.com/insightsurge/stagemap/blob/main/tests/README.md)). Browser and extended files
+  start with their skip, so CRAN skips the whole file before any of its code runs: in mascot, whose layout this follows,
+  a skip inside each test came after the test had built its fixtures and cost about an eighth of the test time on CRAN.
+  Snapshot files keep the skip in each `expect_snapshot()`, because a snapshot file skipped as a whole reports no
+  snapshots and testthat deletes their saved files.
+- **CRAN runs what it must, not everything.** CRAN asks for examples, vignettes and tests to take under 10 minutes
+  together (the CRAN Cookbook, "Overall checktime") and lets long tests be optional as long as the rest exercise the
+  package's features (the CRAN Repository Policy). Long, detailed tests go in extended files, which run in the
+  coverage job, the off-CRAN job, the gate's `tests` mode and a weekly R CMD check on macOS and Windows. R CMD check
+  on Ubuntu with R release fails when the tests take longer than 180 s, which leaves room under CRAN's 10 minutes on
+  its slower machines.
 - **Files:** use temporary test directories; see [test rules][tests].
 - Coverage exposes R lines the tests do not exercise; CRAN does not measure it and covr does not see JS. The
   [test rules](https://github.com/insightsurge/stagemap/blob/main/.claude/rules/tests.md) own the limit,
@@ -293,7 +347,7 @@ run it:
 |---|---|---|
 | Editor settings (`.claude/settings.json`) | While an assistant works in the repo: permission rules deny force-push, pushes to `main`, `--no-verify` and hand edits to `NAMESPACE`, `man/`, `renv/`, `LICENSE`; merging a PR (`gh pr merge`) asks for confirmation each time; attribution lines are off. Formatting is a one-line instruction (`air format .`) | In place |
 | The gate (`Rscript tools/cran-gate.R`, section 7.2) | On demand, before a commit or PR | In place |
-| CI | On every PR and push to `main` (the full platform matrix on `main`, weekly and on demand); it cannot be skipped | In place |
+| CI | On every PR and push to `main`: R CMD check on six platforms, coverage, the off-CRAN tests with Chrome and lint; Mondays and on demand add the extended tests on macOS and Windows (`.github/workflows/README.md`); it cannot be skipped | In place |
 
 Editor permission guards do not replace checks. See the
 [contributor workflow](https://github.com/insightsurge/stagemap/blob/main/.github/CONTRIBUTING.md#workflow) for
@@ -324,7 +378,8 @@ checks that the gate fails that step.
 
 ### 7.3 CI workflows
 
-What each workflow runs, and the gate mode that reproduces it locally: `tools/README.md` ("The gate and CI").
+What each workflow runs and when, which test files run where, and the gate mode that reproduces it locally:
+`.github/workflows/README.md`.
 
 A ruleset on `main` blocks force-pushes and deleting the branch; it does not require passing checks, so the rule is:
 CI green, then ask before merging.
@@ -339,7 +394,7 @@ superseded runs (except a release, and secret scans on `main`). Every job has a 
 longest recent run, so a hung step can't hold a runner for hours. Actions from `actions/` and `r-lib/` are pinned by
 major tag; other third-party actions by full commit SHA with a `# vX.Y.Z` comment, because a tag can be moved and a
 SHA cannot. Dependabot updates both kinds and rewrites the version comment. Keep the Air and Biome versions in
-`lint.yaml` and `gate-self-test.yaml` in step with the local installs and with `biome.json`.
+`lint.yaml` in step with the local installs and with `biome.json`.
 
 ### 7.4 Tools
 
@@ -372,7 +427,6 @@ SHA cannot. Dependabot updates both kinds and rewrites the version comment. Keep
 | Left out | Why |
 |---|---|
 | Pre-commit framework | One maintainer and no shared clone yet; it needs a Python tool. The gate and CI cover the same checks. Revisit when others commit |
-| Codecov | Local and CI coverage checks already enforce the [test policy][tests]; an upload can be added later |
 | Screenshot tests in the test suite and CI | They differ between operating systems and Chrome versions. Values, DOM state and draw-call hashes are stable. |
 | jest or vitest | JS logic is kept small and tested through shinytest2. `node --test` is the fallback if pure functions grow |
 | TypeScript and a build step | Only needed for TypeScript or npm libraries. Plain JS is its own source and needs no Node in CI |

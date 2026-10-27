@@ -43,7 +43,7 @@ In short: `fast` while working, `tests` before a PR, `full` before a release.
 | Option | Use it to | Merge evidence? |
 |---|---|---|
 | `--steps tests,coverage` | Run only some of the mode's checks, for example after an interrupted run | No: PARTIAL |
-| `--filter layout` | Run only the test files whose names match, while fixing one test | No: PARTIAL |
+| `--filter layout` | Run only the test files whose names match, while fixing one test | PARTIAL: only for a small follow-up (below) |
 | `--no-coverage` | Run the tests without covr, more quickly | No: PARTIAL |
 | `--no-retry` | Skip the re-run of failing test files, to see the raw failure | Yes |
 | `--out <folder>` | Put the run folder somewhere else (or set `CRAN_GATE_OUT`) | Yes |
@@ -51,8 +51,9 @@ In short: `fast` while working, `tests` before a PR, `full` before a release.
 | `--help` | Show every option and the exit codes | Nothing runs |
 | `--update-wordlist` | Add the unknown words to `inst/WORDLIST`, only after the package creator agrees to them | Yes |
 
-A **PARTIAL** run is useful while working, but it isn't proof. Merge evidence is a full `tests` (or `full`) run that
-exits with 0.
+A **PARTIAL** run is useful while working, but on its own it isn't proof. Merge evidence is a full `tests` (or
+`full`) run that exits with 0; a small follow-up that adds no `R/` lines may instead show `fast` and a `--filter` run
+of the test files it touches ([test rules](../.claude/rules/tests.md)).
 
 ### Exit codes
 
@@ -63,46 +64,21 @@ exits with 0.
 | 2 | The gate couldn't judge the package: a tool is missing or a setting is wrong |
 | 3 | Only tests failed, and every one passed when re-run: probably a flake. Never merge evidence without the package creator's word |
 
+In `tests` and `full` the suite runs once, under covr, and that one run gives both the test results and the coverage.
+The run sets `TESTTHAT_IS_CHECKING`, as testthat's `test_check()` does under R CMD check, so the tests behave as they
+do there (shinytest2, for one, then loads the installed package in its app processes instead of the source).
+If covr itself fails after the suite has run (while merging what it measured, say), the coverage line FAILs with
+covr's message and points to `tests.log`; the gate does not run the suite a second time to get a percentage.
+
 When tests fail, the gate re-runs the failing files once in a fresh R session. When one broken thing (a closed
 browser, say) fails many tests with the same message, the line names it once as a "cascade".
 
 ### The gate and CI
 
-`lint.yaml` and `check-no-suggests.yaml` run the gate itself; the other jobs run R CMD check or covr directly. The last column is the gate
-mode that checks the same thing locally, which is the evidence when CI can't run (no Actions minutes).
-
-| Workflow | What it runs | Locally |
-|---|---|---|
-| `R-CMD-check.yaml` | `R CMD check --as-cran`, failing on any note, with `NOT_CRAN` false (browser tests skip, as on CRAN) and the whole test output when a test fails. On every pull request, push to `main`, every Monday and on demand: macOS and Windows (R release) and Ubuntu (R devel, release, previous release and 4.1) | the `check_full` step of `full` |
-| `test-coverage.yaml` | The tests without Chrome (`NOT_CRAN` false) under covr, and the coverage limit from `DESCRIPTION` (on a pull request, the higher of the base branch's limit and the PR's own, so a pull request cannot lower the limit by editing `DESCRIPTION`; changes to this workflow are reviewed like any other change) | `tests` (a superset: it runs the browser tests too, under covr, so its coverage is higher) |
-| `browser-tests.yaml` | The test files that hold the tests CRAN skips (the browser tests in `test-*-browser.R` and the snapshot tests in `test-*-snap.R`), with Chrome and `NOT_CRAN: true`, on Ubuntu with R release and R 4.1, one line per test file as it finishes; fails when a test fails or one of those tests skips. The `browser-tests` check passes only when both R versions pass | `tests` |
-| `check-no-suggests.yaml` | The gate in `nosuggests` mode on a library with only the hard dependencies (plus rcmdcheck, testthat, knitr and rmarkdown): R CMD check with only what the check needs on the library path, so a Suggests package that is installed but not needed stays hidden; a skipped check fails the job | `nosuggests` |
-| `lint.yaml` | The gate in `lint` mode, with Air and Biome at pinned versions | `lint` |
-| `pkgdown.yaml` | `pkgdown::check_pkgdown()` and the site build, from `main` only | `Rscript tools/build-site.R` |
-| `gitleaks.yml` | A scan for committed secrets | |
-
-A pull request that changes only documentation (the README, `docs/`, the website's articles and settings, the issue
-forms and the repository's notes) starts the R jobs and skips their steps (`.github/scripts/r-changes.sh`), so every
-check still reports. Dependabot keeps the actions current. The gate's `new_lines` step has
-no CI job: it needs the branch's base, which CI's shallow checkout lacks, so it runs locally.
-
-**The CI report comment.** On a pull request, one comment, rewritten as each workflow finishes, sums up what CI found,
-in a Tests and a Code style section:
-
-- `test-coverage.yaml`: the line coverage without the browser tests, the limit from `DESCRIPTION` and the
-  difference from the latest successful run on `main`; the added `R/` lines that the job's tests don't run (a report,
-  not a check: a browser test may run them, and the gate's `new_lines` step is the check); or why nothing was measured.
-- `browser-tests.yaml`, per R version: the counts, the failing and skipped tests, the slowest test files and the files
-  much slower than on `main` (at least 25% and 10 seconds).
-- `lint.yaml`: passed or failed. lintr's findings show inline in the pull request's "Files changed".
-
-Each job writes its part to its job summary (on the run's page) and keeps it as an artifact; a small `report` job at the
-end of each of those workflows gathers the parts of the pull request's commit into the comment
-(`.github/actions/pr-report-comment`, set up in `.github/pr-report.json`). Pull requests from forks and from
-Dependabot get the job summaries only: their token can't write to the pull request. The figures from `main` are
-artifacts that its runs keep for 90 days; when there is none, the comment says so. A re-run job replaces its part;
-when a re-run job stops before it writes one (a failed checkout, say), the earlier attempt's part stays, and the
-footer's run state (failure, cancelled) is the sign.
+`lint.yaml` and `check-no-suggests.yaml` run the gate itself; `off-cran-tests.yaml` runs testthat directly, and the
+other test workflows run R CMD check or covr. What each workflow runs and when, which gate mode checks the same thing
+locally (the evidence when CI can't run), which test files run where and the CI report comment on a pull request:
+[`.github/workflows/README.md`](../.github/workflows/README.md).
 
 ### Changing the gate
 

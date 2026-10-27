@@ -19,9 +19,11 @@
 ^renv$
 ^renv\.lock$
 ^\.Rprofile$
+^\.Rhistory$
 ^.*\.Rcheck$
 ^stagemap_.*\.tar\.gz$
 ^tools$
 ^biome\.json$
 ^codecov\.yml$
+^tests/README\.md$
 ^site$
