@@ -65,3 +65,8 @@ reference:
   - title: Draw a map
     contents:
       - sm_svg
+  - title: Ask questions of a map
+    contents:
+      - sm_trace
+      - sm_orphans
+      - sm_missing
