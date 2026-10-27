@@ -5,7 +5,7 @@ How the tests are organised, and where each kind runs. The rules (what to test, 
 
 ## In brief
 
-- CRAN runs the package's own tests, apart from the long, detailed ones.
+- CRAN runs the package's own tests, apart from the long, detailed ones and checks too slow for it.
 - The tests CRAN skips live in files of their own, by kind: browser, snapshot and extended. CI runs all of them.
 - `tests/testthat/test-helper-layout.R` fails when a test is in the wrong kind of file, so the layout can't drift.
 
@@ -18,7 +18,7 @@ One test file per R file (`R/layout.R` is tested in `tests/testthat/test-layout.
 | plain | `test-<name>.R` | the package's functions | (no skip) | always, CRAN included |
 | browser | `test-<name>-browser.R` | anything that starts Chrome (shinytest2, chromote) | `skip_without_chrome()` | `NOT_CRAN` is true and Chrome is found |
 | snapshot | `test-<name>-snap.R` | `expect_snapshot()` tests, and nothing else | (no skip, on purpose) | `NOT_CRAN` is true |
-| extended | `test-<name>-extended.R` | long, detailed tests CRAN needn't run: many layout cases, every widget scenario | `skip_unless_extended()` | `NOT_CRAN` is true, or `EXTENDED_TESTS` is `"true"` |
+| extended | `test-<name>-extended.R` | long, detailed tests CRAN needn't run: many layout cases, every widget scenario; checks too slow for CRAN | `skip_unless_extended()` | `NOT_CRAN` is true, or `EXTENDED_TESTS` is `"true"` |
 
 - **First lines.** A browser or extended file skips from its first line, so CRAN skips the whole file before any of its
   code runs (a skip inside each test would come after the test had built what it needs). A snapshot file has no such
@@ -70,7 +70,8 @@ that makes a change and fires the action without waiting in between, then checks
 ## Adding tests for a new R file
 
 1. Its tests in `test-<name>.R`, the plain file.
-2. Long, detailed tests in `test-<name>-extended.R`, starting with `skip_unless_extended()`.
+2. Long, detailed tests and checks too slow for CRAN in `test-<name>-extended.R`, starting with
+   `skip_unless_extended()`.
 3. Its browser tests in `test-<name>-browser.R`, starting with `skip_without_chrome()`; its snapshot tests in
    `test-<name>-snap.R`. A Shiny app or view gets one "do X, then Y at once" test for each action (above).
 4. Run `devtools::test(filter = "helper-layout")`: it fails when something is in the wrong file.
