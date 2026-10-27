@@ -279,6 +279,18 @@ use plain words in help pages:
   page that already shows it. The [test rules][tests] and the [engine rules][js-css] list the details.
 - Chrome skips respect CRAN's request; app cleanup avoids leftover processes. See the
   [Shiny test rules](https://github.com/insightsurge/stagemap/blob/main/.claude/rules/tests.md).
+- **The tests CRAN skips have files of their own** (`-browser.R`, `-snap.R`, `-extended.R`;
+  [tests/README.md](https://github.com/insightsurge/stagemap/blob/main/tests/README.md)). Browser and extended files
+  start with their skip, so CRAN skips the whole file before any of its code runs: in mascot, whose layout this follows,
+  a skip inside each test came after the test had built its fixtures and cost about an eighth of the test time on CRAN.
+  Snapshot files keep the skip in each `expect_snapshot()`, because a snapshot file skipped as a whole reports no
+  snapshots and testthat deletes their saved files.
+- **CRAN runs what it must, not everything.** CRAN asks for examples, vignettes and tests to take under 10 minutes
+  together (the CRAN Cookbook, "Overall checktime") and lets long tests be optional as long as the rest exercise the
+  package's features (the CRAN Repository Policy). Long, detailed tests go in extended files, which run in the
+  coverage job, the off-CRAN job, the gate's `tests` mode and a weekly R CMD check on macOS and Windows. R CMD check
+  on Ubuntu with R release fails when the tests take longer than 180 s, which leaves room under CRAN's 10 minutes on
+  its slower machines.
 - **Files:** use temporary test directories; see [test rules][tests].
 - Coverage exposes R lines the tests do not exercise; CRAN does not measure it and covr does not see JS. The
   [test rules](https://github.com/insightsurge/stagemap/blob/main/.claude/rules/tests.md) own the limit,
@@ -298,7 +310,7 @@ run it:
 |---|---|---|
 | Editor settings (`.claude/settings.json`) | While an assistant works in the repo: permission rules deny force-push, pushes to `main`, `--no-verify` and hand edits to `NAMESPACE`, `man/`, `renv/`, `LICENSE`; merging a PR (`gh pr merge`) asks for confirmation each time; attribution lines are off. Formatting is a one-line instruction (`air format .`) | In place |
 | The gate (`Rscript tools/cran-gate.R`, section 7.2) | On demand, before a commit or PR | In place |
-| CI | On every PR and push to `main`, weekly and on demand, with the full platform matrix each time; it cannot be skipped | In place |
+| CI | On every PR and push to `main`: R CMD check on six platforms, coverage, the off-CRAN tests with Chrome and lint; Mondays and on demand add the extended tests on macOS and Windows (`.github/workflows/README.md`); it cannot be skipped | In place |
 
 Editor permission guards do not replace checks. See the
 [contributor workflow](https://github.com/insightsurge/stagemap/blob/main/.github/CONTRIBUTING.md#workflow) for
@@ -329,7 +341,8 @@ checks that the gate fails that step.
 
 ### 7.3 CI workflows
 
-What each workflow runs, and the gate mode that reproduces it locally: `tools/README.md` ("The gate and CI").
+What each workflow runs and when, which test files run where, and the gate mode that reproduces it locally:
+`.github/workflows/README.md`.
 
 A ruleset on `main` blocks force-pushes and deleting the branch; it does not require passing checks, so the rule is:
 CI green, then ask before merging.

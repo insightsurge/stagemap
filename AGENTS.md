@@ -81,7 +81,8 @@ force-pushes to `main` and its deletion. See the [workflow](.github/CONTRIBUTING
 - Report checks in the PR template's [Checks](.github/pull_request_template.md#checks) table, as summary lines
   without local paths.
 - **Docs follow behaviour:** a change to how something works updates every text that describes it (help pages,
-  articles, README, NEWS, examples, `docs/`, `tools/README.md`, workflow comments, rules files, and any other page,
+  articles, README, NEWS, examples, `docs/`, `tools/README.md`, `.github/workflows/README.md`, `tests/README.md`,
+  workflow comments, rules files, and any other page,
   function or file that describes the behaviour, including ones added later) in the same pull request. It works both
   ways: an edited article or example is checked against the help page. Search for the old wording and list the search
   terms in the pull request.

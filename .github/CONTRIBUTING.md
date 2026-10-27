@@ -34,7 +34,8 @@ To report a bug or suggest an idea, open an issue with one of the issue forms.
    becomes the commit message on `main`: keep it a Conventional Commit.
 
 Update every text that describes what you changed, in the same pull request: help pages (through roxygen), articles,
-the README, `NEWS.md` and the examples; workflow comments, `tools/README.md` and the rules files; and any other page,
+the README, `NEWS.md` and the examples; workflow comments, `tools/README.md`, `.github/workflows/README.md`,
+`tests/README.md` and the rules files; and any other page,
 function or file that describes the behaviour, including ones added later. It works both ways: if you edit an article,
 guide or example, check that the help page still agrees. Search the repository for the old wording and list the search
 terms in the pull request.
@@ -89,8 +90,9 @@ The [standards][standards] explain the reasons and sources behind these rules.
 
 ## Tests
 
-Tests use testthat in BDD style, one test file per R file (plus `-browser` and `-snap` files for the tests CRAN
-skips), with coverage at least 70%: see the [test rules][tests].
+Tests use testthat in BDD style, one test file per R file (plus `-browser`, `-snap` and `-extended` files for the
+tests CRAN skips), with coverage at least 70%: see the [test rules][tests]. How the tests are organised, and how to
+run them as CRAN does: [`tests/README.md`](https://github.com/insightsurge/stagemap/blob/main/tests/README.md).
 
 ## NEWS.md
 
