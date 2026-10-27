@@ -40,6 +40,12 @@ four kinds of test file, their first lines, where each runs, how to run them): `
   `shiny:error` with an empty message): it is not the answer. Never `app$set_inputs()` an input to the value it
   already has: shinytest2 then waits 30 s for an output change that never comes, silently; check the value instead.
   Wait until nothing else is drawing before a check, so another output's redraw can't make it pass by chance.
+- **house:** "do X, then Y at once": every action in a Shiny app or view the package ships (Copy, Download, Build,
+  Check, a busy button) gets one browser test that changes something and fires the action without waiting for the
+  server in between, then checks the action used the change (the rules it tests: `r-code.md`, "Shiny apps").
+  Example: set a colour input and click Copy in one `app$run_js()` call, then expect the copied code to have the new
+  colour. A test that waits for each step to settle can't catch these bugs. To widen the gap, hold back what the page
+  sends or what the server answers (how: `tests/README.md`).
 - **CRAN:** no shinytest2 or chromote test runs on CRAN or without Chrome: its file starts with
   `skip_without_chrome()` (`helper-chrome.R`: it skips on CRAN, without chromote or withr, and when
   `chromote::find_chrome()` is `NULL`), and a shinytest2 test also skips without shinytest2. CRAN has asked that no

@@ -53,10 +53,24 @@ take longer than 180 s on Ubuntu with R release. When a pull request gets near t
 extended file, or make the slow tests cheaper (build a fixture once per file with `delayedAssign()`, draw a page once
 and reuse it).
 
+## Testing actions in a Shiny app: "do X, then Y at once"
+
+In a Shiny app the page changes at once and the server answers a moment later, so a quick click can act on an earlier
+state: Copy copies the colour from before the change, a late update puts a menu back. A test that waits for the server
+after each step never sees that gap. So every action (Copy, Download, Build, Check, a busy button) gets one browser test
+that makes a change and fires the action without waiting in between, then checks that the action used the change.
+
+- Make both steps in one `app$run_js()` call (for example, set a colour input and click Copy), or use no
+  `app$set_inputs()` between them: it waits for the server.
+- To widen the gap, hold back what the page sends (wrap `Shiny.setInputValue()` so it queues the values until the test
+  releases them) or what the server answers, with a helper in `helper-<name>.R`. mascot's studio tests have examples:
+  `hold_studio_inputs()` and `hold_studio_replies()` in its `tests/testthat/helper-studio.R`.
+- The app-side rules these tests check are in `.claude/rules/r-code.md` and `.claude/rules/js-css.md` ("Shiny apps").
+
 ## Adding tests for a new R file
 
 1. Its tests in `test-<name>.R`, the plain file.
 2. Long, detailed tests in `test-<name>-extended.R`, starting with `skip_unless_extended()`.
 3. Its browser tests in `test-<name>-browser.R`, starting with `skip_without_chrome()`; its snapshot tests in
-   `test-<name>-snap.R`.
+   `test-<name>-snap.R`. A Shiny app or view gets one "do X, then Y at once" test for each action (above).
 4. Run `devtools::test(filter = "helper-layout")`: it fails when something is in the wrong file.
