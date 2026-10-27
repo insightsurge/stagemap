@@ -324,7 +324,8 @@ use plain words in help pages:
   snapshots and testthat deletes their saved files.
 - **CRAN runs what it must, not everything.** CRAN asks for examples, vignettes and tests to take under 10 minutes
   together (the CRAN Cookbook, "Overall checktime") and lets long tests be optional as long as the rest exercise the
-  package's features (the CRAN Repository Policy). Long, detailed tests go in extended files, which run in the
+  package's features (the CRAN Repository Policy). Long, detailed tests and checks too slow for CRAN (in mascot, the
+  comparison of its stored built-in characters with a fresh check of their files) go in extended files, which run in the
   coverage job, the off-CRAN job, the gate's `tests` mode and a weekly R CMD check on macOS and Windows. R CMD check
   on Ubuntu with R release fails when the tests take longer than 180 s, which leaves room under CRAN's 10 minutes on
   its slower machines.

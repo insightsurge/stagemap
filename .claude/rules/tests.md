@@ -20,7 +20,7 @@ four kinds of test file, their first lines, where each runs, how to run them): `
   not run with its reason. Local results do not replace CI.
 - **house:** testthat 3rd edition, BDD style: one test file per R file (`R/layout.R` → `tests/testthat/test-layout.R`),
   plus `test-layout-browser.R` for its browser tests, `test-layout-snap.R` for its snapshot tests and
-  `test-layout-extended.R` for long, detailed tests when it has them (the next bullets);
+  `test-layout-extended.R` for long, detailed tests and checks too slow for CRAN when it has them (the next bullets);
   `describe("stagemap()", { it("places each node in its stage", { ... }) })`, with `describe()` naming the function or
   behaviour and `it()` stating the expected behaviour in plain words; `# Given / # When / # Then` where it helps. Cover
   the happy path, every checkmate assertion (a test that it fails with a clear message), edge cases and every bug fix.
@@ -53,7 +53,8 @@ four kinds of test file, their first lines, where each runs, how to run them): `
 - **house:** the tests CRAN skips live in files of their own, and nothing else does: browser tests (shinytest2,
   chromote, or any helper that starts Chrome) in `test-<name>-browser.R`, snapshot tests (`expect_snapshot()` skips
   itself on CRAN) in `test-<name>-snap.R`, and long, detailed tests that CRAN needn't run (many layout cases, every
-  widget scenario) in `test-<name>-extended.R`. A browser or extended file starts with its skip, as its first
+  widget scenario) and checks too slow for CRAN (such as comparing data the package ships already built with a fresh
+  build of it) in `test-<name>-extended.R`. A browser or extended file starts with its skip, as its first
   expression, so CRAN skips the whole file before any of its code runs: `skip_without_chrome()` or
   `skip_unless_extended()` (`helper-extended.R`: the extended tests run where `NOT_CRAN` is true or `EXTENDED_TESTS`
   is `"true"`). A snapshot file doesn't: skipped as a whole, it reports no snapshots and testthat deletes their saved
