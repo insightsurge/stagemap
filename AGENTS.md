@@ -1,7 +1,7 @@
 # stagemap
 
-Rules for everyone working in this repository, person or AI. Codex and Antigravity (agy) read this file
-directly; Claude imports it from `CLAUDE.md`. Edit each rule in its topic file below.
+Rules for everyone working in this repository, person or AI. Antigravity (agy) reads this file directly;
+Claude imports it from `CLAUDE.md`. Edit each rule in its topic file below.
 
 An R package for **relation maps**: things placed by stage (columns) and, where it helps, by lane (rows), joined by
 links whose kind means something, with R functions that trace and check the map. Maps show in Shiny apps, Quarto
@@ -49,6 +49,7 @@ Tracked files, commits, branch names, issues, pull requests and comments are pub
 - Describe the work and checks, not who or what did them. Leave status lines such as "pushed as …" and
   "authorised to …" out of issues. Report check summaries without local library or temporary paths.
 - Unknown spelling words fail the gate. List unknown words in the report or PR; never edit `inst/WORDLIST` yourself.
+  The package creator adds agreed words.
   The package creator adds agreed words (gate `--update-wordlist`); never add a misspelling.
 
 ## Quality gate
@@ -94,5 +95,4 @@ force-pushes to `main` and its deletion. See the [workflow](.github/CONTRIBUTING
 - Before reporting done, follow the [gate requirements](tools/README.md) and
   [test evidence rules](.claude/rules/tests.md); report skipped checks and reasons.
   A self-reported pass never counts: the gate and CI are the evidence (and screenshots for visual work).
-- List unknown words in your report or PR; never edit `inst/WORDLIST` yourself. The package creator adds agreed words.
 - Don't patch installed packages or mock dependencies to make a check pass.
