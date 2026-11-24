@@ -18,10 +18,10 @@ four kinds of test file, their first lines, where each runs, how to run them): `
   evidence. Exit code 3 means all failing tests passed on re-run: it needs the package creator's acceptance. Before
   an agent reports done, run `fast` and the evidence the change needs; report summary lines, failures and anything
   not run with its reason. Local results do not replace CI.
-- **house:** testthat 3rd edition, BDD style: one test file per R file (`R/layout.R` → `tests/testthat/test-layout.R`),
-  plus `test-layout-browser.R` for its browser tests, `test-layout-snap.R` for its snapshot tests and
-  `test-layout-extended.R` for long, detailed tests and checks too slow for CRAN when it has them (the next bullets);
-  `describe("stagemap()", { it("places each node in its stage", { ... }) })`, with `describe()` naming the function or
+- **house:** testthat 3rd edition, BDD style: one test file per R file (`R/trace.R` → `tests/testthat/test-trace.R`),
+  plus `test-trace-browser.R` for its browser tests, `test-trace-snap.R` for its snapshot tests and
+  `test-trace-extended.R` for long, detailed tests and checks too slow for CRAN when it has them (the next bullets);
+  `describe("sm_trace()", { it("follows a link downstream", { ... }) })`, with `describe()` naming the function or
   behaviour and `it()` stating the expected behaviour in plain words; `# Given / # When / # Then` where it helps. Cover
   the happy path, every checkmate assertion (a test that it fails with a clear message), edge cases and every bug fix.
 - **house:** `expect_snapshot()` for printed output, generated HTML and error messages; review snapshot changes
@@ -52,7 +52,7 @@ four kinds of test file, their first lines, where each runs, how to run them): `
   package uses Chrome when tested on CRAN. CI runs them in the `full-tests` check (with Chrome).
 - **house:** the tests CRAN skips live in files of their own, and nothing else does: browser tests (shinytest2,
   chromote, or any helper that starts Chrome) in `test-<name>-browser.R`, snapshot tests (`expect_snapshot()` skips
-  itself on CRAN) in `test-<name>-snap.R`, and long, detailed tests that CRAN needn't run (many layout cases, every
+  itself on CRAN) in `test-<name>-snap.R`, and long, detailed tests that CRAN needn't run (many map cases, every
   widget scenario) and checks too slow for CRAN (such as comparing data the package ships already built with a fresh
   build of it) in `test-<name>-extended.R`. A browser or extended file starts with its skip, as its first
   expression, so CRAN skips the whole file before any of its code runs: `skip_without_chrome()` or
@@ -61,8 +61,7 @@ four kinds of test file, their first lines, where each runs, how to run them): `
   files, so `expect_snapshot()` skips each test instead. A `-snap.R` file holds only `expect_snapshot()` calls: on CRAN
   `expect_snapshot()` skips the rest of its test, so a plain expectation beside it may never run there; put it in
   `test-<name>.R`. The `full-tests` check runs them with every other test; R CMD check runs the rest.
-  `test-helper-layout.R` fails when a test is in the wrong file or a file doesn't start with its skip (an argument
-  check inside `expect_error()` may stay in the plain file: it fails before Chrome starts). A helper used only by one
+  An argument check inside `expect_error()` may stay in the plain file: it fails before Chrome starts. A helper used only by one
   file's tests stays at the top of that file; one that several files need goes in `helper-<name>.R`, which loads for
   every test file.
 - **house:** R CMD check on CI fails when the tests take longer than 180 s on Ubuntu with R release

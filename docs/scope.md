@@ -1,9 +1,9 @@
 # stagemap: scope
 
 stagemap draws **relation maps**: things placed by stage (columns) and, where it helps, by lane (rows), joined by
-**typed links** (each kind of link has its own style and a legend entry). R functions answer questions about the map.
-This page says what the package is for and what it is not. It is a plan: the data model and the R API are not decided
-yet.
+**typed links** (each kind of link has its own style and a legend entry). The package is an `htmlwidgets` widget: it draws the
+map in the browser with a bundled JavaScript (D3) engine, and R functions trace and check the map. This page says
+what the package is for and what it is not. It is a plan: the data model and the R API are not decided yet.
 
 ## Views
 
@@ -26,8 +26,8 @@ a data frame, so it can go into a report or a test.
 ## Where maps show
 
 Shiny apps (with events and updates from the server), Quarto documents, slides and dashboards, R Markdown, pkgdown
-sites, and a static image for PowerPoint, Word and PDF. The package works offline: everything it draws with ships
-inside it.
+sites, and a static image for PowerPoint, Word and PDF. The package works offline: the drawing engine and everything
+else it draws with ship inside it.
 
 ## Not in scope
 
