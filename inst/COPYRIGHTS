@@ -18,5 +18,7 @@ The widget binding, inst/htmlwidgets/stage_map.js:
 
 The d3 library, inst/kit/d3.min.js (version 7.9.0, as published at https://d3js.org; the engine draws with it):
   Copyright 2010-2023 Mike Bostock. ISC licence: see inst/kit/LICENSE-d3.
+  d3.min.js also bundles the libraries d3 is built from (among them delaunator, robust-predicates and the ColorBrewer
+  colour schemes), each under its own permissive licence (ISC, Unlicense, Apache-2.0, MIT), as published with d3.
 
 inst/kit/LICENSE-d3 and inst/kit/LICENSE-lucide are the licence texts of the two third-party works, copied unchanged.

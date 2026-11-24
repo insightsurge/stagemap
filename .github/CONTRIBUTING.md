@@ -109,8 +109,12 @@ package creator ([release rules][releases]).
 
 ## Licence of contributions
 
-Contributions use the package's MIT licence. Before adding third-party files, follow the
-[bundled-file rules][bundled-files].
+Contributions use the package's MIT licence: by opening a pull request you agree that your change is released under
+it. You keep the copyright in what you wrote and release it under the same MIT terms. Before adding third-party
+files, follow the [bundled-file rules][bundled-files].
+
+The drawing engine in `inst/kit/` is built elsewhere and copied in by `tools/copy-kit.R`; it is never edited here. To
+report a problem with how a map is drawn, open an issue. A pull request that edits `inst/kit/` cannot be merged.
 
 ## Conduct and data
 
