@@ -26,3 +26,5 @@ stagemap_*.tar.gz
 # Generated site and temporary files
 site/
 .*.md.hold
+
+.claude/worktrees/

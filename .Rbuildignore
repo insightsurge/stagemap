@@ -27,3 +27,4 @@
 ^codecov\.yml$
 ^tests/README\.md$
 ^site$
+^\.gitleaksignore$

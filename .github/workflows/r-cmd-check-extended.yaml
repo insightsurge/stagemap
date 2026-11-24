@@ -1,0 +1,32 @@
+# R CMD check on other systems, with the extended tests (test files ending in -extended.R).
+# How this file works: see README.md in this folder.
+name: r-cmd-check-extended
+
+on:
+#   pull_request:
+#     branches: [main, master]   # PRs that merge into these branches
+    # Example: branches: [main, develop, "release/**"]
+#   push:
+#     branches: [main, master]   # pushes to these branches
+  schedule:
+    - cron: "17 5 * * 1"   # times are UTC; runs from the default branch only
+    # Examples: "0 5 * * *" every day at 05:00, "0 5 1 * *" the 1st of every month at 05:00
+  workflow_dispatch:   # adds a "Run workflow" button on GitHub
+
+permissions:
+  contents: read
+
+# A new push to a pull request stops this check's older run for it, to save minutes; pushes and weekly runs always
+# finish. To let every pull request run finish too, set cancel-in-progress to false.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  check:
+    uses: insightsurge/launchR/.github/workflows/r-cmd-check-extended.yaml@v0.0.19
+    with:
+      # One entry per run, as system/R version, comma separated. System: ubuntu, windows, macos.
+      # R version: release, devel, oldrel-1, or a number such as 4.1. R 4.1 on macos may fail: it has no ready-built packages.
+      platforms: ubuntu/release
+      timeout-minutes: 0   # longest a job may run, in minutes; 0 keeps launchR's default: 60 on Mac, 120 elsewhere

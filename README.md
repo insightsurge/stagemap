@@ -1,7 +1,7 @@
 # stagemap
 
 <!-- badges: start -->
-[![R-CMD-check](https://github.com/insightsurge/stagemap/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/insightsurge/stagemap/actions/workflows/R-CMD-check.yaml)
+[![R-CMD-check](https://github.com/insightsurge/stagemap/actions/workflows/r-cmd-check.yaml/badge.svg)](https://github.com/insightsurge/stagemap/actions/workflows/r-cmd-check.yaml)
 [![Development stage: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 [![R code coverage](https://codecov.io/gh/insightsurge/stagemap/graph/badge.svg)](https://app.codecov.io/gh/insightsurge/stagemap)
 <!-- badges: end -->

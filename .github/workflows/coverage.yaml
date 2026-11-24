@@ -1,0 +1,35 @@
+# Measures how much code your tests run; the limit is in DESCRIPTION. Linux only.
+# How this file works: see README.md in this folder.
+name: coverage
+
+on:
+  pull_request:
+    branches: [main, master]   # PRs that merge into these branches
+    # Example: branches: [main, develop, "release/**"]
+  push:
+    branches: [main, master]   # pushes to these branches
+#   schedule:
+#     - cron: "17 5 * * 1"   # times are UTC; runs from the default branch only
+    # Examples: "0 5 * * *" every day at 05:00, "0 5 1 * *" the 1st of every month at 05:00
+  workflow_dispatch:   # adds a "Run workflow" button on GitHub
+
+permissions:
+  contents: read
+  actions: read   # lets CI read the other checks' results for its report
+  pull-requests: write   # lets CI post its report on the PR
+
+# A new push to a pull request stops this check's older run for it, to save minutes; pushes and weekly runs always
+# finish. To let every pull request run finish too, set cancel-in-progress to false.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  check:
+    uses: insightsurge/launchR/.github/workflows/coverage.yaml@v0.0.19
+    with:
+      ci-report: true   # the CI report comment on pull requests: true posts it, false leaves it out
+      timeout-minutes: 0   # longest the job may run, in minutes; 0 keeps launchR's default: 60
+    # To send results to Codecov, add a CODECOV_TOKEN secret and uncomment these lines at job level:
+    # secrets:
+    #   CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
