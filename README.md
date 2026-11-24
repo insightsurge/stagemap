@@ -11,8 +11,8 @@ means something, such as built, reviewed, tested by or depends on. The same data
 node, find things with no link, check coverage, and see the impact of a change. Maps are meant for Shiny apps, Quarto
 documents, slides and dashboards, and package websites, and as a static image for PowerPoint, Word and PDF.
 
-**Status:** early development; `stagemap` is the working name. The package builds and checks a map object, lays it
-out and writes it as an SVG image; the interactive map for Shiny, Quarto and package websites comes next. It is not
+**Status:** early development; `stagemap` is the working name. The package is an `htmlwidgets` widget that draws maps with a
+bundled JavaScript engine, with R functions to trace and check a map; it has no exported functions yet. It is not
 on CRAN. Scope and plans:
 [`docs/scope.md`](https://github.com/insightsurge/stagemap/blob/main/docs/scope.md).
 
