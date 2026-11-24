@@ -324,6 +324,11 @@ describe("the stagemap.state input type", {
     expect_identical(sm_event("select", list(kind = "all", ids = list()))$ids, character())
   })
 
+  it("passes an answer that is not a list through as it is", {
+    expect_identical(sm_state_value("idle", NULL, "view_state"), "idle")
+    expect_null(sm_state_value(NULL, NULL, "view_state"))
+  })
+
   it("keeps a state without those fields as it is, and a highlight with ids as a vector", {
     expect_identical(sm_state_value(list(step = -1L), NULL, "view_state"), list(step = -1L))
     out <- sm_state_value(list(highlighted = list(ids = list("a", "b"), links = list())), NULL, "view_state")
