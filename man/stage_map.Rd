@@ -47,10 +47,10 @@ default, \code{"grid"}. The grid puts stages in columns and lanes in rows; \code
 each lane as a band flowing into \code{target}; \code{"dates"} draws a table of lanes by stages with one stage per day and no
 links.}
 
-\item{target}{The id of the card the levels layout flows into. \code{NULL} for none.}
+\item{target}{The id of the card the levels layout flows into, as text or a whole number. \code{NULL} for none.}
 
-\item{variant}{The id of the variant to start on (levels layout), from \code{\link[=add_variants]{add_variants()}}. \code{NULL} lets the engine
-choose.}
+\item{variant}{The id of the variant to start on (levels layout), from \code{\link[=add_variants]{add_variants()}}, as text or a whole number.
+\code{NULL} lets the engine choose.}
 
 \item{statuses}{Your words and looks for the statuses, in one of two forms (see "Statuses"): a named character
 vector giving your word for a built-in status, such as \code{c(done = "Pass")}, or a data frame with the columns \verb{id*},
@@ -78,10 +78,10 @@ reach, when three or more of them have the same kind and no label; other links a
 \code{"grid"} layout uses it, and a box under 500 pixels wide ignores it.}
 
 \item{highlight}{Cards and links to keep clear from the first draw, with every other card and link faded: a named
-list with \code{ids} (card ids) and, optionally, \code{links} (a data frame with the columns \verb{from*}, \verb{to*} and \code{kind}, or a
-list of named lists). With no \code{links}, every link between two lit cards is lit; with \code{links}, exactly those, and a
-link with no \code{kind} lights every link of that pair. A hidden card stays hidden. \code{NULL}, or an empty list, lights
-nothing special.}
+list with \code{ids} (card ids, none of them \code{NA}) and, optionally, \code{links} (a data frame with the columns \verb{from*},
+\verb{to*} and \code{kind}, or a list of named lists; a data frame with no rows counts as none). With no \code{links}, every link
+between two lit cards is lit; with \code{links}, exactly those, and a link with no \code{kind} lights every link of that
+pair. A hidden card stays hidden. \code{NULL}, or an empty list, lights nothing special.}
 
 \item{dismiss}{What a click outside the map does to the reader's pick (a chosen card, stage or step).
 \code{"no_outside"} keeps the pick, so a click on a Shiny button, a filter or a tab beside the map leaves it alone and a

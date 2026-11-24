@@ -105,6 +105,15 @@ field_problems <- function(x, spec, label) {
     list = {
       if (is_records(x)) {
         return(as.character(unlist(lapply(seq_along(x), function(i) {
+          repeated <- unique(names(x[[i]])[duplicated(names(x[[i]]))])
+          if (length(repeated) > 0L) {
+            return(sprintf(
+              "`%s[%d]` has the name %s more than once.",
+              label,
+              i,
+              paste0("`", repeated, "`", collapse = ", ")
+            ))
+          }
           convert_problems(x[[i]], spec$fields, sprintf("%s[%d]", label, i))
         }))))
       }

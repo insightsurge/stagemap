@@ -77,9 +77,9 @@
 #'   default, `r sm_default("options", "layout")`. The grid puts stages in columns and lanes in rows; `"levels"` draws
 #'   each lane as a band flowing into `target`; `"dates"` draws a table of lanes by stages with one stage per day and no
 #'   links.
-#' @param target The id of the card the levels layout flows into. `NULL` for none.
-#' @param variant The id of the variant to start on (levels layout), from [add_variants()]. `NULL` lets the engine
-#'   choose.
+#' @param target The id of the card the levels layout flows into, as text or a whole number. `NULL` for none.
+#' @param variant The id of the variant to start on (levels layout), from [add_variants()], as text or a whole number.
+#'   `NULL` lets the engine choose.
 #' @param statuses Your words and looks for the statuses, in one of two forms (see "Statuses"): a named character
 #'   vector giving your word for a built-in status, such as `c(done = "Pass")`, or a data frame with the columns `id*`,
 #'   `label`, `tone` and `icon`, one row per status. A data frame row with a built-in id restyles that status, and any
@@ -101,10 +101,10 @@
 #'   `NULL` draws every link on its own (the engine's default is `r sm_default("options", "bundle_links")`). Only the
 #'   `"grid"` layout uses it, and a box under 500 pixels wide ignores it.
 #' @param highlight Cards and links to keep clear from the first draw, with every other card and link faded: a named
-#'   list with `ids` (card ids) and, optionally, `links` (a data frame with the columns `from*`, `to*` and `kind`, or a
-#'   list of named lists). With no `links`, every link between two lit cards is lit; with `links`, exactly those, and a
-#'   link with no `kind` lights every link of that pair. A hidden card stays hidden. `NULL`, or an empty list, lights
-#'   nothing special.
+#'   list with `ids` (card ids, none of them `NA`) and, optionally, `links` (a data frame with the columns `from*`,
+#'   `to*` and `kind`, or a list of named lists; a data frame with no rows counts as none). With no `links`, every link
+#'   between two lit cards is lit; with `links`, exactly those, and a link with no `kind` lights every link of that
+#'   pair. A hidden card stays hidden. `NULL`, or an empty list, lights nothing special.
 #' @param dismiss What a click outside the map does to the reader's pick (a chosen card, stage or step).
 #'   `"no_outside"` keeps the pick, so a click on a Shiny button, a filter or a tab beside the map leaves it alone and a
 #'   bookmark button can save it. `"any"` lets go of the pick on any click outside the map, as the engine does when
@@ -170,8 +170,8 @@ stage_map <- function(
   checkmate::assert_data_frame(lanes)
   checkmate::assert_string(title, min.chars = 1L, null.ok = TRUE)
   checkmate::assert_choice(layout, sm_spec()$fields$options$fields$layout$values, null.ok = TRUE)
-  checkmate::assert_string(target, min.chars = 1L, null.ok = TRUE)
-  checkmate::assert_string(variant, min.chars = 1L, null.ok = TRUE)
+  assert_id_option(target)
+  assert_id_option(variant)
   checkmate::assert(
     checkmate::check_character(statuses, any.missing = FALSE, min.len = 1L, names = "unique", null.ok = TRUE),
     checkmate::check_data_frame(statuses),
@@ -191,6 +191,8 @@ stage_map <- function(
   checkmate::assert_flag(panels)
   assert_widget_args(width, height, element_id)
   check_dots(...)
+  call <- rlang::current_env()
+  highlight <- normalise_highlight(highlight, call)
 
   # The engine's regions the page may host itself: with `panels = FALSE` the three panels go to a host that is not
   # there, so they do not show; the step player stays out of sight until add_steps() brings it, unless it is asked for.
@@ -208,7 +210,7 @@ stage_map <- function(
     legend = legend,
     cell_columns = if (is.numeric(cell_columns)) as.integer(cell_columns) else cell_columns,
     bundle_links = bundle_links,
-    highlight = if (length(highlight) > 0L) highlight,
+    highlight = highlight,
     dismiss = dismiss,
     hosted = if (length(hosted) > 0L) hosted
   )
@@ -219,7 +221,6 @@ stage_map <- function(
     nodes = nodes,
     statuses = rows
   )
-  call <- rlang::current_env()
   widget <- sm_widget(
     drop_nulls(data),
     width,
@@ -231,6 +232,43 @@ stage_map <- function(
   # After the converter, so a missing column or a bad tone is reported first, with the rest of the data's problems.
   stage_map_check_statuses(drop_nulls(data), call)
   widget
+}
+
+# A whole number or a non-empty string, as the engine's `id` and `scalar` types take an id: 7 and "7" are the same id.
+# `null.ok` because NULL leaves the option out.
+assert_id_option <- function(x, label = checkmate::vname(x)) {
+  checkmate::assert(
+    checkmate::check_string(x, min.chars = 1L, null.ok = TRUE),
+    checkmate::check_int(x),
+    .var.name = paste0(label, " (one id: text, or a whole number)")
+  )
+}
+
+# The `highlight` argument as the option the engine reads, or NULL when it holds nothing to light: NULL items and an
+# empty `links` data frame count as left out, and an NA among the ids is refused (the converter takes an NA in an
+# optional field as left out, which would light nothing without saying so). `highlight` was checked as a list.
+normalise_highlight <- function(highlight, call) {
+  checkmate::assert_list(highlight, null.ok = TRUE)
+  checkmate::assert_environment(call)
+  if (is.null(highlight)) {
+    return(NULL)
+  }
+  highlight <- drop_nulls(highlight)
+  if (is.data.frame(highlight$links) && nrow(highlight$links) == 0L) {
+    highlight$links <- NULL
+  }
+  if (anyNA(highlight$ids)) {
+    sm_abort(
+      c(
+        "The data cannot be turned into what the stage-map engine reads.",
+        "x" = "`options$highlight$ids` must have no NA: give the ids of the cards to light."
+      ),
+      class = "stagemap_error_data",
+      problems = "`options$highlight$ids` must have no NA: give the ids of the cards to light.",
+      call = call
+    )
+  }
+  if (length(highlight) > 0L) highlight
 }
 
 # The regions of the engine that `panels = FALSE` hands over to the host: the details of a card, the stage's side panel
@@ -277,14 +315,14 @@ stage_map_show_player <- function(x, call) {
 # `statuses` data frame, when the map has one. `data` is the map's R data.
 stage_map_status_ids <- function(data) {
   built_in <- names(sm_spec()$fields$options$fields$statuses$fields)
-  unique(c(built_in, if (is.data.frame(data$statuses)) as.character(data$statuses$id)))
+  unique(c(built_in, if (is.data.frame(data$statuses)) as_text(data$statuses$id)))
 }
 
 # The error lines for the status ids in `found` (a column named `field`, such as "nodes$status") that the map does not
 # know, with the ids allowed and the fix; NULL when all are known. The text is ready to use in a cli message. Callers:
 # stage_map_check_statuses() and stage_map_check_changes().
 stage_map_status_problems <- function(found, field, data) {
-  found <- as.character(found)
+  found <- as_text(found)
   known <- stage_map_status_ids(data)
   bad <- unique(found[!is.na(found) & !found %in% known])
   if (length(bad) == 0L) {
@@ -305,7 +343,7 @@ stage_map_status_problems <- function(found, field, data) {
 # accepted by the converter, so its columns exist. Caller: stage_map().
 stage_map_check_statuses <- function(data, call) {
   twice <- if (is.data.frame(data$statuses)) {
-    ids <- as.character(data$statuses$id)
+    ids <- as_text(data$statuses$id)
     unique(ids[!is.na(ids) & duplicated(ids)])
   }
   problems <- c(

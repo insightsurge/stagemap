@@ -29,8 +29,9 @@ One test file per R file (`R/trace.R` is tested in `tests/testthat/test-trace.R`
   (the names the package relies on in the bundled engine, and where to find its files). A helper used by one file only
   stays at the top of that file.
 - **Layout check.** `test-helper-layout.R` keeps each file to its kind: it fails a browser or extended file that
-  doesn't start with its skip, a `skip_on_cran()` or a browser call in a plain file, and a snapshot file with a test
-  that doesn't snapshot.
+  doesn't start with its skip, a `skip_on_cran()` or a browser call in a plain file (also written as `pkg::fn()` or
+  `pkg::Class$new()`), an `expect_snapshot*()` outside a `-snap.R` file, and a snapshot file with a test that doesn't
+  snapshot or with a skip of its own at file level.
 - **Apps** for shinytest2 are in `tests/testthat/apps/<name>/app.R`.
 
 ## Where each kind runs

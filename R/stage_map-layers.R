@@ -29,7 +29,7 @@ none_if_empty <- function(x) {
 #'   `data.frame()`), adds no links.
 #' @param ... Must stay empty. It makes every argument after it a named argument.
 #' @param kinds A data frame with one row per kind of link, named in the legend, or `NULL`: every link is then a
-#'   plain arrow.
+#'   plain arrow. Added only with `links`: when `links` adds none, so do the kinds.
 #' @returns The widget, with the links added. A widget that has links already is an error of class
 #'   `stagemap_error_layer`.
 #' @family stage map
@@ -56,7 +56,10 @@ add_links <- function(x, links, ..., kinds = NULL) {
   checkmate::assert_data_frame(links, null.ok = TRUE)
   checkmate::assert_data_frame(kinds, null.ok = TRUE)
   check_dots(...)
-  sm_add_data(x, list(links = none_if_empty(links), kinds = none_if_empty(kinds)), call = rlang::current_env())
+  links <- none_if_empty(links)
+  # The kinds belong to the links: with no links there is nothing to name, so none are added (a later call can).
+  kinds <- if (!is.null(links)) none_if_empty(kinds)
+  sm_add_data(x, list(links = links, kinds = kinds), call = rlang::current_env())
 }
 
 #' Add zones to a stage map
@@ -120,7 +123,7 @@ add_zones <- function(x, zones, ...) {
 #'   at a step. An id that does not match, or a card changed twice at a step, is an error of class
 #'   `stagemap_error_layer` that names the ids or rows (a missing column is an error of class `stagemap_error_data`).
 #'   See "Columns".
-#' @param intro The caption shown before the first step, as one string, or `NULL` for none.
+#' @param intro The caption shown before the first step, as one string, or `NULL` for none. Added only with `steps`.
 #' @returns The widget, with the steps added. A widget that has steps already is an error of class
 #'   `stagemap_error_layer`.
 #' @family stage map
@@ -139,7 +142,7 @@ add_zones <- function(x, zones, ...) {
 #' @examplesIf interactive()
 #' map
 #' @export
-add_steps <- function(x, steps, changes = NULL, ..., intro = NULL) {
+add_steps <- function(x, steps, ..., changes = NULL, intro = NULL) {
   checkmate::assert_data_frame(steps, null.ok = TRUE)
   checkmate::assert_data_frame(changes, null.ok = TRUE)
   checkmate::assert_string(intro, min.chars = 1L, null.ok = TRUE)
@@ -147,10 +150,15 @@ add_steps <- function(x, steps, changes = NULL, ..., intro = NULL) {
   call <- rlang::current_env()
   steps <- none_if_empty(steps)
   changes <- none_if_empty(changes)
-  if (inherits(x, "stagemap_widget")) {
-    stage_map_check_changes(changes, steps, sm_widget_data(x), call)
-  }
-  map <- sm_add_data(x, list(steps = steps, changes = changes), options = list(intro = intro), call = call)
+  # The caption belongs to the steps: with no steps there is nothing to introduce, so none is added (a later call can).
+  map <- sm_add_data(
+    x,
+    list(steps = steps, changes = changes),
+    options = list(intro = if (!is.null(steps)) intro),
+    call = call
+  )
+  # After the data's own checks, so a wrong type, a missing column or "already has steps" comes first.
+  stage_map_check_changes(changes, steps, sm_widget_data(map), call)
   if (is.null(steps)) map else stage_map_show_player(map, call)
 }
 
@@ -171,8 +179,8 @@ stage_map_check_changes <- function(changes, steps, map_data, call) {
     )
   }
   unlisted <- function(found, known) {
-    found <- as.character(found)
-    unique(found[!is.na(found) & !found %in% as.character(known)])
+    found <- as_text(found)
+    unique(found[!is.na(found) & !found %in% as_text(known)])
   }
   bad_steps <- if ("step" %in% names(changes) && "id" %in% names(steps)) unlisted(changes$step, steps$id)
   bad_cards <- if ("card" %in% names(changes)) unlisted(changes$card, map_data$nodes$id)
@@ -215,8 +223,8 @@ stage_map_twice_problems <- function(changes) {
   if (!all(c("step", "card") %in% names(changes))) {
     return(NULL)
   }
-  step <- as.character(changes$step)
-  card <- as.character(changes$card)
+  step <- as_text(changes$step)
+  card <- as_text(changes$card)
   key <- ifelse(is.na(step) | is.na(card), NA_character_, paste(step, card, sep = "\r"))
   repeated <- unique(key[!is.na(key) & duplicated(key)])
   if (length(repeated) == 0L) {

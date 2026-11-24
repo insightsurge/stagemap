@@ -15,7 +15,7 @@ add_links(x, links, ..., kinds = NULL)
 \item{...}{Must stay empty. It makes every argument after it a named argument.}
 
 \item{kinds}{A data frame with one row per kind of link, named in the legend, or \code{NULL}: every link is then a
-plain arrow.}
+plain arrow. Added only with \code{links}: when \code{links} adds none, so do the kinds.}
 }
 \value{
 The widget, with the links added. A widget that has links already is an error of class

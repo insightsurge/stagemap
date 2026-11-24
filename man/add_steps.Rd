@@ -4,13 +4,15 @@
 \alias{add_steps}
 \title{Add steps to play through a stage map}
 \usage{
-add_steps(x, steps, changes = NULL, ..., intro = NULL)
+add_steps(x, steps, ..., changes = NULL, intro = NULL)
 }
 \arguments{
 \item{x}{A \code{\link[=stage_map]{stage_map()}} widget.}
 
 \item{steps}{A data frame with one row per step, in playing order. See "Columns". \code{NULL}, or a data frame with no
 rows (such as \code{data.frame()}), adds no steps and no player.}
+
+\item{...}{Must stay empty. It makes every argument after it a named argument.}
 
 \item{changes}{A data frame with one row per card per step, or \code{NULL} (or no rows) for steps that change no card.
 Every \code{changes$step} must be an id in \code{steps$id}, every \code{changes$card} an id in the map's \code{nodes$id}, every
@@ -19,9 +21,7 @@ at a step. An id that does not match, or a card changed twice at a step, is an e
 \code{stagemap_error_layer} that names the ids or rows (a missing column is an error of class \code{stagemap_error_data}).
 See "Columns".}
 
-\item{...}{Must stay empty. It makes every argument after it a named argument.}
-
-\item{intro}{The caption shown before the first step, as one string, or \code{NULL} for none.}
+\item{intro}{The caption shown before the first step, as one string, or \code{NULL} for none. Added only with \code{steps}.}
 }
 \value{
 The widget, with the steps added. A widget that has steps already is an error of class

@@ -18,9 +18,20 @@ describe("stage_map() arguments", {
     expect_no_error(slim(title = NULL))
   })
 
-  it("refuses text options that are not one string", {
+  it("refuses target and variant that are not one id: text, or a whole number", {
     expect_error(slim(target = ""), "target")
-    expect_error(slim(variant = 1), "variant")
+    expect_error(slim(variant = ""), "variant")
+    expect_error(slim(target = 1.5), "target")
+    expect_error(slim(variant = NA), "variant")
+    expect_error(slim(variant = c("a", "b")), "variant")
+    expect_error(slim(target = TRUE), "target")
+  })
+
+  it("takes target and variant given as whole numbers, and sends them as text like any id", {
+    options <- data_of(slim(target = 7, variant = 100000L))$options
+    expect_identical(options$target, "7")
+    expect_identical(options$variant, "100000")
+    expect_identical(data_of(slim(target = "a", variant = "v"))$options$variant, "v")
   })
 
   it("does not take the layers' data, and says which arguments it takes", {
@@ -299,6 +310,15 @@ describe("stage_map() mapping", {
     }
   })
 
+  it("compares ids as the page receives them: 100000 is \"100000\", never \"1e+05\"", {
+    nodes <- data.frame(id = 100000L, label = "A", stage = "s", lane = "l", status = 100000)
+    widget <- slim(nodes = nodes, statuses = data.frame(id = "100000", label = "Big"))
+    expect_identical(data_of(widget)$nodes[[1]]$status, "100000")
+    widget <- slim(nodes = nodes, statuses = data.frame(id = 100000, label = "Big"))
+    expect_identical(data_of(widget)$statuses[[1]]$id, "100000")
+    expect_error(slim(statuses = data.frame(id = c(100000, 100000), label = c("A", "B"))), "statuses$id", fixed = TRUE)
+  })
+
   it("refuses a statuses data frame that gives an id twice", {
     error <- expect_error(
       slim(statuses = data.frame(id = c("blocked", "blocked"), label = c("Blocked", "Again"))),
@@ -384,6 +404,30 @@ describe("stage_map() highlight", {
     expect_match(error$problems[1], "`options$highlight$ids[1]`", fixed = TRUE)
     error <- expect_error(slim(highlight = list(links = data.frame(from = "a"))), class = "stagemap_error_data")
     expect_match(error$problems[1], "`options$highlight$links` needs a column `to`.", fixed = TRUE)
+  })
+
+  it("takes an empty links data frame as none", {
+    widget <- slim(highlight = list(ids = "a", links = data.frame(from = character(), to = character())))
+    expect_identical(data_of(widget)$options$highlight, list(ids = list("a")))
+    expect_identical(data_of(slim(highlight = list(ids = "a", links = data.frame())))$options$highlight$ids, list("a"))
+  })
+
+  it("refuses an NA among the ids, naming the path", {
+    error <- expect_error(slim(highlight = list(ids = c("a", NA))), class = "stagemap_error_data")
+    expect_match(error$problems[1], "`options$highlight$ids`", fixed = TRUE)
+    expect_error(slim(highlight = list(ids = NA_character_)), class = "stagemap_error_data")
+  })
+
+  it("sends no highlight for a list that holds only NULL", {
+    expect_null(data_of(slim(highlight = list(ids = NULL)))$options$highlight)
+    expect_null(data_of(slim(highlight = list(ids = NULL, links = NULL)))$options$highlight)
+    expect_null(data_of(slim(highlight = list(links = data.frame())))$options$highlight)
+  })
+
+  it("refuses a link given as a list with a name twice, as a data frame with a column twice is", {
+    links <- list(list(from = "a", to = "a", from = "b"))
+    error <- expect_error(slim(highlight = list(ids = "a", links = links)), class = "stagemap_error_data")
+    expect_match(error$problems[1], "`options$highlight$links[1]` has the name `from` more than once.", fixed = TRUE)
   })
 
   it("keeps it when a layer is added", {
