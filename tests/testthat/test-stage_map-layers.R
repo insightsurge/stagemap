@@ -112,7 +112,7 @@ describe("add_steps()", {
   })
 
   it("takes changes and intro only by name, so a changes data frame given by position is an error", {
-    expect_identical(names(formals(add_steps)), c("x", "steps", "...", "changes", "intro"))
+    expect_identical(names(formals(add_steps)), c("map", "steps", "...", "changes", "intro"))
     error <- expect_error(
       add_steps(small(), data.frame(id = "x", label = "X"), data.frame(step = "x", card = "a")),
       class = "stagemap_error_dots"
@@ -183,7 +183,7 @@ describe("add_steps()", {
     it("refuses a step that steps does not have, with the ids and the fix", {
       error <- expect_error(
         add_steps(small(), steps(), changes = data.frame(step = c("x", "z", "w"), card = "a")),
-        class = "stagemap_error_layer"
+        class = "stagemap_error_data"
       )
       expect_identical(error$call[[1]], quote(add_steps))
       expect_match(conditionMessage(error), "changes$step", fixed = TRUE)
@@ -194,17 +194,17 @@ describe("add_steps()", {
     it("refuses a card that the map does not have, with the ids and the fix", {
       error <- expect_error(
         add_steps(small(), steps(), changes = data.frame(step = "x", card = c("a", "ghost"))),
-        class = "stagemap_error_layer"
+        class = "stagemap_error_data"
       )
       expect_match(conditionMessage(error), "changes$card", fixed = TRUE)
       expect_match(conditionMessage(error), "\"ghost\"", fixed = TRUE)
-      expect_match(conditionMessage(error), "nodes$id", fixed = TRUE)
+      expect_match(conditionMessage(error), "cards$id", fixed = TRUE)
     })
 
     it("refuses a stage that the map does not have, with the ids and the fix", {
       error <- expect_error(
         add_steps(small(), steps(), changes = data.frame(step = "x", card = "a", stage = "nowhere")),
-        class = "stagemap_error_layer"
+        class = "stagemap_error_data"
       )
       expect_match(conditionMessage(error), "changes$stage", fixed = TRUE)
       expect_match(conditionMessage(error), "\"nowhere\"", fixed = TRUE)
@@ -215,7 +215,7 @@ describe("add_steps()", {
     it("refuses a status that the map does not know, and takes the ones in statuses", {
       error <- expect_error(
         add_steps(small(), steps(), changes = data.frame(step = "x", card = "a", status = "zzz")),
-        class = "stagemap_error_layer"
+        class = "stagemap_error_data"
       )
       expect_match(conditionMessage(error), "changes$status", fixed = TRUE)
       expect_match(conditionMessage(error), "\"zzz\"", fixed = TRUE)
@@ -227,7 +227,7 @@ describe("add_steps()", {
 
     it("refuses a card changed twice at one step, naming the rows", {
       changes <- data.frame(step = c("x", "y", "x"), card = c("a", "a", "a"), status = c("done", "done", "failed"))
-      error <- expect_error(add_steps(small(), steps(), changes = changes), class = "stagemap_error_layer")
+      error <- expect_error(add_steps(small(), steps(), changes = changes), class = "stagemap_error_data")
       expect_match(conditionMessage(error), "changes a card twice at one step", fixed = TRUE)
       expect_match(conditionMessage(error), "card \"a\" at step \"x\" (rows 1, 3)", fixed = TRUE)
       expect_no_error(add_steps(small(), steps(), changes = changes[1:2, ]))
@@ -240,7 +240,7 @@ describe("add_steps()", {
         stage = "nowhere",
         status = "zzz"
       )
-      error <- expect_error(add_steps(small(), steps(), changes = changes), class = "stagemap_error_layer")
+      error <- expect_error(add_steps(small(), steps(), changes = changes), class = "stagemap_error_data")
       for (path in c("changes$step", "changes$card", "changes$stage", "changes$status", "twice")) {
         expect_match(conditionMessage(error), path, fixed = TRUE)
       }
@@ -291,13 +291,13 @@ describe("add_steps()", {
     })
 
     it("accepts ids that print with an exponent: a card 100000 changed by a step", {
-      map <- slim(nodes = data.frame(id = 100000L, label = "Big", stage = "s", lane = "l"))
+      map <- slim(cards = data.frame(id = 100000L, label = "Big", stage = "s", lane = "l"))
       added <- add_steps(map, data.frame(id = "x", label = "X"), changes = data.frame(step = "x", card = 100000))
       expect_identical(data_of(added)$changes, list(list(step = "x", card = "100000")))
       twice <- data.frame(step = c("x", "x"), card = c(100000, 100000))
       error <- expect_error(
         add_steps(map, data.frame(id = "x", label = "X"), changes = twice),
-        class = "stagemap_error_layer"
+        class = "stagemap_error_data"
       )
       expect_match(conditionMessage(error), "card \"100000\" at step \"x\" (rows 1, 2)", fixed = TRUE)
     })
@@ -329,11 +329,19 @@ describe("add_variants()", {
 })
 
 describe("the data layers together", {
+  it("take the map as their first argument", {
+    for (layer in list(add_links, add_zones, add_steps, add_variants)) {
+      expect_identical(names(formals(layer))[[1]], "map")
+    }
+    error <- expect_error(add_zones(list(), data.frame(id = "z", label = "Z")), class = "stagemap_error_widget")
+    expect_match(conditionMessage(error), "map", fixed = TRUE)
+  })
+
   it("pipe in any order, and the data reaches the engine checked as it would be in one call", {
     map <- small() |>
       add_zones(data.frame(id = "z", label = "Z")) |>
       add_links(data.frame(from = "a", to = "b"))
-    expect_setequal(names(data_of(map)), c("options", "stages", "lanes", "nodes", "zones", "links"))
+    expect_setequal(names(data_of(map)), c("options", "stages", "lanes", "cards", "zones", "links"))
     error <- expect_error(add_links(small(), data.frame(from = "a")), class = "stagemap_error_data")
     expect_identical(error$call[[1]], quote(add_links))
   })

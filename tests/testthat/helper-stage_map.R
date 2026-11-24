@@ -4,7 +4,7 @@
 # The smallest valid map: one card, one stage, one lane. `...` replace or add arguments of stage_map().
 slim <- function(...) {
   args <- list(
-    nodes = data.frame(id = "a", label = "A", stage = "s", lane = "l"),
+    cards = data.frame(id = "a", label = "A", stage = "s", lane = "l"),
     stages = data.frame(id = "s", label = "S"),
     lanes = data.frame(id = "l", label = "L")
   )
@@ -15,7 +15,7 @@ slim <- function(...) {
 
 # Two cards in one stage and lane, to join with links.
 small <- function() {
-  slim(nodes = data.frame(id = c("a", "b"), label = c("A", "B"), stage = "s", lane = "l"))
+  slim(cards = data.frame(id = c("a", "b"), label = c("A", "B"), stage = "s", lane = "l"))
 }
 
 # The data the page receives, as a list.
@@ -37,7 +37,7 @@ hosted_of <- function(widget) unlist(data_of(widget)$options$hosted)
 # text (so the side panel has something to show), a zone with a note, links with a kind, steps and variants.
 full_map <- function(...) {
   args <- list(
-    nodes = data.frame(
+    cards = data.frame(
       id = c("a", "b", "c", "d"),
       label = c("Draft", "Review", "Publish", "Archive"),
       stage = c("write", "check", "check", "ship"),

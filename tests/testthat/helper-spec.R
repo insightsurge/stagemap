@@ -30,7 +30,7 @@ map_data <- function() {
     options = list(title = "T"),
     stages = data.frame(id = "s", label = "S"),
     lanes = data.frame(id = "l", label = "L"),
-    nodes = data.frame(id = "a", label = "A", stage = "s", lane = "l")
+    cards = data.frame(id = "a", label = "A", stage = "s", lane = "l")
   )
 }
 

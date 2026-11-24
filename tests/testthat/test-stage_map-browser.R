@@ -72,7 +72,7 @@ describe("stage_map() in a browser", {
   })
 
   it("draws statuses given as rows, cells of several columns, bundled links and a step's changes without error", {
-    nodes <- data.frame(
+    cards <- data.frame(
       id = c("a", "b", "c", "d"),
       label = c("A", "B", "C", "D"),
       stage = c("s1", "s1", "s1", "s2"),
@@ -80,7 +80,7 @@ describe("stage_map() in a browser", {
       status = c("done", "blocked", "running", "blocked")
     )
     map <- stage_map(
-      nodes,
+      cards,
       data.frame(id = c("s1", "s2"), label = c("One", "Two")),
       data.frame(id = "l", label = "Lane"),
       statuses = data.frame(
@@ -103,6 +103,23 @@ describe("stage_map() in a browser", {
     legend <- page_js(page, "document.querySelector('#map').textContent")
     expect_match(legend, "Passed", fixed = TRUE)
     expect_match(legend, "Blocked", fixed = TRUE)
+    expect_identical(page$messages$seen, character())
+  })
+
+  it("draws, with no error, what R lets through: ids that join, variants cut at commas, and stages left to the cards", {
+    cards <- data.frame(
+      id = c("a", "b"),
+      label = c("A", "B"),
+      stage = c("one", "two"),
+      lane = "l",
+      variants = c("v1,v2", " v2 , v1,")
+    )
+    map <- stage_map(cards, layout = "levels", target = "b", variant = "v1", element_id = "map") |>
+      add_variants(data.frame(id = c("v1", "v2"), label = c("V1", "V2"))) |>
+      add_links(data.frame(from = "a", to = "b", step = "p")) |>
+      add_steps(data.frame(id = "p", label = "P", stage = "two"))
+    page <- open_map(map, cards = 2L)
+    expect_false(page_js(page, "document.querySelector('#map .sm-has-error') !== null"))
     expect_identical(page$messages$seen, character())
   })
 })

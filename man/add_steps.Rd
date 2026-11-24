@@ -4,10 +4,10 @@
 \alias{add_steps}
 \title{Add steps to play through a stage map}
 \usage{
-add_steps(x, steps, ..., changes = NULL, intro = NULL)
+add_steps(map, steps, ..., changes = NULL, intro = NULL)
 }
 \arguments{
-\item{x}{A \code{\link[=stage_map]{stage_map()}} widget.}
+\item{map}{A \code{\link[=stage_map]{stage_map()}} widget.}
 
 \item{steps}{A data frame with one row per step, in playing order. See "Columns". \code{NULL}, or a data frame with no
 rows (such as \code{data.frame()}), adds no steps and no player.}
@@ -15,17 +15,18 @@ rows (such as \code{data.frame()}), adds no steps and no player.}
 \item{...}{Must stay empty. It makes every argument after it a named argument.}
 
 \item{changes}{A data frame with one row per card per step, or \code{NULL} (or no rows) for steps that change no card.
-Every \code{changes$step} must be an id in \code{steps$id}, every \code{changes$card} an id in the map's \code{nodes$id}, every
+Every \code{changes$step} must be an id in \code{steps$id}, every \code{changes$card} an id in the map's \code{cards$id}, every
 \code{changes$stage} an id in its \code{stages$id} and every \code{changes$status} a status of the map; a card can change once
 at a step. An id that does not match, or a card changed twice at a step, is an error of class
-\code{stagemap_error_layer} that names the ids or rows (a missing column is an error of class \code{stagemap_error_data}).
-See "Columns".}
+\code{stagemap_error_data} that names the ids or rows. \code{changes} without \code{steps} is an error of class
+\code{stagemap_error_layer}. See "Columns".}
 
 \item{intro}{The caption shown before the first step, as one string, or \code{NULL} for none. Added only with \code{steps}.}
 }
 \value{
 The widget, with the steps added. A widget that has steps already is an error of class
-\code{stagemap_error_layer}.
+\code{stagemap_error_layer}. A \code{stage} of a step that is not a stage of the map, a \code{step} of a link that is not in
+\code{steps}, and an id given twice in \code{steps}, are errors of class \code{stagemap_error_data} that name the ids.
 }
 \description{
 Turns the map into a story the reader plays step by step, with a caption for each step. Without steps, the map
@@ -42,9 +43,9 @@ step.
 
 Required columns are marked with an asterisk.
 \itemize{
-\item \code{steps}: \verb{id*}, \verb{label*}, \code{kicker}, \code{text}, \code{stage} (the stage the step is about), \code{file}, \code{code}, \code{highlight}
+\item \code{steps}: \verb{id*}, \verb{label*}, \code{kicker}, \code{text}, \code{stage} (the stage the step is about), \code{file}, \code{code}, \code{code_lines}
 (a file's text and the lines to mark, as for a stage).
-\item \code{changes}: \verb{step*} (a \code{steps} id), \verb{card*} (a card id from the map's \code{nodes}), \code{status} (a status id, see the
+\item \code{changes}: \verb{step*} (a \code{steps} id), \verb{card*} (a card id from the map's \code{cards}), \code{status} (a status id, see the
 "Statuses" section of \code{\link[=stage_map]{stage_map()}}), \code{stage} (a stage id: the card moves there), \code{hidden} (\code{TRUE} hides the card,
 \code{FALSE} shows it again). One row per card per step. \code{NA} in \code{status}, \code{stage} or \code{hidden} leaves that
 property as it was; a status can be changed to another, but not cleared.
@@ -53,7 +54,7 @@ property as it was; a status can be changed to another, but not cleared.
 
 \examples{
 map <- stage_map(
-  nodes = data.frame(id = "a", label = "Draft", stage = "w", lane = "docs", status = "running"),
+  cards = data.frame(id = "a", label = "Draft", stage = "w", lane = "docs", status = "running"),
   stages = data.frame(id = c("w", "c"), label = c("Write", "Check")),
   lanes = data.frame(id = "docs", label = "Docs")
 ) |>

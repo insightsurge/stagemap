@@ -76,10 +76,18 @@
           "required": false,
           "example": "# 2.0.0\n\n- The parser reads files with empty rows."
         },
-        "highlight": {
+        "code_lines": {
           "type": "string",
           "required": false,
-          "example": "3, 5-7"
+          "example": "3, 5-7",
+          "description": "The lines of code to mark as changed, such as \"3, 5-7\"."
+        },
+        "highlight": {
+          "type": "string",
+          "old_name_of": "code_lines",
+          "required": false,
+          "example": "3, 5-7",
+          "description": "The old name of code_lines, with the same value: read until a later release. Give code_lines or highlight, not both."
         }
       }
     },
@@ -121,9 +129,10 @@
         }
       }
     },
-    "nodes": {
+    "cards": {
       "type": "list",
-      "required": true,
+      "required": false,
+      "description": "The cards the map draws, one row each. Required: give cards, or nodes, its old name (not both).",
       "fields": {
         "id": {
           "type": "id",
@@ -208,6 +217,96 @@
           "example": "Waits for the review"
         }
       }
+    },
+    "nodes": {
+      "type": "list",
+      "old_name_of": "cards",
+      "required": false,
+      "fields": {
+        "id": {
+          "type": "id",
+          "required": true,
+          "example": "parser"
+        },
+        "label": {
+          "type": "string",
+          "required": true,
+          "example": "Parser rewrite"
+        },
+        "stage": {
+          "type": "id",
+          "required": true,
+          "example": "build"
+        },
+        "lane": {
+          "type": "id",
+          "required": true,
+          "example": "core"
+        },
+        "sub": {
+          "type": "string",
+          "required": false,
+          "example": "Contributor"
+        },
+        "status": {
+          "type": "id",
+          "required": false,
+          "example": "done"
+        },
+        "tone": {
+          "type": "enum",
+          "required": false,
+          "values": [
+            "teal",
+            "good",
+            "warn",
+            "bad",
+            "muted",
+            "orange",
+            "blue",
+            "violet",
+            "pink",
+            "gold",
+            "grey"
+          ]
+        },
+        "text": {
+          "type": "markdown",
+          "required": false,
+          "example": "The data reader is rewritten so empty rows no longer stop it."
+        },
+        "zone": {
+          "type": "id",
+          "required": false,
+          "example": "day-one"
+        },
+        "milestone": {
+          "type": "boolean",
+          "required": false,
+          "default": false
+        },
+        "variants": {
+          "type": "string",
+          "required": false,
+          "example": "full, patch"
+        },
+        "hidden": {
+          "type": "boolean",
+          "required": false,
+          "default": false
+        },
+        "disabled": {
+          "type": "boolean",
+          "required": false,
+          "default": false
+        },
+        "reason": {
+          "type": "string",
+          "required": false,
+          "example": "Waits for the review"
+        }
+      },
+      "description": "The old name of cards, with the same fields: read until a later release. Give cards or nodes, not both."
     },
     "links": {
       "type": "list",
@@ -425,10 +524,18 @@
           "required": false,
           "example": "# 2.0.0\n\n- The parser reads files with empty rows."
         },
-        "highlight": {
+        "code_lines": {
           "type": "string",
           "required": false,
-          "example": "3, 5-7"
+          "example": "3, 5-7",
+          "description": "The lines of code to mark as changed, such as \"3, 5-7\"."
+        },
+        "highlight": {
+          "type": "string",
+          "old_name_of": "code_lines",
+          "required": false,
+          "example": "3, 5-7",
+          "description": "The old name of code_lines, with the same value: read until a later release. Give code_lines or highlight, not both."
         }
       }
     },
@@ -1495,6 +1602,19 @@
     },
     {
       "block": "data",
+      "field": "stages.code_lines",
+      "r_name": "code_lines",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "string",
+      "r_type": "character",
+      "values": null,
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "data",
       "field": "stages.highlight",
       "r_name": "highlight",
       "segments": [
@@ -1504,7 +1624,8 @@
       "r_type": "character",
       "values": null,
       "required": false,
-      "default": null
+      "default": null,
+      "old_name_of": "code_lines"
     },
     {
       "block": "data",
@@ -1584,14 +1705,221 @@
     },
     {
       "block": "data",
+      "field": "cards",
+      "r_name": "cards",
+      "segments": [],
+      "kit_type": "list",
+      "r_type": "data.frame",
+      "values": null,
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "cards.id",
+      "r_name": "id",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "id",
+      "r_type": "character|double",
+      "values": null,
+      "required": true,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "cards.label",
+      "r_name": "label",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "string",
+      "r_type": "character",
+      "values": null,
+      "required": true,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "cards.stage",
+      "r_name": "stage",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "id",
+      "r_type": "character|double",
+      "values": null,
+      "required": true,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "cards.lane",
+      "r_name": "lane",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "id",
+      "r_type": "character|double",
+      "values": null,
+      "required": true,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "cards.sub",
+      "r_name": "sub",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "string",
+      "r_type": "character",
+      "values": null,
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "cards.status",
+      "r_name": "status",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "id",
+      "r_type": "character|double",
+      "values": null,
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "cards.tone",
+      "r_name": "tone",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "enum",
+      "r_type": "character",
+      "values": [
+        "teal",
+        "good",
+        "warn",
+        "bad",
+        "muted",
+        "orange",
+        "blue",
+        "violet",
+        "pink",
+        "gold",
+        "grey"
+      ],
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "cards.text",
+      "r_name": "text",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "markdown",
+      "r_type": "character",
+      "values": null,
+      "required": false,
+      "default": null,
+      "markdown": "block"
+    },
+    {
+      "block": "data",
+      "field": "cards.zone",
+      "r_name": "zone",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "id",
+      "r_type": "character|double",
+      "values": null,
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "cards.milestone",
+      "r_name": "milestone",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "boolean",
+      "r_type": "logical",
+      "values": null,
+      "required": false,
+      "default": false
+    },
+    {
+      "block": "data",
+      "field": "cards.variants",
+      "r_name": "variants",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "string",
+      "r_type": "character",
+      "values": null,
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "cards.hidden",
+      "r_name": "hidden",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "boolean",
+      "r_type": "logical",
+      "values": null,
+      "required": false,
+      "default": false
+    },
+    {
+      "block": "data",
+      "field": "cards.disabled",
+      "r_name": "disabled",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "boolean",
+      "r_type": "logical",
+      "values": null,
+      "required": false,
+      "default": false
+    },
+    {
+      "block": "data",
+      "field": "cards.reason",
+      "r_name": "reason",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "string",
+      "r_type": "character",
+      "values": null,
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "data",
       "field": "nodes",
       "r_name": "nodes",
       "segments": [],
       "kit_type": "list",
       "r_type": "data.frame",
       "values": null,
-      "required": true,
-      "default": null
+      "required": false,
+      "default": null,
+      "old_name_of": "cards"
     },
     {
       "block": "data",
@@ -2257,6 +2585,19 @@
     },
     {
       "block": "data",
+      "field": "steps.code_lines",
+      "r_name": "code_lines",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "string",
+      "r_type": "character",
+      "values": null,
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "data",
       "field": "steps.highlight",
       "r_name": "highlight",
       "segments": [
@@ -2266,7 +2607,8 @@
       "r_type": "character",
       "values": null,
       "required": false,
-      "default": null
+      "default": null,
+      "old_name_of": "code_lines"
     },
     {
       "block": "data",

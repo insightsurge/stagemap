@@ -5,19 +5,19 @@
 \title{Draw work moving through stages and lanes}
 \usage{
 stage_map(
-  nodes,
-  stages,
-  lanes,
+  cards,
+  stages = NULL,
+  lanes = NULL,
   ...,
   title = NULL,
-  layout = NULL,
+  layout = "grid",
   target = NULL,
   variant = NULL,
   statuses = NULL,
-  motion = NULL,
-  legend = NULL,
-  cell_columns = NULL,
-  bundle_links = NULL,
+  motion = TRUE,
+  legend = TRUE,
+  cell_columns = 1,
+  bundle_links = FALSE,
   highlight = NULL,
   dismiss = "no_outside",
   player = NULL,
@@ -28,11 +28,17 @@ stage_map(
 )
 }
 \arguments{
-\item{nodes}{A data frame with one row per card. Columns are listed under "Columns".}
+\item{cards}{A data frame with one row per card. Columns are listed under "Columns". It has no default.}
 
-\item{stages}{A data frame with one row per stage (a column of the picture). See "Columns".}
+\item{stages}{A data frame with one row per stage (a column of the picture). See "Columns". \code{NULL} takes the stages
+from the \code{stage} column of \code{cards}: a factor gives all its levels in their order, used or not, and any other column
+gives its values in order of first appearance; each stage's label is its id. Left out, a mistyped stage in \code{cards}
+is not caught, because it makes a stage of its own. Use a factor for the order; give the table for a label that
+differs from the id, or to check the spelling.}
 
-\item{lanes}{A data frame with one row per lane (a row of the picture). See "Columns". Links read best when they
+\item{lanes}{A data frame with one row per lane (a row of the picture). See "Columns". \code{NULL} takes the lanes from
+the \code{lane} column of \code{cards}, in the same way as \code{stages}; give the table for another order, for a label that
+differs from the id, or to check the spelling. Links read best when they
 run along a lane, so choose lanes that follow the work's flow (a topic, a product, a team that hands work on),
 not lanes that most links have to cross; show who owns a card with its \code{sub} column instead.}
 
@@ -42,39 +48,38 @@ error that names it.}
 \item{title}{The map's title, as one string, drawn above it. \code{NULL} draws no title; the drawing is then named "Stage
 map" for screen readers.}
 
-\item{layout}{One of the layouts the engine lists: \code{"grid"}, \code{"levels"} or \code{"dates"}. \code{NULL} uses the engine's
-default, \code{"grid"}. The grid puts stages in columns and lanes in rows; \code{"levels"} draws
-each lane as a band flowing into \code{target}; \code{"dates"} draws a table of lanes by stages with one stage per day and no
-links.}
+\item{layout}{One of the layouts the engine lists: \code{"grid"} (the default), \code{"levels"} or \code{"dates"}. The grid puts
+stages in columns and lanes in rows; \code{"levels"} draws each lane as a band flowing into \code{target}; \code{"dates"} draws a
+table of lanes by stages with one stage per day and no links. \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}} The \code{"levels"}
+and \code{"dates"} layouts, and \code{target} and \code{variant} that go with them, may change. The list of layouts may grow.}
 
-\item{target}{The id of the card the levels layout flows into, as text or a whole number. \code{NULL} for none.}
+\item{target}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}} The id of the card the levels layout flows into, as text or a
+whole number. It must be a card of the map. \code{NULL} for none.}
 
-\item{variant}{The id of the variant to start on (levels layout), from \code{\link[=add_variants]{add_variants()}}, as text or a whole number.
+\item{variant}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}} The id of the variant to start on (levels layout), from
+\code{\link[=add_variants]{add_variants()}}, as text or a whole number. It must be a variant of the map once \code{\link[=add_variants]{add_variants()}} has added them.
 \code{NULL} lets the engine choose.}
 
 \item{statuses}{Your words and looks for the statuses, in one of two forms (see "Statuses"): a named character
 vector giving your word for a built-in status, such as \code{c(done = "Pass")}, or a data frame with the columns \verb{id*},
 \code{label}, \code{tone} and \code{icon}, one row per status. A data frame row with a built-in id restyles that status, and any
-other id adds a status. \code{NULL}, or a data frame with no rows, uses the engine's default words; a status you leave
-out keeps its default.}
+other id adds a status. \code{NULL}, a named character vector of length zero or a data frame with no rows uses the
+engine's default words; a status you leave out keeps its default. A label that is blank is an error.}
 
 \item{motion}{\code{FALSE} to move between steps without travelling dots and without the card gliding to its new stage,
-or \code{TRUE} to allow them. \code{NULL} uses the engine's default (\code{TRUE}). The reader's own
-reduced-motion setting is always respected.}
+or \code{TRUE} (the default) to allow them. The reader's own reduced-motion setting is always respected.}
 
-\item{legend}{\code{FALSE} hides the legend; \code{TRUE} or \code{NULL} shows it (the engine's default is
-\code{TRUE}).}
+\item{legend}{\code{FALSE} hides the legend; \code{TRUE}, the default, shows it.}
 
 \item{cell_columns}{How many columns of cards a cell holds when a stage has several cards in one lane: a whole
-number from 1 to 6, or \code{"auto"} to let the map's width decide (up to 6). \code{NULL} uses the engine's default
-(\code{1}, one column). Six is the most because six cards side by side are wider
-than a screen and would scroll. It is one number for the whole map, and a stage with several columns is wider
-than the others. Only the \code{"grid"} layout uses it, and a box under 500 pixels wide, which stacks stage by stage,
-ignores it.}
+number from 1 to 6, or \code{"auto"} to let the map's width decide (up to 6). The default is \code{1}. Six is the most
+because six cards side by side are wider than a screen and would scroll. It is one number for the whole map, and a
+stage with several columns is wider than the others. Only the \code{"grid"} layout uses it, and a box under 500
+pixels wide, which stacks stage by stage, ignores it.}
 
 \item{bundle_links}{\code{TRUE} draws the forward links of one card as a single trunk that splits next to the cards they
-reach, when three or more of them have the same kind and no label; other links are drawn as usual. \code{FALSE} or
-\code{NULL} draws every link on its own (the engine's default is \code{FALSE}). Only the
+reach, when three or more of them have the same kind and no label; other links are drawn as usual. \code{FALSE}, the
+default, draws every link on its own. Only the
 \code{"grid"} layout uses it, and a box under 500 pixels wide ignores it.}
 
 \item{highlight}{Cards and links to keep clear from the first draw, with every other card and link faded: a named
@@ -105,8 +110,8 @@ map is drawn inside \code{\link[shiny:renderUI]{shiny::renderUI()}}, so its inpu
 }
 \value{
 An HTML widget (class \code{stagemap_widget}). Print it to view it, use it in R Markdown or Quarto, or pipe it
-into an \verb{add_*()} function. A problem in the data is an error of class \code{stagemap_error_data} that lists up to ten
-problems with their paths.
+into an \verb{add_*()} function. A problem in the data, an id that does not join and an id given twice are errors of
+class \code{stagemap_error_data}: a problem in the data lists up to ten problems with their paths.
 }
 \description{
 A stage map shows pieces of work (cards) placed in stages (columns) and lanes (rows), with a status on each card.
@@ -117,8 +122,11 @@ with \code{\link[=add_steps]{add_steps()}} (which brings the player) and variant
 }
 \details{
 Each list in the picture is one data frame, one row per record, and ids join the lists the way a key joins two data
-frames: a card's \code{stage} and \code{lane} name a stage id and a lane id. The engine that draws the map checks these joins
-and shows what is wrong inside the widget.
+frames: a card's \code{stage} and \code{lane} name a stage id and a lane id. R checks each join, and an id given twice in a
+table, when both tables are there, in whichever order they come, and stops with an error of class
+\code{stagemap_error_data} that names the ids. A card's \code{zone} or \code{variants}, a link's \code{step} and a map's \code{variant} name
+tables that a later call may add: until it does they are not checked in R, and a table that is never added leaves
+the engine to show the problem inside the widget.
 
 Column names are the engine's field names. A column the engine has no field for is not sent to it and gives no
 warning: it stays in the data the widget keeps in R, so a table that carries more columns than the map needs can be
@@ -130,7 +138,7 @@ optional column counts as left out. Ids are written as text, so \code{7} and \co
 
 Required columns are marked with an asterisk.
 \itemize{
-\item \code{nodes}: \verb{id*}, \verb{label*}, \verb{stage*}, \verb{lane*}, \code{sub} (a second line, such as a person), \code{status} (the id of a
+\item \code{cards}: \verb{id*}, \verb{label*}, \verb{stage*}, \verb{lane*}, \code{sub} (a second line, such as a person), \code{status} (the id of a
 status: one of the five built-in ones, \code{"done"}, \code{"running"}, \code{"waiting"}, \code{"failed"} and \code{"skipped"}, or an id
 you add with \code{statuses}), \code{tone}, \code{text} (shown in the card's details), \code{zone} (a zone id, see \code{\link[=add_zones]{add_zones()}}),
 \code{milestone} (\code{TRUE} to draw the card as a milestone; left out, it is \code{FALSE}),
@@ -138,17 +146,20 @@ you add with \code{statuses}), \code{tone}, \code{text} (shown in the card's det
 \code{\link[=add_variants]{add_variants()}}).
 \item \code{stages}: \verb{id*}, \verb{label*}, \code{kicker}, \code{text}, \code{date} (a \code{Date}, or text like \code{"2026-03-02"}), \code{flag} (a word shown
 on the stage's head, such as \code{"Stuck"}), \code{tone} (the flag's colour), \code{file}, \code{code} (a file's text, shown in the
-side panel under \code{file}), \code{highlight} (the lines of \code{code} to mark, such as \code{"3, 5-7"}).
+side panel under \code{file}), \code{code_lines} (the lines of \code{code} to mark, such as \code{"3, 5-7"}).
 \item \code{lanes}: \verb{id*}, \verb{label*}, \code{tone}, \code{text}.
 }
 
-A \code{nodes} row can also have \code{hidden} (\code{TRUE} leaves the card out of the picture), \code{disabled} (\code{TRUE} dims it and
+A \code{cards} row can also have \code{hidden} (\code{TRUE} leaves the card out of the picture), \code{disabled} (\code{TRUE} dims it and
 stops it being chosen) and \code{reason} (why the card is in its state; the map shows it on a disabled card); left out,
 \code{hidden} and \code{disabled} are \code{FALSE} and \code{FALSE}.
 
-The \code{text} columns of \code{nodes}, \code{stages}, \code{lanes}, \code{steps} and \code{zones}, and the \code{note} of a zone, are read as
+The \code{text} columns of \code{cards}, \code{stages}, \code{lanes}, \code{steps} and \code{zones}, and the \code{note} of a zone, are read as
 Markdown, so \verb{*word*}, backticks and \verb{[words](https://example.org)} draw as formatting. A zone's \code{text} and \code{note}
 are one line.
+
+The names \code{parent} (on \code{stages} and \code{lanes}) and \code{gate} (on \code{stages}) are set aside for columns a later version may
+add: leave them out of your own columns in those tables.
 
 A \code{tone} is one of \code{"teal"}, \code{"good"}, \code{"warn"}, \code{"bad"}, \code{"muted"}, \code{"orange"}, \code{"blue"}, \code{"violet"}, \code{"pink"},
 \code{"gold"} or \code{"grey"}.
@@ -166,7 +177,7 @@ engine's icons). A row whose \code{id} is a built-in id restyles that status (it
 add a sixth. A row with any other id adds a status of your own, such as \code{"blocked"}.
 }
 
-\code{nodes$status} (and the \code{status} of \code{\link[=add_steps]{add_steps()}}'s \code{changes}) may then use any id from \code{statuses}; any other id is
+\code{cards$status} (and the \code{status} of \code{\link[=add_steps]{add_steps()}}'s \code{changes}) may then use any id from \code{statuses}; any other id is
 an error of class \code{stagemap_error_data} that names it, lists the ids allowed and says to add it to \code{statuses}. An id
 given twice in a \code{statuses} data frame is an error too. A \code{tone} is checked against the tones listed under
 "Columns", and the error names the value and lists the ones allowed. Give \code{statuses} in one form per call.
@@ -184,7 +195,7 @@ in. The glide follows the reader's reduced-motion setting. \code{motion = FALSE}
 
 \examples{
 map <- stage_map(
-  nodes = data.frame(
+  cards = data.frame(
     id = c("draft", "review"),
     label = c("Draft", "Review"),
     stage = c("write", "check"),

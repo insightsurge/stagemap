@@ -4,10 +4,10 @@
 \alias{add_links}
 \title{Add links between cards to a stage map}
 \usage{
-add_links(x, links, ..., kinds = NULL)
+add_links(map, links, ..., kinds = NULL)
 }
 \arguments{
-\item{x}{A \code{\link[=stage_map]{stage_map()}} widget.}
+\item{map}{A \code{\link[=stage_map]{stage_map()}} widget.}
 
 \item{links}{A data frame with one row per link. See "Columns". \code{NULL}, or a data frame with no rows (such as
 \code{data.frame()}), adds no links.}
@@ -19,7 +19,10 @@ plain arrow. Added only with \code{links}: when \code{links} adds none, so do th
 }
 \value{
 The widget, with the links added. A widget that has links already is an error of class
-\code{stagemap_error_layer}.
+\code{stagemap_error_layer}. A \code{from} or \code{to} that is not the id of a card, a \code{kind} that is not in \code{kinds} (or a
+\code{kind} with no \code{kinds} given), a \code{variants} id that \code{\link[=add_variants]{add_variants()}} has not given, a \code{step} that
+\code{\link[=add_steps]{add_steps()}} has not given, and an id given twice in \code{kinds}, are errors of class \code{stagemap_error_data} that
+name the ids. A \code{step} or \code{variants} id is checked when the table it names arrives, in either order.
 }
 \description{
 Draws an arrow, or another kind of line, from one card to another: who handed what to whom.
@@ -41,7 +44,7 @@ A column the engine has no field for stays in the data the widget keeps in R and
 
 \examples{
 map <- stage_map(
-  nodes = data.frame(
+  cards = data.frame(
     id = c("a", "b"),
     label = c("Draft", "Review"),
     stage = c("w", "c"),

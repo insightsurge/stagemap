@@ -1,6 +1,6 @@
 # The data converter, first half: what is wrong with the data. Callers: sm_widget() (the map's data) and sm_add_data()
 # (a layer's data). It sees only types: the spec's `fields` say what a list, an object, a list of words or a value may
-# hold. convert_problems() lists what is wrong, with paths like nodes$status[3] or nodes$about[2]$who, and never
+# hold. convert_problems() lists what is wrong, with paths like cards$status[3] or cards$about[2]$who, and never
 # throws. The second half, which writes the JSON, is in core-json.R; call it after this finds nothing.
 
 # The checks below run once per column, row or value, and are reached only from convert_problems(), which asserts its
@@ -16,7 +16,7 @@ is_records <- function(x) {
     all(vapply(x, function(record) is.list(record) && !is.data.frame(record) && !is.null(names(record)), logical(1)))
 }
 
-# A path such as nodes$status: the name alone at the top.
+# A path such as cards$status: the name alone at the top.
 join_path <- function(path, name) {
   if (nzchar(path)) paste0(path, "$", name) else name
 }
@@ -40,7 +40,8 @@ vector_problems <- function(x, spec, label, scalar) {
   if (!blank && !rule$ok(x, spec)) {
     return(sprintf("`%s` must be %s, not %s.", label, rule$want(spec), class(x)[[1]]))
   }
-  missing <- is.na(x)
+  # A factor with NA as one of its levels holds NA as a value that is.na() does not see: its text is NA.
+  missing <- is.na(x) | (is.factor(x) & is.na(as.character(x)))
   out <- character()
   at <- function(index) if (scalar) label else paste0(label, rows_text(index))
   if (spec$required && any(missing)) {

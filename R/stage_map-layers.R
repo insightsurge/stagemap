@@ -24,18 +24,21 @@ none_if_empty <- function(x) {
 #'
 #' A column the engine has no field for stays in the data the widget keeps in R and is not sent to the engine.
 #'
-#' @param x A [stage_map()] widget.
+#' @param map A [stage_map()] widget.
 #' @param links A data frame with one row per link. See "Columns". `NULL`, or a data frame with no rows (such as
 #'   `data.frame()`), adds no links.
 #' @param ... Must stay empty. It makes every argument after it a named argument.
 #' @param kinds A data frame with one row per kind of link, named in the legend, or `NULL`: every link is then a
 #'   plain arrow. Added only with `links`: when `links` adds none, so do the kinds.
 #' @returns The widget, with the links added. A widget that has links already is an error of class
-#'   `stagemap_error_layer`.
+#'   `stagemap_error_layer`. A `from` or `to` that is not the id of a card, a `kind` that is not in `kinds` (or a
+#'   `kind` with no `kinds` given), a `variants` id that [add_variants()] has not given, a `step` that
+#'   [add_steps()] has not given, and an id given twice in `kinds`, are errors of class `stagemap_error_data` that
+#'   name the ids. A `step` or `variants` id is checked when the table it names arrives, in either order.
 #' @family stage map
 #' @examples
 #' map <- stage_map(
-#'   nodes = data.frame(
+#'   cards = data.frame(
 #'     id = c("a", "b"),
 #'     label = c("Draft", "Review"),
 #'     stage = c("w", "c"),
@@ -52,14 +55,18 @@ none_if_empty <- function(x) {
 #' @examplesIf interactive()
 #' map
 #' @export
-add_links <- function(x, links, ..., kinds = NULL) {
+add_links <- function(map, links, ..., kinds = NULL) {
   checkmate::assert_data_frame(links, null.ok = TRUE)
   checkmate::assert_data_frame(kinds, null.ok = TRUE)
   check_dots(...)
+  call <- rlang::current_env()
   links <- none_if_empty(links)
   # The kinds belong to the links: with no links there is nothing to name, so none are added (a later call can).
   kinds <- if (!is.null(links)) none_if_empty(kinds)
-  sm_add_data(x, list(links = links, kinds = kinds), call = rlang::current_env())
+  added <- sm_add_data(map, list(links = links, kinds = kinds), call = call)
+  # After the data's own checks, so a wrong type or a missing column comes first.
+  stage_map_check_data(sm_widget_data(added), call)
+  added
 }
 
 #' Add zones to a stage map
@@ -75,11 +82,12 @@ add_links <- function(x, links, ..., kinds = NULL) {
 #' @param zones A data frame with one row per zone. See "Columns". `NULL`, or a data frame with no rows (such as
 #'   `data.frame()`), adds no zones.
 #' @returns The widget, with the zones added. A widget that has zones already is an error of class
-#'   `stagemap_error_layer`.
+#'   `stagemap_error_layer`. A `zone` of a card that is not in `zones`, and an id given twice in `zones`, are errors of
+#'   class `stagemap_error_data` that name the ids.
 #' @family stage map
 #' @examples
 #' map <- stage_map(
-#'   nodes = data.frame(id = "a", label = "Draft", stage = "w", lane = "docs", zone = "sign"),
+#'   cards = data.frame(id = "a", label = "Draft", stage = "w", lane = "docs", zone = "sign"),
 #'   stages = data.frame(id = "w", label = "Write"),
 #'   lanes = data.frame(id = "docs", label = "Docs")
 #' ) |>
@@ -88,10 +96,13 @@ add_links <- function(x, links, ..., kinds = NULL) {
 #' @examplesIf interactive()
 #' map
 #' @export
-add_zones <- function(x, zones, ...) {
+add_zones <- function(map, zones, ...) {
   checkmate::assert_data_frame(zones, null.ok = TRUE)
   check_dots(...)
-  sm_add_data(x, list(zones = none_if_empty(zones)), call = rlang::current_env())
+  call <- rlang::current_env()
+  added <- sm_add_data(map, list(zones = none_if_empty(zones)), call = call)
+  stage_map_check_data(sm_widget_data(added), call)
+  added
 }
 
 #' Add steps to play through a stage map
@@ -107,9 +118,9 @@ add_zones <- function(x, zones, ...) {
 #'
 #' @section Columns:
 #' Required columns are marked with an asterisk.
-#' * `steps`: `id*`, `label*`, `kicker`, `text`, `stage` (the stage the step is about), `file`, `code`, `highlight`
+#' * `steps`: `id*`, `label*`, `kicker`, `text`, `stage` (the stage the step is about), `file`, `code`, `code_lines`
 #'   (a file's text and the lines to mark, as for a stage).
-#' * `changes`: `step*` (a `steps` id), `card*` (a card id from the map's `nodes`), `status` (a status id, see the
+#' * `changes`: `step*` (a `steps` id), `card*` (a card id from the map's `cards`), `status` (a status id, see the
 #'   "Statuses" section of [stage_map()]), `stage` (a stage id: the card moves there), `hidden` (`TRUE` hides the card,
 #'   `FALSE` shows it again). One row per card per step. `NA` in `status`, `stage` or `hidden` leaves that
 #'   property as it was; a status can be changed to another, but not cleared.
@@ -118,18 +129,19 @@ add_zones <- function(x, zones, ...) {
 #' @param steps A data frame with one row per step, in playing order. See "Columns". `NULL`, or a data frame with no
 #'   rows (such as `data.frame()`), adds no steps and no player.
 #' @param changes A data frame with one row per card per step, or `NULL` (or no rows) for steps that change no card.
-#'   Every `changes$step` must be an id in `steps$id`, every `changes$card` an id in the map's `nodes$id`, every
+#'   Every `changes$step` must be an id in `steps$id`, every `changes$card` an id in the map's `cards$id`, every
 #'   `changes$stage` an id in its `stages$id` and every `changes$status` a status of the map; a card can change once
 #'   at a step. An id that does not match, or a card changed twice at a step, is an error of class
-#'   `stagemap_error_layer` that names the ids or rows (a missing column is an error of class `stagemap_error_data`).
-#'   See "Columns".
+#'   `stagemap_error_data` that names the ids or rows. `changes` without `steps` is an error of class
+#'   `stagemap_error_layer`. See "Columns".
 #' @param intro The caption shown before the first step, as one string, or `NULL` for none. Added only with `steps`.
 #' @returns The widget, with the steps added. A widget that has steps already is an error of class
-#'   `stagemap_error_layer`.
+#'   `stagemap_error_layer`. A `stage` of a step that is not a stage of the map, a `step` of a link that is not in
+#'   `steps`, and an id given twice in `steps`, are errors of class `stagemap_error_data` that name the ids.
 #' @family stage map
 #' @examples
 #' map <- stage_map(
-#'   nodes = data.frame(id = "a", label = "Draft", stage = "w", lane = "docs", status = "running"),
+#'   cards = data.frame(id = "a", label = "Draft", stage = "w", lane = "docs", status = "running"),
 #'   stages = data.frame(id = c("w", "c"), label = c("Write", "Check")),
 #'   lanes = data.frame(id = "docs", label = "Docs")
 #' ) |>
@@ -142,7 +154,7 @@ add_zones <- function(x, zones, ...) {
 #' @examplesIf interactive()
 #' map
 #' @export
-add_steps <- function(x, steps, ..., changes = NULL, intro = NULL) {
+add_steps <- function(map, steps, ..., changes = NULL, intro = NULL) {
   checkmate::assert_data_frame(steps, null.ok = TRUE)
   checkmate::assert_data_frame(changes, null.ok = TRUE)
   checkmate::assert_string(intro, min.chars = 1L, null.ok = TRUE)
@@ -151,20 +163,21 @@ add_steps <- function(x, steps, ..., changes = NULL, intro = NULL) {
   steps <- none_if_empty(steps)
   changes <- none_if_empty(changes)
   # The caption belongs to the steps: with no steps there is nothing to introduce, so none is added (a later call can).
-  map <- sm_add_data(
-    x,
+  added <- sm_add_data(
+    map,
     list(steps = steps, changes = changes),
     options = list(intro = if (!is.null(steps)) intro),
     call = call
   )
   # After the data's own checks, so a wrong type, a missing column or "already has steps" comes first.
-  stage_map_check_changes(changes, steps, sm_widget_data(map), call)
-  if (is.null(steps)) map else stage_map_show_player(map, call)
+  stage_map_check_data(sm_widget_data(added), call)
+  stage_map_check_changes(changes, steps, sm_widget_data(added), call)
+  if (is.null(steps)) added else stage_map_show_player(added, call)
 }
 
 # Refuses `changes` the engine would refuse in the browser, with the values and the fix, in one error: a step `steps`
 # lacks, a card or a stage the map lacks, a status the map does not know, a card changed twice at one step, or
-# `changes` with no steps at all. `map_data` is the map's R data (its nodes, stages and statuses). Caller: add_steps(),
+# `changes` with no steps at all. `map_data` is the map's R data (its cards, stages and statuses). Caller: add_steps(),
 # which has asserted its arguments (`steps` is NULL when it was given none). A row's NA in step or card is the
 # converter's to report, and so is a missing column, so the data keeps one message for each mistake.
 stage_map_check_changes <- function(changes, steps, map_data, call) {
@@ -183,7 +196,7 @@ stage_map_check_changes <- function(changes, steps, map_data, call) {
     unique(found[!is.na(found) & !found %in% as_text(known)])
   }
   bad_steps <- if ("step" %in% names(changes) && "id" %in% names(steps)) unlisted(changes$step, steps$id)
-  bad_cards <- if ("card" %in% names(changes)) unlisted(changes$card, map_data$nodes$id)
+  bad_cards <- if ("card" %in% names(changes)) unlisted(changes$card, map_data$cards$id)
   bad_stages <- if ("stage" %in% names(changes)) unlisted(changes$stage, map_data$stages$id)
   problems <- c(
     if (length(bad_steps) > 0L) {
@@ -195,7 +208,7 @@ stage_map_check_changes <- function(changes, steps, map_data, call) {
     if (length(bad_cards) > 0L) {
       c(
         "x" = "{.field changes$card} has ids that are not cards of the map: {.val {bad_cards}}.",
-        "i" = "Use an id from the map's {.field nodes$id}."
+        "i" = "Use an id from the map's {.field cards$id}."
       )
     },
     if (length(bad_stages) > 0L) {
@@ -204,13 +217,13 @@ stage_map_check_changes <- function(changes, steps, map_data, call) {
         "i" = "Use an id from the map's {.field stages$id}."
       )
     },
-    stage_map_status_problems(changes$status, "changes$status", map_data),
+    stage_map_status_problems(changes[["status"]], "changes$status", map_data),
     stage_map_twice_problems(changes)
   )
   if (length(problems) > 0L) {
     sm_abort(
       c("{.arg changes} does not match the steps and cards.", problems),
-      class = "stagemap_error_layer",
+      class = "stagemap_error_data",
       call = call
     )
   }
@@ -253,6 +266,8 @@ stage_map_twice_problems <- function(changes) {
 
 #' Add variants to a stage map
 #'
+#' `r lifecycle::badge("experimental")`
+#'
 #' Variants are versions of one map that the reader switches between, such as a full release and a docs-only one. A
 #' card or a link lists the variants it belongs to in its `variants` column; [stage_map()]'s `variant` says which to
 #' start on.
@@ -265,11 +280,12 @@ stage_map_twice_problems <- function(changes) {
 #' @param variants A data frame with one row per variant. See "Columns". `NULL`, or a data frame with no rows (such
 #'   as `data.frame()`), adds no variants.
 #' @returns The widget, with the variants added. A widget that has variants already is an error of class
-#'   `stagemap_error_layer`.
+#'   `stagemap_error_layer`. A variant id of a card or a link, or the `variant` of [stage_map()], that is not in
+#'   `variants`, and an id given twice in `variants`, are errors of class `stagemap_error_data` that name the ids.
 #' @family stage map
 #' @examples
 #' map <- stage_map(
-#'   nodes = data.frame(id = "a", label = "Draft", stage = "w", lane = "docs", variants = "full"),
+#'   cards = data.frame(id = "a", label = "Draft", stage = "w", lane = "docs", variants = "full"),
 #'   stages = data.frame(id = "w", label = "Write"),
 #'   lanes = data.frame(id = "docs", label = "Docs"),
 #'   variant = "full"
@@ -279,8 +295,11 @@ stage_map_twice_problems <- function(changes) {
 #' @examplesIf interactive()
 #' map
 #' @export
-add_variants <- function(x, variants, ...) {
+add_variants <- function(map, variants, ...) {
   checkmate::assert_data_frame(variants, null.ok = TRUE)
   check_dots(...)
-  sm_add_data(x, list(variants = none_if_empty(variants)), call = rlang::current_env())
+  call <- rlang::current_env()
+  added <- sm_add_data(map, list(variants = none_if_empty(variants)), call = call)
+  stage_map_check_data(sm_widget_data(added), call)
+  added
 }

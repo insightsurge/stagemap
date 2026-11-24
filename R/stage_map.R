@@ -7,8 +7,11 @@
 #' with [add_steps()] (which brings the player) and variants with [add_variants()].
 #'
 #' Each list in the picture is one data frame, one row per record, and ids join the lists the way a key joins two data
-#' frames: a card's `stage` and `lane` name a stage id and a lane id. The engine that draws the map checks these joins
-#' and shows what is wrong inside the widget.
+#' frames: a card's `stage` and `lane` name a stage id and a lane id. R checks each join, and an id given twice in a
+#' table, when both tables are there, in whichever order they come, and stops with an error of class
+#' `stagemap_error_data` that names the ids. A card's `zone` or `variants`, a link's `step` and a map's `variant` name
+#' tables that a later call may add: until it does they are not checked in R, and a table that is never added leaves
+#' the engine to show the problem inside the widget.
 #'
 #' Column names are the engine's field names. A column the engine has no field for is not sent to it and gives no
 #' warning: it stays in the data the widget keeps in R, so a table that carries more columns than the map needs can be
@@ -19,24 +22,27 @@
 #' @section Columns:
 #' Required columns are marked with an asterisk.
 #'
-#' * `nodes`: `id*`, `label*`, `stage*`, `lane*`, `sub` (a second line, such as a person), `status` (the id of a
+#' * `cards`: `id*`, `label*`, `stage*`, `lane*`, `sub` (a second line, such as a person), `status` (the id of a
 #'   status: one of the five built-in ones, `"done"`, `"running"`, `"waiting"`, `"failed"` and `"skipped"`, or an id
 #'   you add with `statuses`), `tone`, `text` (shown in the card's details), `zone` (a zone id, see [add_zones()]),
-#'   `milestone` (`TRUE` to draw the card as a milestone; left out, it is `r sm_default("nodes", "milestone")`),
+#'   `milestone` (`TRUE` to draw the card as a milestone; left out, it is `r sm_default("cards", "milestone")`),
 #'   `variants` (variant ids separated by commas, such as `"full, docs"`; left out, the card is in every variant; see
 #'   [add_variants()]).
 #' * `stages`: `id*`, `label*`, `kicker`, `text`, `date` (a `Date`, or text like `"2026-03-02"`), `flag` (a word shown
 #'   on the stage's head, such as `"Stuck"`), `tone` (the flag's colour), `file`, `code` (a file's text, shown in the
-#'   side panel under `file`), `highlight` (the lines of `code` to mark, such as `"3, 5-7"`).
+#'   side panel under `file`), `code_lines` (the lines of `code` to mark, such as `"3, 5-7"`).
 #' * `lanes`: `id*`, `label*`, `tone`, `text`.
 #'
-#' A `nodes` row can also have `hidden` (`TRUE` leaves the card out of the picture), `disabled` (`TRUE` dims it and
+#' A `cards` row can also have `hidden` (`TRUE` leaves the card out of the picture), `disabled` (`TRUE` dims it and
 #' stops it being chosen) and `reason` (why the card is in its state; the map shows it on a disabled card); left out,
-#' `hidden` and `disabled` are `r sm_default("nodes", "hidden")` and `r sm_default("nodes", "disabled")`.
+#' `hidden` and `disabled` are `r sm_default("cards", "hidden")` and `r sm_default("cards", "disabled")`.
 #'
-#' The `text` columns of `nodes`, `stages`, `lanes`, `steps` and `zones`, and the `note` of a zone, are read as
+#' The `text` columns of `cards`, `stages`, `lanes`, `steps` and `zones`, and the `note` of a zone, are read as
 #' Markdown, so `*word*`, backticks and `[words](https://example.org)` draw as formatting. A zone's `text` and `note`
 #' are one line.
+#'
+#' The names `parent` (on `stages` and `lanes`) and `gate` (on `stages`) are set aside for columns a later version may
+#' add: leave them out of your own columns in those tables.
 #'
 #' A `tone` is one of `"teal"`, `"good"`, `"warn"`, `"bad"`, `"muted"`, `"orange"`, `"blue"`, `"violet"`, `"pink"`,
 #' `"gold"` or `"grey"`.
@@ -51,7 +57,7 @@
 #'   engine's icons). A row whose `id` is a built-in id restyles that status (its label, colour and icon), and does not
 #'   add a sixth. A row with any other id adds a status of your own, such as `"blocked"`.
 #'
-#' `nodes$status` (and the `status` of [add_steps()]'s `changes`) may then use any id from `statuses`; any other id is
+#' `cards$status` (and the `status` of [add_steps()]'s `changes`) may then use any id from `statuses`; any other id is
 #' an error of class `stagemap_error_data` that names it, lists the ids allowed and says to add it to `statuses`. An id
 #' given twice in a `statuses` data frame is an error too. A `tone` is checked against the tones listed under
 #' "Columns", and the error names the value and lists the ones allowed. Give `statuses` in one form per call.
@@ -64,41 +70,46 @@
 #' When a step of [add_steps()] moves a card to another stage, the card glides there, and a card that appears fades
 #' in. The glide follows the reader's reduced-motion setting. `motion = FALSE` turns it off.
 #'
-#' @param nodes A data frame with one row per card. Columns are listed under "Columns".
-#' @param stages A data frame with one row per stage (a column of the picture). See "Columns".
-#' @param lanes A data frame with one row per lane (a row of the picture). See "Columns". Links read best when they
+#' @param cards A data frame with one row per card. Columns are listed under "Columns". It has no default.
+#' @param stages A data frame with one row per stage (a column of the picture). See "Columns". `NULL` takes the stages
+#'   from the `stage` column of `cards`: a factor gives all its levels in their order, used or not, and any other column
+#'   gives its values in order of first appearance; each stage's label is its id. Left out, a mistyped stage in `cards`
+#'   is not caught, because it makes a stage of its own. Use a factor for the order; give the table for a label that
+#'   differs from the id, or to check the spelling.
+#' @param lanes A data frame with one row per lane (a row of the picture). See "Columns". `NULL` takes the lanes from
+#'   the `lane` column of `cards`, in the same way as `stages`; give the table for another order, for a label that
+#'   differs from the id, or to check the spelling. Links read best when they
 #'   run along a lane, so choose lanes that follow the work's flow (a topic, a product, a team that hands work on),
 #'   not lanes that most links have to cross; show who owns a card with its `sub` column instead.
 #' @param ... Must stay empty. It makes every argument after it a named argument, and a typo in an option's name an
 #'   error that names it.
 #' @param title The map's title, as one string, drawn above it. `NULL` draws no title; the drawing is then named "Stage
 #'   map" for screen readers.
-#' @param layout One of the layouts the engine lists: `"grid"`, `"levels"` or `"dates"`. `NULL` uses the engine's
-#'   default, `r sm_default("options", "layout")`. The grid puts stages in columns and lanes in rows; `"levels"` draws
-#'   each lane as a band flowing into `target`; `"dates"` draws a table of lanes by stages with one stage per day and no
-#'   links.
-#' @param target The id of the card the levels layout flows into, as text or a whole number. `NULL` for none.
-#' @param variant The id of the variant to start on (levels layout), from [add_variants()], as text or a whole number.
+#' @param layout One of the layouts the engine lists: `"grid"` (the default), `"levels"` or `"dates"`. The grid puts
+#'   stages in columns and lanes in rows; `"levels"` draws each lane as a band flowing into `target`; `"dates"` draws a
+#'   table of lanes by stages with one stage per day and no links. `r lifecycle::badge("experimental")` The `"levels"`
+#'   and `"dates"` layouts, and `target` and `variant` that go with them, may change. The list of layouts may grow.
+#' @param target `r lifecycle::badge("experimental")` The id of the card the levels layout flows into, as text or a
+#'   whole number. It must be a card of the map. `NULL` for none.
+#' @param variant `r lifecycle::badge("experimental")` The id of the variant to start on (levels layout), from
+#'   [add_variants()], as text or a whole number. It must be a variant of the map once [add_variants()] has added them.
 #'   `NULL` lets the engine choose.
 #' @param statuses Your words and looks for the statuses, in one of two forms (see "Statuses"): a named character
 #'   vector giving your word for a built-in status, such as `c(done = "Pass")`, or a data frame with the columns `id*`,
 #'   `label`, `tone` and `icon`, one row per status. A data frame row with a built-in id restyles that status, and any
-#'   other id adds a status. `NULL`, or a data frame with no rows, uses the engine's default words; a status you leave
-#'   out keeps its default.
+#'   other id adds a status. `NULL`, a named character vector of length zero or a data frame with no rows uses the
+#'   engine's default words; a status you leave out keeps its default. A label that is blank is an error.
 #' @param motion `FALSE` to move between steps without travelling dots and without the card gliding to its new stage,
-#'   or `TRUE` to allow them. `NULL` uses the engine's default (`r sm_default("options", "motion")`). The reader's own
-#'   reduced-motion setting is always respected.
-#' @param legend `FALSE` hides the legend; `TRUE` or `NULL` shows it (the engine's default is
-#'   `r sm_default("options", "legend")`).
+#'   or `TRUE` (the default) to allow them. The reader's own reduced-motion setting is always respected.
+#' @param legend `FALSE` hides the legend; `TRUE`, the default, shows it.
 #' @param cell_columns How many columns of cards a cell holds when a stage has several cards in one lane: a whole
-#'   number from 1 to 6, or `"auto"` to let the map's width decide (up to 6). `NULL` uses the engine's default
-#'   (`r sm_default("options", "cell_columns")`, one column). Six is the most because six cards side by side are wider
-#'   than a screen and would scroll. It is one number for the whole map, and a stage with several columns is wider
-#'   than the others. Only the `"grid"` layout uses it, and a box under 500 pixels wide, which stacks stage by stage,
-#'   ignores it.
+#'   number from 1 to 6, or `"auto"` to let the map's width decide (up to 6). The default is `1`. Six is the most
+#'   because six cards side by side are wider than a screen and would scroll. It is one number for the whole map, and a
+#'   stage with several columns is wider than the others. Only the `"grid"` layout uses it, and a box under 500
+#'   pixels wide, which stacks stage by stage, ignores it.
 #' @param bundle_links `TRUE` draws the forward links of one card as a single trunk that splits next to the cards they
-#'   reach, when three or more of them have the same kind and no label; other links are drawn as usual. `FALSE` or
-#'   `NULL` draws every link on its own (the engine's default is `r sm_default("options", "bundle_links")`). Only the
+#'   reach, when three or more of them have the same kind and no label; other links are drawn as usual. `FALSE`, the
+#'   default, draws every link on its own. Only the
 #'   `"grid"` layout uses it, and a box under 500 pixels wide ignores it.
 #' @param highlight Cards and links to keep clear from the first draw, with every other card and link faded: a named
 #'   list with `ids` (card ids, none of them `NA`) and, optionally, `links` (a data frame with the columns `from*`,
@@ -122,12 +133,12 @@
 #'   map is drawn inside [shiny::renderUI()], so its inputs have a known name.
 #'
 #' @returns An HTML widget (class `stagemap_widget`). Print it to view it, use it in R Markdown or Quarto, or pipe it
-#'   into an `add_*()` function. A problem in the data is an error of class `stagemap_error_data` that lists up to ten
-#'   problems with their paths.
+#'   into an `add_*()` function. A problem in the data, an id that does not join and an id given twice are errors of
+#'   class `stagemap_error_data`: a problem in the data lists up to ten problems with their paths.
 #' @family stage map
 #' @examples
 #' map <- stage_map(
-#'   nodes = data.frame(
+#'   cards = data.frame(
 #'     id = c("draft", "review"),
 #'     label = c("Draft", "Review"),
 #'     stage = c("write", "check"),
@@ -144,19 +155,19 @@
 #' map
 #' @export
 stage_map <- function(
-  nodes,
-  stages,
-  lanes,
+  cards,
+  stages = NULL,
+  lanes = NULL,
   ...,
   title = NULL,
-  layout = NULL,
+  layout = "grid",
   target = NULL,
   variant = NULL,
   statuses = NULL,
-  motion = NULL,
-  legend = NULL,
-  cell_columns = NULL,
-  bundle_links = NULL,
+  motion = TRUE,
+  legend = TRUE,
+  cell_columns = 1,
+  bundle_links = FALSE,
   highlight = NULL,
   dismiss = "no_outside",
   player = NULL,
@@ -165,26 +176,26 @@ stage_map <- function(
   height = NULL,
   element_id = NULL
 ) {
-  checkmate::assert_data_frame(nodes)
-  checkmate::assert_data_frame(stages)
-  checkmate::assert_data_frame(lanes)
+  checkmate::assert_data_frame(cards)
+  checkmate::assert_data_frame(stages, null.ok = TRUE)
+  checkmate::assert_data_frame(lanes, null.ok = TRUE)
   checkmate::assert_string(title, min.chars = 1L, null.ok = TRUE)
-  checkmate::assert_choice(layout, sm_spec()$fields$options$fields$layout$values, null.ok = TRUE)
+  checkmate::assert_choice(layout, sm_spec()$fields$options$fields$layout$values)
   assert_id_option(target)
   assert_id_option(variant)
   checkmate::assert(
-    checkmate::check_character(statuses, any.missing = FALSE, min.len = 1L, names = "unique", null.ok = TRUE),
+    checkmate::check_character(statuses, any.missing = FALSE, names = "unique", null.ok = TRUE),
     checkmate::check_data_frame(statuses),
     .var.name = "statuses (a named character vector or a data frame)"
   )
-  checkmate::assert_flag(motion, null.ok = TRUE)
-  checkmate::assert_flag(legend, null.ok = TRUE)
+  checkmate::assert_flag(motion)
+  checkmate::assert_flag(legend)
   checkmate::assert(
-    checkmate::check_int(cell_columns, lower = 1L, upper = 6L, null.ok = TRUE),
+    checkmate::check_int(cell_columns, lower = 1L, upper = 6L),
     checkmate::check_choice(cell_columns, "auto"),
     .var.name = "cell_columns (a whole number from 1 to 6, or \"auto\")"
   )
-  checkmate::assert_flag(bundle_links, null.ok = TRUE)
+  checkmate::assert_flag(bundle_links)
   checkmate::assert_list(highlight, names = "unique", null.ok = TRUE)
   assert_dismiss(dismiss)
   checkmate::assert_flag(player, null.ok = TRUE)
@@ -193,6 +204,10 @@ stage_map <- function(
   check_dots(...)
   call <- rlang::current_env()
   highlight <- normalise_highlight(highlight, call)
+  statuses <- normalise_statuses(statuses)
+  # A table left out is taken from the cards' own columns.
+  stages <- stages %||% ids_from_cards(cards, "stage")
+  lanes <- lanes %||% ids_from_cards(cards, "lane")
 
   # The engine's regions the page may host itself: with `panels = FALSE` the three panels go to a host that is not
   # there, so they do not show; the step player stays out of sight until add_steps() brings it, unless it is asked for.
@@ -218,7 +233,7 @@ stage_map <- function(
     options = drop_nulls(options),
     stages = stages,
     lanes = lanes,
-    nodes = nodes,
+    cards = cards,
     statuses = rows
   )
   widget <- sm_widget(
@@ -231,6 +246,7 @@ stage_map <- function(
   )
   # After the converter, so a missing column or a bad tone is reported first, with the rest of the data's problems.
   stage_map_check_statuses(drop_nulls(data), call)
+  stage_map_check_data(drop_nulls(data), call)
   widget
 }
 
@@ -271,6 +287,37 @@ normalise_highlight <- function(highlight, call) {
   if (length(highlight) > 0L) highlight
 }
 
+# `statuses` as the code reads it: NULL for none (a named character vector of length zero counts as none, as does a
+# data frame with no rows), or the vector or data frame as given. `statuses` was checked as a named character vector, a
+# data frame or NULL; a blank label is refused later, by stage_map_check_statuses(), once the converter has accepted
+# the data frame's columns.
+normalise_statuses <- function(statuses) {
+  checkmate::assert(
+    checkmate::check_character(statuses, any.missing = FALSE, names = "unique", null.ok = TRUE),
+    checkmate::check_data_frame(statuses)
+  )
+  if (is.character(statuses) && length(statuses) == 0L) NULL else statuses
+}
+
+# The ids a table left out is taken from: the values of the column `column` of the cards, as a data frame with the
+# columns `id` and `label` (the label is the id). A factor gives all its levels in their order, used or not; any other
+# column gives its values in order of first appearance. `NA` is left out: the converter reports it as a missing value in
+# the cards. A cards table with no such column gives a table with no rows, so the converter reports
+# the missing column once, on the cards.
+ids_from_cards <- function(cards, column) {
+  checkmate::assert_data_frame(cards)
+  checkmate::assert_string(column, min.chars = 1L)
+  found <- cards[[column]]
+  ids <- if (is.null(found) || is.list(found)) {
+    character()
+  } else if (is.factor(found)) {
+    levels(found)[!is.na(levels(found))]
+  } else {
+    unique(as_text(found[!is.na(found)]))
+  }
+  data.frame(id = ids, label = ids)
+}
+
 # The regions of the engine that `panels = FALSE` hands over to the host: the details of a card, the stage's side panel
 # and the zone notes. Named in the contract's `hosted` option, which a test checks.
 stage_map_panel_regions <- c("details", "stage", "zones")
@@ -281,7 +328,7 @@ drop_nulls <- function(x) {
   x[!vapply(x, is.null, logical(1))]
 }
 
-# The contract's default for the field `name` of `block` (`"options"`, or the name of a data list such as `"nodes"`),
+# The contract's default for the field `name` of `block` (`"options"`, or the name of a data list such as `"cards"`),
 # written as it reads in a help page. Used by the roxygen text only, so a help page cannot state a default the engine
 # does not have.
 sm_default <- function(block, name) {
@@ -318,7 +365,7 @@ stage_map_status_ids <- function(data) {
   unique(c(built_in, if (is.data.frame(data$statuses)) as_text(data$statuses$id)))
 }
 
-# The error lines for the status ids in `found` (a column named `field`, such as "nodes$status") that the map does not
+# The error lines for the status ids in `found` (a column named `field`, such as "cards$status") that the map does not
 # know, with the ids allowed and the fix; NULL when all are known. The text is ready to use in a cli message. Callers:
 # stage_map_check_statuses() and stage_map_check_changes().
 stage_map_status_problems <- function(found, field, data) {
@@ -338,16 +385,45 @@ stage_map_status_problems <- function(found, field, data) {
   stats::setNames(cli_escape(lines), names(lines))
 }
 
+# Refuses a status label that is blank or only spaces (the legend would show an empty word), in either form of
+# `statuses`: the words in the options, or the `label` column of the data frame (read as text, so a factor counts).
+# `data` is the map's R data, already accepted by the converter, so the `id` column of the data frame exists. This is a
+# rule of this package: the engine draws a blank label. Caller: stage_map_check_statuses().
+stage_map_check_blank_labels <- function(data, call) {
+  checkmate::assert_list(data, names = "named")
+  checkmate::assert_environment(call)
+  words <- data$options$statuses
+  labels <- if (is.character(words)) {
+    stats::setNames(words, names(words))
+  } else if (is.data.frame(data$statuses) && !is.null(data$statuses[["label"]])) {
+    stats::setNames(as_text(data$statuses[["label"]]), as_text(data$statuses$id))
+  }
+  blank <- names(labels)[!is.na(labels) & !nzchar(trimws(labels))]
+  if (length(blank) > 0L) {
+    sm_abort(
+      c(
+        "A status label cannot be blank.",
+        "x" = cli_escape(cli::format_inline("{.arg statuses} has a blank label for {.val {blank}}.")),
+        "i" = "Give the status a word, or leave it out of {.arg statuses}."
+      ),
+      class = "stagemap_error_data",
+      call = call
+    )
+  }
+  invisible(NULL)
+}
+
 # Refuses what the engine refuses in the browser about statuses, with the values and the fix: a card whose `status` is
 # not a status of the map, and a `statuses` data frame that gives an id twice. `data` is the map's R data, already
 # accepted by the converter, so its columns exist. Caller: stage_map().
 stage_map_check_statuses <- function(data, call) {
+  stage_map_check_blank_labels(data, call)
   twice <- if (is.data.frame(data$statuses)) {
     ids <- as_text(data$statuses$id)
     unique(ids[!is.na(ids) & duplicated(ids)])
   }
   problems <- c(
-    stage_map_status_problems(data$nodes$status, "nodes$status", data),
+    stage_map_status_problems(data$cards[["status"]], "cards$status", data),
     if (length(twice) > 0L) {
       c(
         "x" = cli_escape(cli::format_inline("{.field statuses$id} has ids given more than once: {.val {twice}}.")),

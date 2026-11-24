@@ -3,8 +3,8 @@ Title: Relation Maps for 'Shiny' and 'Quarto'
 Version: 0.0.0.9000
 Authors@R: 
     person("Harsh", "Verma", email = "analyticswithharsh@gmail.com", role = c("aut", "cre", "cph"))
-Description: Builds relation maps from nodes placed by stage and lane and
-    links that join them. Checks node identifiers, link endpoints and column
+Description: Builds relation maps from cards placed by stage and lane and
+    links that join them. Checks card identifiers, link endpoints and column
     values, lays the map out the same way on every run and writes it as an
     SVG image.
 License: MIT + file LICENSE
@@ -23,6 +23,7 @@ Imports:
 Suggests: 
     chromote,
     covr,
+    lifecycle,
     shiny,
     shinytest2 (>= 0.5.0),
     testthat (>= 3.1.7),
