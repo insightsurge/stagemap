@@ -90,7 +90,7 @@ describe("stage_map() arguments", {
     expect_no_error(slim(cell_columns = 1))
     expect_no_error(slim(cell_columns = 6L))
     expect_no_error(slim(cell_columns = "auto"))
-    expect_no_error(slim(cell_columns = NULL))
+    expect_error(slim(cell_columns = NULL), "cell_columns")
     expect_error(slim(cell_columns = 0), "cell_columns")
     expect_error(slim(cell_columns = 7), "cell_columns")
     expect_error(slim(cell_columns = 2.5), "cell_columns")
@@ -191,7 +191,7 @@ describe("stage_map() and the columns the engine has no field for", {
 })
 
 describe("stage_map() mapping", {
-  it("puts the options under options as the engine wants them, and leaves the unset out", {
+  it("puts the options under options as the engine wants them, with the defaults sent too and the unset left out", {
     widget <- slim(layout = "levels", target = "a", motion = FALSE, legend = TRUE, variant = "v", title = "T")
     expect_identical(
       data_of(widget)$options,
@@ -202,6 +202,8 @@ describe("stage_map() mapping", {
         target = "a",
         variant = "v",
         legend = TRUE,
+        cell_columns = "1",
+        bundle_links = FALSE,
         dismiss = "no_outside",
         hosted = list("steps")
       )
@@ -238,7 +240,7 @@ describe("stage_map() mapping", {
   })
 
   it("keeps the legend unless it is turned off", {
-    expect_null(data_of(slim())$options$legend)
+    expect_true(data_of(slim())$options$legend)
     expect_false(data_of(slim(legend = FALSE))$options$legend)
   })
 
@@ -334,8 +336,8 @@ describe("stage_map() mapping", {
     expect_true(options$bundle_links)
     expect_identical(data_of(slim(cell_columns = "auto"))$options$cell_columns, "auto")
     expect_false(data_of(slim(bundle_links = FALSE))$options$bundle_links)
-    expect_null(data_of(slim())$options$cell_columns)
-    expect_null(data_of(slim())$options$bundle_links)
+    expect_identical(data_of(slim())$options$cell_columns, "1")
+    expect_false(data_of(slim())$options$bundle_links)
   })
 
   it("sends numeric ids as text, so a card's stage still names its stage", {
@@ -479,5 +481,118 @@ describe("stage_map() names", {
     old <- data.frame(id = "s", label = "S", file = "f.R", code = "a\nb", highlight = "2")
     expect_null(data_of(slim(stages = old))$stages[[1]]$highlight)
     expect_null(data_of(add_steps(slim(), cbind(steps[1:4], highlight = "1")))$steps[[1]]$highlight)
+  })
+})
+
+describe("stage_map() defaults", {
+  it("has the defaults of the engine's contract for layout, motion, legend, cell_columns and bundle_links", {
+    options <- sm_spec()$fields$options$fields
+    for (name in c("layout", "motion", "legend", "cell_columns", "bundle_links")) {
+      expect_identical(
+        as.character(formals(stage_map)[[name]]),
+        as.character(options[[name]]$default),
+        info = name
+      )
+    }
+  })
+
+  it("takes no NULL for them", {
+    for (name in c("layout", "motion", "legend", "cell_columns", "bundle_links")) {
+      expect_error(do.call(slim, stats::setNames(list(NULL), name)), name)
+    }
+  })
+})
+
+describe("stage_map() with stages and lanes left out", {
+  cards <- function(...) data.frame(id = c("a", "b", "c"), label = c("A", "B", "C"), ..., lane = "l")
+
+  it("takes the stages from the cards in order of first appearance, with the id as the label", {
+    map <- stage_map(cards(stage = c("two", "one", "two")), lanes = data.frame(id = "l", label = "L"))
+    expect_identical(sm_widget_data(map)$stages, data.frame(id = c("two", "one"), label = c("two", "one")))
+    expect_identical(data_of(map)$stages, list(list(id = "two", label = "two"), list(id = "one", label = "one")))
+  })
+
+  it("takes the lanes the same way, and either table may be given without the other", {
+    map <- stage_map(
+      data.frame(id = c("a", "b"), label = c("A", "B"), stage = "s", lane = c("y", "x")),
+      stages = data.frame(id = "s", label = "Stage")
+    )
+    expect_identical(sm_widget_data(map)$lanes$id, c("y", "x"))
+    expect_identical(data_of(map)$stages[[1]]$label, "Stage")
+    map <- stage_map(
+      data.frame(id = c("a", "b"), label = c("A", "B"), stage = c("q", "p"), lane = "l"),
+      lanes = data.frame(id = "l", label = "Lane")
+    )
+    expect_identical(sm_widget_data(map)$stages$id, c("q", "p"))
+    expect_identical(data_of(map)$lanes[[1]]$label, "Lane")
+  })
+
+  it("takes the order of a factor's levels, for the levels the cards use", {
+    stage <- factor(c("b", "a", "b"), levels = c("c", "b", "a"))
+    map <- stage_map(cards(stage = stage), lanes = data.frame(id = "l", label = "L"))
+    expect_identical(sm_widget_data(map)$stages$id, c("b", "a"))
+  })
+
+  it("writes numeric ids as text and leaves NA out, which the cards' own check reports", {
+    map <- stage_map(cards(stage = c(2, 1, 2)), lanes = data.frame(id = "l", label = "L"))
+    expect_identical(sm_widget_data(map)$stages$id, c("2", "1"))
+    error <- expect_error(
+      stage_map(cards(stage = c("s", NA, "s")), lanes = data.frame(id = "l", label = "L")),
+      class = "stagemap_error_data"
+    )
+    expect_match(error$problems[1], "`cards$stage[2]` is required but has NA.", fixed = TRUE)
+  })
+
+  it("reports a cards table with no stage or lane column once, on the cards", {
+    error <- expect_error(
+      stage_map(data.frame(id = "a", label = "A", lane = "l"), lanes = data.frame(id = "l", label = "L")),
+      class = "stagemap_error_data"
+    )
+    expect_identical(error$problems, "`cards` needs a column `stage`.")
+    error <- expect_error(
+      stage_map(data.frame(id = "a", label = "A", stage = "s", lane = "l")[, 1:3]),
+      class = "stagemap_error_data"
+    )
+    expect_identical(error$problems, "`cards` needs a column `lane`.")
+  })
+
+  it("does not catch a mistyped stage, because the stage the typo names is made", {
+    map <- stage_map(data.frame(id = c("a", "b"), label = c("A", "B"), stage = c("build", "biuld"), lane = "l"))
+    expect_identical(sm_widget_data(map)$stages$id, c("build", "biuld"))
+  })
+
+  it("lets a later layer check its ids against the stages it made", {
+    map <- slim(cards = data.frame(id = "a", label = "A", stage = "s", lane = "l"), stages = NULL, lanes = NULL)
+    expect_error(
+      add_steps(map, data.frame(id = "p", label = "P"), changes = data.frame(step = "p", card = "a", stage = "zz")),
+      "zz"
+    )
+    expect_no_error(
+      add_steps(map, data.frame(id = "p", label = "P"), changes = data.frame(step = "p", card = "a", stage = "s"))
+    )
+  })
+
+  it("refuses a stages or lanes that is not a data frame", {
+    expect_error(slim(stages = "s"), "stages")
+    expect_error(slim(lanes = 1), "lanes")
+  })
+})
+
+describe("stage_map() statuses", {
+  it("takes a named character vector of length zero as none, like NULL", {
+    expect_identical(slim(statuses = character())$x$data, slim()$x$data)
+    expect_identical(slim(statuses = stats::setNames(character(), character()))$x$data, slim()$x$data)
+  })
+
+  it("refuses a blank label, in either form, naming the status", {
+    error <- expect_error(slim(statuses = c(done = "")), class = "stagemap_error_data")
+    expect_match(conditionMessage(error), "done", fixed = TRUE)
+    expect_error(slim(statuses = c(done = "Pass", failed = "   ")), "failed", class = "stagemap_error_data")
+    expect_error(
+      slim(statuses = data.frame(id = c("blocked", "late"), label = c("Blocked", " "))),
+      "late",
+      class = "stagemap_error_data"
+    )
+    expect_no_error(slim(statuses = data.frame(id = c("blocked", "late"), label = c("Blocked", NA))))
   })
 })

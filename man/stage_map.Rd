@@ -6,18 +6,18 @@
 \usage{
 stage_map(
   cards,
-  stages,
-  lanes,
+  stages = NULL,
+  lanes = NULL,
   ...,
   title = NULL,
-  layout = NULL,
+  layout = "grid",
   target = NULL,
   variant = NULL,
   statuses = NULL,
-  motion = NULL,
-  legend = NULL,
-  cell_columns = NULL,
-  bundle_links = NULL,
+  motion = TRUE,
+  legend = TRUE,
+  cell_columns = 1,
+  bundle_links = FALSE,
   highlight = NULL,
   dismiss = "no_outside",
   player = NULL,
@@ -28,11 +28,17 @@ stage_map(
 )
 }
 \arguments{
-\item{cards}{A data frame with one row per card. Columns are listed under "Columns".}
+\item{cards}{A data frame with one row per card. Columns are listed under "Columns". It has no default.}
 
-\item{stages}{A data frame with one row per stage (a column of the picture). See "Columns".}
+\item{stages}{A data frame with one row per stage (a column of the picture). See "Columns". \code{NULL} takes the stages
+from the \code{stage} column of \code{cards}: a factor gives its levels in their order (only the levels a card uses),
+any other column gives its values in order of first appearance, and each stage's label is its id. Left out, a
+mistyped stage in \code{cards} is not caught, because it makes a stage of its own: use a factor or give the table for
+another order, or to check the spelling.}
 
-\item{lanes}{A data frame with one row per lane (a row of the picture). See "Columns". Links read best when they
+\item{lanes}{A data frame with one row per lane (a row of the picture). See "Columns". \code{NULL} takes the lanes from
+the \code{lane} column of \code{cards}, in the same way as \code{stages}; give the table for another order, for a label that
+differs from the id, or to check the spelling. Links read best when they
 run along a lane, so choose lanes that follow the work's flow (a topic, a product, a team that hands work on),
 not lanes that most links have to cross; show who owns a card with its \code{sub} column instead.}
 
@@ -42,8 +48,7 @@ error that names it.}
 \item{title}{The map's title, as one string, drawn above it. \code{NULL} draws no title; the drawing is then named "Stage
 map" for screen readers.}
 
-\item{layout}{One of the layouts the engine lists: \code{"grid"}, \code{"levels"} or \code{"dates"}. \code{NULL} uses the engine's
-default, \code{"grid"}. The grid puts stages in columns and lanes in rows; \code{"levels"} draws
+\item{layout}{One of the layouts the engine lists: \code{"grid"} (the default), \code{"levels"} or \code{"dates"}. The grid puts stages in columns and lanes in rows; \code{"levels"} draws
 each lane as a band flowing into \code{target}; \code{"dates"} draws a table of lanes by stages with one stage per day and no
 links.}
 
@@ -55,26 +60,23 @@ links.}
 \item{statuses}{Your words and looks for the statuses, in one of two forms (see "Statuses"): a named character
 vector giving your word for a built-in status, such as \code{c(done = "Pass")}, or a data frame with the columns \verb{id*},
 \code{label}, \code{tone} and \code{icon}, one row per status. A data frame row with a built-in id restyles that status, and any
-other id adds a status. \code{NULL}, or a data frame with no rows, uses the engine's default words; a status you leave
-out keeps its default.}
+other id adds a status. \code{NULL}, a named character vector of length zero or a data frame with no rows uses the
+engine's default words; a status you leave out keeps its default. A label that is blank is an error.}
 
 \item{motion}{\code{FALSE} to move between steps without travelling dots and without the card gliding to its new stage,
-or \code{TRUE} to allow them. \code{NULL} uses the engine's default (\code{TRUE}). The reader's own
-reduced-motion setting is always respected.}
+or \code{TRUE} (the default) to allow them. The reader's own reduced-motion setting is always respected.}
 
-\item{legend}{\code{FALSE} hides the legend; \code{TRUE} or \code{NULL} shows it (the engine's default is
-\code{TRUE}).}
+\item{legend}{\code{FALSE} hides the legend; \code{TRUE}, the default, shows it.}
 
 \item{cell_columns}{How many columns of cards a cell holds when a stage has several cards in one lane: a whole
-number from 1 to 6, or \code{"auto"} to let the map's width decide (up to 6). \code{NULL} uses the engine's default
-(\code{1}, one column). Six is the most because six cards side by side are wider
+number from 1 to 6, or \code{"auto"} to let the map's width decide (up to 6). The default is \code{1}. Six is the most because six cards side by side are wider
 than a screen and would scroll. It is one number for the whole map, and a stage with several columns is wider
 than the others. Only the \code{"grid"} layout uses it, and a box under 500 pixels wide, which stacks stage by stage,
 ignores it.}
 
 \item{bundle_links}{\code{TRUE} draws the forward links of one card as a single trunk that splits next to the cards they
-reach, when three or more of them have the same kind and no label; other links are drawn as usual. \code{FALSE} or
-\code{NULL} draws every link on its own (the engine's default is \code{FALSE}). Only the
+reach, when three or more of them have the same kind and no label; other links are drawn as usual. \code{FALSE}, the
+default, draws every link on its own. Only the
 \code{"grid"} layout uses it, and a box under 500 pixels wide ignores it.}
 
 \item{highlight}{Cards and links to keep clear from the first draw, with every other card and link faded: a named
