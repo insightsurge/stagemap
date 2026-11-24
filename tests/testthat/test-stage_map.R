@@ -528,10 +528,22 @@ describe("stage_map() with stages and lanes left out", {
     expect_identical(data_of(map)$lanes[[1]]$label, "Lane")
   })
 
-  it("takes the order of a factor's levels, for the levels the cards use", {
+  it("takes all the levels of a factor in their order, used or not, and not an NA level", {
     stage <- factor(c("b", "a", "b"), levels = c("c", "b", "a"))
     map <- stage_map(cards(stage = stage), lanes = data.frame(id = "l", label = "L"))
-    expect_identical(sm_widget_data(map)$stages$id, c("b", "a"))
+    expect_identical(sm_widget_data(map)$stages$id, c("c", "b", "a"))
+    with_na <- factor(c("b", "a", NA), levels = c("b", "a", NA), exclude = NULL)
+    map <- stage_map(cards(stage = factor(c("b", "a", "b"))), lanes = data.frame(id = "l", label = "L"))
+    expect_identical(ids_from_cards(data.frame(stage = with_na), "stage")$id, c("b", "a"))
+  })
+
+  it("reports a card whose factor stage is NA when the stages are given", {
+    stage <- factor(c("s", NA, "s"), levels = c("s", NA), exclude = NULL)
+    error <- expect_error(
+      stage_map(cards(stage = stage), data.frame(id = "s", label = "S"), data.frame(id = "l", label = "L")),
+      class = "stagemap_error_data"
+    )
+    expect_match(error$problems[1], "`cards$stage[2]` is required but has NA.", fixed = TRUE)
   })
 
   it("writes numeric ids as text and leaves NA out, which the cards' own check reports", {
@@ -587,6 +599,7 @@ describe("stage_map() statuses", {
 
   it("refuses a blank label, in either form, naming the status", {
     error <- expect_error(slim(statuses = c(done = "")), class = "stagemap_error_data")
+    expect_match(conditionMessage(error), "A status label cannot be blank.", fixed = TRUE)
     expect_match(conditionMessage(error), "done", fixed = TRUE)
     expect_error(slim(statuses = c(done = "Pass", failed = "   ")), "failed", class = "stagemap_error_data")
     expect_error(
@@ -595,5 +608,34 @@ describe("stage_map() statuses", {
       class = "stagemap_error_data"
     )
     expect_no_error(slim(statuses = data.frame(id = c("blocked", "late"), label = c("Blocked", NA))))
+  })
+
+  it("reads the label as text, so a blank factor label is refused too", {
+    statuses <- data.frame(id = "late", label = factor("   "))
+    expect_error(slim(statuses = statuses), "late", class = "stagemap_error_data")
+  })
+
+  it("reports a missing id column, not a blank label for NA", {
+    error <- expect_error(slim(statuses = data.frame(label = "")), class = "stagemap_error_data")
+    expect_identical(error$problems[1], "`statuses` needs a column `id`.")
+  })
+})
+
+describe("stage_map() with a table that warns about a column it lacks", {
+  # A data frame whose `$` warns on a missing column, as a tibble's does.
+  it("reads the optional status column without warning when it is not there", {
+    registerS3method("$", "stagemap_test_tbl", function(x, name) {
+      value <- .subset2(x, name)
+      if (is.null(value)) {
+        warning("Unknown or uninitialised column: ", name)
+      }
+      value
+    })
+    cards <- data.frame(id = "a", label = "A", stage = "s", lane = "l")
+    class(cards) <- c("stagemap_test_tbl", "data.frame")
+    expect_no_warning(slim(cards = cards))
+    changes <- data.frame(step = "p", card = "a")
+    class(changes) <- c("stagemap_test_tbl", "data.frame")
+    expect_no_warning(add_steps(slim(), data.frame(id = "p", label = "P"), changes = changes))
   })
 })

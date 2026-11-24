@@ -35,7 +35,10 @@ describe("the bundled stage-map engine", {
     # And the old names: a row that has `old_name_of`, and every row under one
     old <- vapply(rows, function(row) !is.null(row$old_name_of), logical(1))
     old_paths <- vapply(rows[old], function(row) paste(row$block, row$field), "")
-    under_old <- function(row) any(vapply(old_paths, function(path) startsWith(paste(row$block, row$field), path), NA))
+    under_old <- function(row) {
+      full <- paste(row$block, row$field)
+      any(vapply(old_paths, function(path) full == path || startsWith(full, paste0(path, ".")), logical(1)))
+    }
     skipped <- vapply(rows, under_old, logical(1))
     expect_true(any(old), label = "the contract marks some old names")
     # The field of the package's spec that a row describes, or NULL

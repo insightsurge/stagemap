@@ -72,10 +72,10 @@
 #'
 #' @param cards A data frame with one row per card. Columns are listed under "Columns". It has no default.
 #' @param stages A data frame with one row per stage (a column of the picture). See "Columns". `NULL` takes the stages
-#'   from the `stage` column of `cards`: a factor gives its levels in their order (only the levels a card uses),
-#'   any other column gives its values in order of first appearance, and each stage's label is its id. Left out, a
-#'   mistyped stage in `cards` is not caught, because it makes a stage of its own: use a factor or give the table for
-#'   another order, or to check the spelling.
+#'   from the `stage` column of `cards`: a factor gives all its levels in their order, used or not, and any other column
+#'   gives its values in order of first appearance; each stage's label is its id. Left out, a mistyped stage in `cards`
+#'   is not caught, because it makes a stage of its own. Use a factor for the order; give the table for a label that
+#'   differs from the id, or to check the spelling.
 #' @param lanes A data frame with one row per lane (a row of the picture). See "Columns". `NULL` takes the lanes from
 #'   the `lane` column of `cards`, in the same way as `stages`; give the table for another order, for a label that
 #'   differs from the id, or to check the spelling. Links read best when they
@@ -204,7 +204,7 @@ stage_map <- function(
   check_dots(...)
   call <- rlang::current_env()
   highlight <- normalise_highlight(highlight, call)
-  statuses <- normalise_statuses(statuses, call)
+  statuses <- normalise_statuses(statuses)
   # A table left out is taken from the cards' own columns.
   stages <- stages %||% ids_from_cards(cards, "stage")
   lanes <- lanes %||% ids_from_cards(cards, "lane")
@@ -288,47 +288,21 @@ normalise_highlight <- function(highlight, call) {
 }
 
 # `statuses` as the code reads it: NULL for none (a named character vector of length zero counts as none, as does a
-# data frame with no rows), a vector with every label written, or the data frame. A label that is blank, or only
-# spaces, is refused: the legend would show an empty word. `statuses` was checked as a named character vector, a data
-# frame or NULL.
-normalise_statuses <- function(statuses, call) {
+# data frame with no rows), or the vector or data frame as given. `statuses` was checked as a named character vector, a
+# data frame or NULL; a blank label is refused later, by stage_map_check_statuses(), once the converter has accepted
+# the data frame's columns.
+normalise_statuses <- function(statuses) {
   checkmate::assert(
     checkmate::check_character(statuses, any.missing = FALSE, names = "unique", null.ok = TRUE),
     checkmate::check_data_frame(statuses)
   )
-  checkmate::assert_environment(call)
-  if (is.character(statuses) && length(statuses) == 0L) {
-    return(NULL)
-  }
-  labels <- if (is.character(statuses)) {
-    stats::setNames(statuses, names(statuses))
-  } else if (is.data.frame(statuses) && "label" %in% names(statuses) && is.character(statuses$label)) {
-    stats::setNames(statuses$label, as_text(statuses$id))
-  }
-  blank <- names(labels)[!is.na(labels) & !nzchar(trimws(labels))]
-  if (length(blank) > 0L) {
-    where <- if (is.character(statuses)) "the words in `statuses`" else "{.field statuses$label}"
-    sm_abort(
-      c(
-        "The statuses do not match the cards.",
-        "x" = cli_escape(cli::format_inline(paste0(
-          "A status needs a label that is not blank: ",
-          where,
-          " has a blank one for {.val {blank}}."
-        ))),
-        "i" = "Give the status a word, or leave it out of {.arg statuses}."
-      ),
-      class = "stagemap_error_data",
-      call = call
-    )
-  }
-  statuses
+  if (is.character(statuses) && length(statuses) == 0L) NULL else statuses
 }
 
 # The ids a table left out is taken from: the values of the column `column` of the cards, as a data frame with the
-# columns `id` and `label` (the label is the id). A factor gives its levels in their order, kept only where a card uses
-# them; any other column gives its values in order of first appearance. `NA` is left out: the converter reports it as a
-# missing value in the cards. A cards table with no such column gives a table with no rows, so the converter reports
+# columns `id` and `label` (the label is the id). A factor gives all its levels in their order, used or not; any other
+# column gives its values in order of first appearance. `NA` is left out: the converter reports it as a missing value in
+# the cards. A cards table with no such column gives a table with no rows, so the converter reports
 # the missing column once, on the cards.
 ids_from_cards <- function(cards, column) {
   checkmate::assert_data_frame(cards)
@@ -337,7 +311,7 @@ ids_from_cards <- function(cards, column) {
   ids <- if (is.null(found) || is.list(found)) {
     character()
   } else if (is.factor(found)) {
-    levels(found)[levels(found) %in% as.character(found)]
+    levels(found)[!is.na(levels(found))]
   } else {
     unique(as_text(found[!is.na(found)]))
   }
@@ -411,16 +385,45 @@ stage_map_status_problems <- function(found, field, data) {
   stats::setNames(cli_escape(lines), names(lines))
 }
 
+# Refuses a status label that is blank or only spaces (the legend would show an empty word), in either form of
+# `statuses`: the words in the options, or the `label` column of the data frame (read as text, so a factor counts).
+# `data` is the map's R data, already accepted by the converter, so the `id` column of the data frame exists. This is a
+# rule of this package: the engine draws a blank label. Caller: stage_map_check_statuses().
+stage_map_check_blank_labels <- function(data, call) {
+  checkmate::assert_list(data, names = "named")
+  checkmate::assert_environment(call)
+  words <- data$options$statuses
+  labels <- if (is.character(words)) {
+    stats::setNames(words, names(words))
+  } else if (is.data.frame(data$statuses) && !is.null(data$statuses[["label"]])) {
+    stats::setNames(as_text(data$statuses[["label"]]), as_text(data$statuses$id))
+  }
+  blank <- names(labels)[!is.na(labels) & !nzchar(trimws(labels))]
+  if (length(blank) > 0L) {
+    sm_abort(
+      c(
+        "A status label cannot be blank.",
+        "x" = cli_escape(cli::format_inline("{.arg statuses} has a blank label for {.val {blank}}.")),
+        "i" = "Give the status a word, or leave it out of {.arg statuses}."
+      ),
+      class = "stagemap_error_data",
+      call = call
+    )
+  }
+  invisible(NULL)
+}
+
 # Refuses what the engine refuses in the browser about statuses, with the values and the fix: a card whose `status` is
 # not a status of the map, and a `statuses` data frame that gives an id twice. `data` is the map's R data, already
 # accepted by the converter, so its columns exist. Caller: stage_map().
 stage_map_check_statuses <- function(data, call) {
+  stage_map_check_blank_labels(data, call)
   twice <- if (is.data.frame(data$statuses)) {
     ids <- as_text(data$statuses$id)
     unique(ids[!is.na(ids) & duplicated(ids)])
   }
   problems <- c(
-    stage_map_status_problems(data$cards$status, "cards$status", data),
+    stage_map_status_problems(data$cards[["status"]], "cards$status", data),
     if (length(twice) > 0L) {
       c(
         "x" = cli_escape(cli::format_inline("{.field statuses$id} has ids given more than once: {.val {twice}}.")),

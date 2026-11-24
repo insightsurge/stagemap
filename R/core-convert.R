@@ -40,7 +40,8 @@ vector_problems <- function(x, spec, label, scalar) {
   if (!blank && !rule$ok(x, spec)) {
     return(sprintf("`%s` must be %s, not %s.", label, rule$want(spec), class(x)[[1]]))
   }
-  missing <- is.na(x)
+  # A factor with NA as one of its levels holds NA as a value that is.na() does not see: its text is NA.
+  missing <- is.na(x) | (is.factor(x) & is.na(as.character(x)))
   out <- character()
   at <- function(index) if (scalar) label else paste0(label, rows_text(index))
   if (spec$required && any(missing)) {

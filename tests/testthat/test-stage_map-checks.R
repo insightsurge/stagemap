@@ -46,6 +46,20 @@ describe("the join checks", {
     data_error(add_links(small(), data.frame(from = " a", to = "b")))
   })
 
+  it("reports an empty string as a bad id in a single-id column, but ignores empty pieces of a variants list", {
+    error <- data_error(slim(cards = data.frame(id = "a", label = "A", stage = "", lane = "l")))
+    expect_match(conditionMessage(error), "cards$stage", fixed = TRUE)
+    expect_match(conditionMessage(error), "\"\"", fixed = TRUE)
+    data_error(add_links(small(), data.frame(from = "", to = "a")))
+    expect_no_error(
+      add_variants(
+        slim(cards = data.frame(id = "a", label = "A", stage = "s", lane = "l", variants = "v1, ,")),
+        data.frame(id = "v1", label = "V1")
+      )
+    )
+    expect_error(column_ids("a", NA), "split")
+  })
+
   it("refuses a link kind that the kinds lack, and a kind given with no kinds", {
     kinds <- data.frame(id = "k", label = "K")
     error <- data_error(add_links(small(), data.frame(from = "a", to = "b", kind = "zz"), kinds = kinds))

@@ -20,7 +20,7 @@ plain arrow. Added only with \code{links}: when \code{links} adds none, so do th
 \value{
 The widget, with the links added. A widget that has links already is an error of class
 \code{stagemap_error_layer}. A \code{from} or \code{to} that is not the id of a card, a \code{kind} that is not in \code{kinds} (or a
-\code{kind} with no \code{kinds} given), a \code{variants} id that \code{add_variants()} has not given, a \code{step} that
+\code{kind} with no \code{kinds} given), a \code{variants} id that \code{\link[=add_variants]{add_variants()}} has not given, a \code{step} that
 \code{\link[=add_steps]{add_steps()}} has not given, and an id given twice in \code{kinds}, are errors of class \code{stagemap_error_data} that
 name the ids. A \code{step} or \code{variants} id is checked when the table it names arrives, in either order.
 }

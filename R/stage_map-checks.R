@@ -31,13 +31,17 @@ stage_map_joins <- list(
   list(table = "steps", column = "stage", to = "stages")
 )
 
-# The ids a column holds, as text, with NA left out: the cells of a `split` column are cut at commas and trimmed.
+# The ids a column holds, as text, with NA left out. The cells of a `split` column (ids separated by commas) are cut at
+# commas and trimmed, and empty pieces are dropped ("v1," holds one id). In any other column an empty string is an id,
+# and the join check reports it.
 column_ids <- function(column, split) {
+  checkmate::assert_flag(split)
   ids <- as_text(column)
   if (split) {
     ids <- trimws(unlist(strsplit(ids[!is.na(ids)], ",", fixed = TRUE)))
+    ids <- ids[nzchar(ids)]
   }
-  unique(ids[!is.na(ids) & nzchar(ids)])
+  unique(ids[!is.na(ids)])
 }
 
 # One error line pair (the fault, the fix) as a cli message part, with the values escaped.

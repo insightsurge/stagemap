@@ -32,7 +32,7 @@ none_if_empty <- function(x) {
 #'   plain arrow. Added only with `links`: when `links` adds none, so do the kinds.
 #' @returns The widget, with the links added. A widget that has links already is an error of class
 #'   `stagemap_error_layer`. A `from` or `to` that is not the id of a card, a `kind` that is not in `kinds` (or a
-#'   `kind` with no `kinds` given), a `variants` id that `add_variants()` has not given, a `step` that
+#'   `kind` with no `kinds` given), a `variants` id that [add_variants()] has not given, a `step` that
 #'   [add_steps()] has not given, and an id given twice in `kinds`, are errors of class `stagemap_error_data` that
 #'   name the ids. A `step` or `variants` id is checked when the table it names arrives, in either order.
 #' @family stage map
@@ -217,7 +217,7 @@ stage_map_check_changes <- function(changes, steps, map_data, call) {
         "i" = "Use an id from the map's {.field stages$id}."
       )
     },
-    stage_map_status_problems(changes$status, "changes$status", map_data),
+    stage_map_status_problems(changes[["status"]], "changes$status", map_data),
     stage_map_twice_problems(changes)
   )
   if (length(problems) > 0L) {

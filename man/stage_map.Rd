@@ -31,10 +31,10 @@ stage_map(
 \item{cards}{A data frame with one row per card. Columns are listed under "Columns". It has no default.}
 
 \item{stages}{A data frame with one row per stage (a column of the picture). See "Columns". \code{NULL} takes the stages
-from the \code{stage} column of \code{cards}: a factor gives its levels in their order (only the levels a card uses),
-any other column gives its values in order of first appearance, and each stage's label is its id. Left out, a
-mistyped stage in \code{cards} is not caught, because it makes a stage of its own: use a factor or give the table for
-another order, or to check the spelling.}
+from the \code{stage} column of \code{cards}: a factor gives all its levels in their order, used or not, and any other column
+gives its values in order of first appearance; each stage's label is its id. Left out, a mistyped stage in \code{cards}
+is not caught, because it makes a stage of its own. Use a factor for the order; give the table for a label that
+differs from the id, or to check the spelling.}
 
 \item{lanes}{A data frame with one row per lane (a row of the picture). See "Columns". \code{NULL} takes the lanes from
 the \code{lane} column of \code{cards}, in the same way as \code{stages}; give the table for another order, for a label that
