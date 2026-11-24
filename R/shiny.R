@@ -124,14 +124,16 @@ queue_message <- function(session, message) {
   invisible(NULL)
 }
 
+# Sends the waiting commands as one message, a list of them in call order: the page runs the whole batch, and keeps
+# every command of it for a map that is not drawn yet.
 send_pending <- function(session, queue) {
   checkmate::assert_environment(session)
   checkmate::assert_environment(queue)
   pending <- queue$pending
   queue$pending <- list()
   queue$scheduled <- FALSE
-  for (message in pending) {
-    session$sendCustomMessage("stagemap:command", message)
+  if (length(pending) > 0L) {
+    session$sendCustomMessage("stagemap:command", unname(pending))
   }
   invisible(NULL)
 }

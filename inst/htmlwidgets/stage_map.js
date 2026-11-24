@@ -10,7 +10,7 @@
  * functions.
  */
 (() => {
-  const QUEUE_LIMIT = 100;
+  const QUEUE_LIMIT = 10000; /* commands kept for a map that is not drawn yet; more is a loop, and the oldest go */
   /* The engine's events the binding listens to. */
   const EVENTS = ['select', 'hover'];
 
@@ -83,11 +83,23 @@
     by: detail.by,
   });
 
-  /* A command from R: run it on the widget, or keep it until the widget is drawn (the oldest goes first when full). */
-  function deliver(message) {
-    const widget = handles.get(message.id);
-    if (widget?.drawn()) widget.run(message);
-    else queues.set(message.id, [...(queues.get(message.id) ?? []), message].slice(-QUEUE_LIMIT));
+  /* Commands from R, a batch (the commands of one flush, in order) or one: run each on its widget, or keep it until the
+     widget is drawn. Over the limit, the oldest go, with one warning. */
+  function deliver(payload) {
+    for (const message of Array.isArray(payload) ? payload : [payload]) {
+      const widget = handles.get(message.id);
+      if (widget?.drawn()) {
+        widget.run(message);
+        continue;
+      }
+      const waiting = [...(queues.get(message.id) ?? []), message];
+      if (waiting.length > QUEUE_LIMIT)
+        warnOnce(
+          `${message.id}/queue`,
+          `"${message.id}" is not drawn and holds ${QUEUE_LIMIT} commands: the oldest are dropped.`,
+        );
+      queues.set(message.id, waiting.slice(-QUEUE_LIMIT));
+    }
   }
 
   let registered = false;
@@ -120,6 +132,8 @@
       /* The step player moves without an event of the engine, and only the step that is current says so (aria-current),
          so a change of it is what asks for the state again. */
       let stepWatch = null;
+      /* A map drawn in a hidden element cannot answer `state` until it is shown: a change of its size asks again. */
+      let sizeWatch = null;
       /* Whether the last answer to `state` was null (not drawn yet): each such ask makes the engine hold one more
          command, so it is not asked again until something has drawn (new data, or an event from the engine). */
       let notReady = false;
@@ -145,6 +159,12 @@
           sendInput(`${el.id}_pick:stagemap.pick`, pendingPick, true);
           pendingPick = null;
         }
+      }
+      /* The map may answer now (it was shown, or resized): ask for the state again if it had not answered. */
+      function ready() {
+        if (!notReady) return;
+        notReady = false;
+        scheduleState();
       }
       /* One push after the engine has reacted, however many events came in this turn. */
       const scheduleState = () => {
@@ -177,6 +197,9 @@
         destroy: () => {
           unmount();
           clearTimeout(pushTimer);
+          pushTimer = 0;
+          sizeWatch?.disconnect();
+          sizeWatch = null;
           /* A map drawn again under the same id has taken over: what waits for it stays. */
           if (handles.get(el.id) === widget) {
             handles.delete(el.id);
@@ -232,6 +255,8 @@
         handles.set(el.id, widget);
         listening = EVENTS.map((name) => `${engine.prefix}:${name}`);
         for (const type of listening) el.addEventListener(type, onEvent);
+        sizeWatch = new ResizeObserver(ready);
+        sizeWatch.observe(el);
         stepWatch = new MutationObserver(scheduleState);
         stepWatch.observe(el, { subtree: true, attributes: true, attributeFilter: ['aria-current'] });
         window.jQuery?.(el).on('shiny:recalculating', markBusy);
@@ -274,7 +299,10 @@
           if (view) for (const message of waiting) widget.run(message);
           scheduleState();
         },
-        resize: () => view?.resize(),
+        resize: () => {
+          view?.resize();
+          ready();
+        },
       };
     },
   });

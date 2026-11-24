@@ -56,6 +56,9 @@ server <- function(input, output, session) {
     picks(picks() + 1L)
     seen(input$map_selected)
   })
+  # How many times input$map_selected changed, to see that only a change of the selection changes it.
+  selected_runs <- reactiveVal(0L)
+  observeEvent(input$map_selected, selected_runs(selected_runs() + 1L), ignoreNULL = FALSE)
   sent <- reactiveVal(0L)
   verb <- function(button, action) {
     observeEvent(input[[button]], {
@@ -90,7 +93,8 @@ server <- function(input, output, session) {
         state = input$map_state,
         picks = jsonlite::unbox(picks()),
         seen = seen(),
-        sent = jsonlite::unbox(sent())
+        sent = jsonlite::unbox(sent()),
+        selected_runs = jsonlite::unbox(selected_runs())
       ),
       null = "null",
       dataframe = "rows"

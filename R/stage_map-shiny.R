@@ -3,17 +3,25 @@
 
 # The ids of a verb as text, without repeats, in the order given. `NULL` and a vector of length zero are `character(0)`:
 # the empty choice. Ids are text or whole numbers and never `NA`, and are compared as text (7 and "7" are one id).
-sm_ids <- function(ids, arg = "ids") {
+sm_ids <- function(ids, arg = "ids", unique = TRUE) {
   checkmate::assert_string(arg, min.chars = 1L)
+  checkmate::assert_flag(unique)
   if (length(ids) == 0L) {
     return(character())
   }
+  # A factor is its labels, as it is in the cards' table.
+  if (is.factor(ids)) {
+    ids <- as.character(ids)
+  }
+  # Whole numbers of any size: checkmate's integerish check stops at the largest integer, and stage_map() does not.
+  whole <- is.numeric(ids) && all(is.finite(ids)) && all(ids == round(ids))
   checkmate::assert(
     checkmate::check_character(ids, any.missing = FALSE, min.chars = 1L),
-    checkmate::check_integerish(ids, any.missing = FALSE),
+    checkmate::check_true(whole),
     .var.name = paste0(arg, " (ids: text or whole numbers, none missing)")
   )
-  unique(as_text(ids))
+  text <- as_text(ids)
+  if (unique) base::unique(text) else text
 }
 
 # What `map` is, for a verb: "proxy" (made by stage_map_proxy()) or "widget" (made by stage_map()), or a classed error.
@@ -73,8 +81,9 @@ sm_send_each <- function(proxy, command, ids, extra = list(), call = rlang::call
 #' [stage_map_show()], [stage_map_hide()], [stage_map_enable()] and [stage_map_disable()]) send their commands
 #' through, so the map changes without being drawn again.
 #'
-#' The map is drawn again whenever the expression of `render_stage_map()` gives a new map; the reader's pick, and what
-#' the verbs changed, then start again from that map. A map in a tab that is not shown yet is drawn when the tab is
+#' The map is drawn again whenever the expression of `render_stage_map()` gives a new map, in place. The reader's pick
+#' stays while its card is still in the new map, and is let go when the card is gone: `input$map_pick` then reports it
+#' with `by = "data"`. A map in a tab that is not shown yet is drawn when the tab is
 #' shown, and one inside [shiny::renderUI()], [shiny::insertUI()], a module or a modal works as it does anywhere else.
 #' In a module, give the output `ns("map")` and the proxy `"map"` (the plain or the namespaced id both work); the inputs
 #' below keep the module's own names, so the server reads `input$map_selected`.
@@ -211,7 +220,7 @@ stage_map_proxy <- function(
 #' Ids are text or whole numbers and are compared as text, so `7` and `"7"` are one id. `ids` has no default, so a
 #' forgotten argument is an error and never a silent clear. `NULL` and a vector of length zero mean no ids:
 #' `stage_map_select()` and `stage_map_highlight()` let go, and the other four do nothing. A card the map does not
-#' have is not an error for a proxy, which does not know the map: the page writes one warning to the browser's
+#' have is not an error for a proxy, which does not know the map: the page writes a warning to the browser's
 #' console and changes nothing. `stage_map_show()`, `stage_map_hide()`, `stage_map_enable()` and `stage_map_disable()`
 #' send one command for each id.
 #'
@@ -270,7 +279,7 @@ stage_map_proxy <- function(
 #'   observeEvent(input$hide, stage_map_hide(proxy, "review"))
 #'   observeEvent(input$show, stage_map_show(proxy, "review"))
 #'   observeEvent(input$block, stage_map_disable(proxy, "publish", reason = "Waiting for the review"))
-#'   # Follow the reader's pick: light the cards upstream of what is selected.
+#'   # Light the cards that are selected, and let go when nothing is.
 #'   observeEvent(input$map_selected, ignoreNULL = FALSE, {
 #'     stage_map_highlight(proxy, input$map_selected)
 #'   })
@@ -332,11 +341,12 @@ stage_map_enable <- function(map, ids) {
 stage_map_disable <- function(map, ids, reason) {
   call <- rlang::current_env()
   sm_map_kind(map, widget_ok = FALSE, call = call)
-  ids <- sm_ids(ids)
-  # One reason for all the ids, or one for each; blank means nothing but spaces.
+  ids <- sm_ids(ids, unique = FALSE)
+  # One reason for all the ids, or one for each (counted before a repeated id is dropped); blank means only spaces.
   checkmate::assert_character(reason, any.missing = FALSE, min.len = 1L, len = if (length(reason) > 1L) length(ids))
   checkmate::assert_character(trimws(reason), min.chars = 1L, .var.name = "reason (not blank)")
-  sm_send_each(map, "disable", ids, list(reason = reason), call = call)
+  once <- !duplicated(ids)
+  sm_send_each(map, "disable", ids[once], list(reason = if (length(reason) > 1L) reason[once] else reason), call = call)
 }
 
 # The `links` of stage_map_highlight() as the engine reads them: NULL for none (also a data frame with no rows), else

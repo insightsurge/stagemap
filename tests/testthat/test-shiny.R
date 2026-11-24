@@ -74,6 +74,28 @@ describe("sm_send()", {
     expect_identical(session$sent[[1]]$message$id, "mod-map")
   })
 
+  it("sends every command of a flush as one message, a list in call order", {
+    session <- fake_session()
+    proxy <- sm_proxy("map", session = session)
+    for (id in c("a", "b", "c")) {
+      sm_send(proxy, "hide", data = list(id = id))
+    }
+    session$flush()
+    expect_length(session$raw, 1L)
+    expect_identical(session$raw[[1]]$type, "stagemap:command")
+    expect_null(names(session$raw[[1]]$message))
+    expect_identical(vapply(session$raw[[1]]$message, function(m) m$command, ""), rep("hide", 3L))
+    expect_identical(vapply(session$raw[[1]]$message, function(m) as_list(m$data)$id, ""), c("a", "b", "c"))
+  })
+
+  it("sends nothing for a flush that has no command", {
+    session <- fake_session()
+    queue <- new.env()
+    queue$pending <- list()
+    send_pending(session, queue)
+    expect_length(session$raw, 0L)
+  })
+
   it("starts a new batch after a flush", {
     session <- fake_session()
     proxy <- sm_proxy("map", session = session)

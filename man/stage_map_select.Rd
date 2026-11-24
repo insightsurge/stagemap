@@ -64,7 +64,7 @@ drawn, so a widget is an error of class \code{stagemap_error_widget}.
 Ids are text or whole numbers and are compared as text, so \code{7} and \code{"7"} are one id. \code{ids} has no default, so a
 forgotten argument is an error and never a silent clear. \code{NULL} and a vector of length zero mean no ids:
 \code{stage_map_select()} and \code{stage_map_highlight()} let go, and the other four do nothing. A card the map does not
-have is not an error for a proxy, which does not know the map: the page writes one warning to the browser's
+have is not an error for a proxy, which does not know the map: the page writes a warning to the browser's
 console and changes nothing. \code{stage_map_show()}, \code{stage_map_hide()}, \code{stage_map_enable()} and \code{stage_map_disable()}
 send one command for each id.
 
@@ -107,7 +107,7 @@ server <- function(input, output, session) {
   observeEvent(input$hide, stage_map_hide(proxy, "review"))
   observeEvent(input$show, stage_map_show(proxy, "review"))
   observeEvent(input$block, stage_map_disable(proxy, "publish", reason = "Waiting for the review"))
-  # Follow the reader's pick: light the cards upstream of what is selected.
+  # Light the cards that are selected, and let go when nothing is.
   observeEvent(input$map_selected, ignoreNULL = FALSE, {
     stage_map_highlight(proxy, input$map_selected)
   })

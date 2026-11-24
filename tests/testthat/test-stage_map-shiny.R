@@ -231,6 +231,17 @@ describe("stage_map_select()", {
     expect_identical(commands(p$session)[[1]]$data$ids, list("3"))
   })
 
+  it("takes whole numbers of any size, as stage_map() does, and factors as their labels", {
+    p <- fake_proxy()
+    stage_map_select(p$proxy, c(3e9, 2^40))
+    expect_identical(commands(p$session)[[1]]$data$ids, list("3000000000", "1099511627776"))
+    p <- fake_proxy()
+    stage_map_select(p$proxy, factor(c("b", "a"), levels = c("b", "a")))
+    expect_identical(commands(p$session)[[1]]$data$ids, list("b", "a"))
+    expect_error(stage_map_select(p$proxy, c(1, Inf)), "ids")
+    expect_error(stage_map_select(p$proxy, NaN), "ids")
+  })
+
   it("has no default for ids, so a forgotten argument is an error and never a clear", {
     p <- fake_proxy()
     expect_error(stage_map_select(p$proxy), "ids")
@@ -336,6 +347,15 @@ describe("stage_map_highlight() on a proxy", {
       stage_map_highlight(p$proxy, "a", links = data.frame(from = NA_character_, to = "a")),
       "links"
     )
+  })
+
+  it("takes factors in the ids and the ends of the links", {
+    p <- fake_proxy()
+    ids <- factor(c("a", "b"))
+    stage_map_highlight(p$proxy, ids, links = data.frame(from = ids[1], to = ids[2], kind = factor("hand")))
+    sent <- commands(p$session)[[1]]$data
+    expect_identical(sent$ids, list("a", "b"))
+    expect_identical(sent$links, list(list(from = "a", to = "b", kind = "hand")))
   })
 
   it("has no default for ids", {
@@ -460,13 +480,14 @@ describe("stage_map_show(), stage_map_hide() and stage_map_enable()", {
     expect_error(stage_map_hide("a", "a"), class = "stagemap_error_widget")
   })
 
-  it("send 5000 ids as 5000 commands, in a flush", {
+  it("send 5000 ids as 5000 commands, in one message at the flush", {
     p <- fake_proxy()
     ids <- sprintf("card-%d", seq_len(5000))
     stage_map_hide(p$proxy, ids)
     expect_length(p$session$flush_callbacks, 1L)
     p$session$flush()
     expect_length(p$session$sent, 5000L)
+    expect_length(p$session$raw, 1L)
   })
 })
 
@@ -518,6 +539,17 @@ describe("stage_map_disable()", {
     stage_map_disable(p$proxy, character(), "x")
     expect_length(p$session$flush_callbacks, 0L)
     expect_error(stage_map_disable(p$proxy, NULL), "reason")
+  })
+
+  it("counts the reasons against the ids as given, then sends a repeated id once", {
+    p <- fake_proxy()
+    stage_map_disable(p$proxy, c("a", "a", "b"), c("first", "second", "third"))
+    expect_identical(
+      lapply(commands(p$session), function(x) x$data),
+      list(list(id = "a", reason = "first"), list(id = "b", reason = "third"))
+    )
+    expect_error(stage_map_disable(fake_proxy()$proxy, c("a", "a"), c("x", "y", "z")), "reason")
+    expect_error(stage_map_disable(fake_proxy()$proxy, c("a", "a", "b"), c("x", "y")), "reason")
   })
 
   it("has no default for ids, and stops with stagemap_error_widget for a widget", {

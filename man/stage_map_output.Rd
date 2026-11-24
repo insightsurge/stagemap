@@ -50,8 +50,9 @@ server. \code{stage_map_proxy()} makes the proxy that the verbs (\code{\link[=st
 through, so the map changes without being drawn again.
 }
 \details{
-The map is drawn again whenever the expression of \code{render_stage_map()} gives a new map; the reader's pick, and what
-the verbs changed, then start again from that map. A map in a tab that is not shown yet is drawn when the tab is
+The map is drawn again whenever the expression of \code{render_stage_map()} gives a new map, in place. The reader's pick
+stays while its card is still in the new map, and is let go when the card is gone: \code{input$map_pick} then reports it
+with \code{by = "data"}. A map in a tab that is not shown yet is drawn when the tab is
 shown, and one inside \code{\link[shiny:renderUI]{shiny::renderUI()}}, \code{\link[shiny:insertUI]{shiny::insertUI()}}, a module or a modal works as it does anywhere else.
 In a module, give the output \code{ns("map")} and the proxy \code{"map"} (the plain or the namespaced id both work); the inputs
 below keep the module's own names, so the server reads \code{input$map_selected}.

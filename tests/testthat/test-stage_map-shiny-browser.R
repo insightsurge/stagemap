@@ -159,6 +159,41 @@ describe("the map in a Shiny app: what the reader does reaches the server", {
     expect_identical(seen_by_server(app)$hovered, list())
   })
 
+  it("does not report a stage under the pointer in input$map_hovered", {
+    app <- open_app("stage-map-verbs")
+    app$run_js(
+      "window.__hovers = [];
+       document.getElementById('map').addEventListener('stagemap:hover', (e) => window.__hovers.push(e.detail));
+       document.querySelector('#map [data-stage=\"check\"]').dispatchEvent(new PointerEvent('pointerenter'));"
+    )
+    # The engine announces the stage; the server must not hear a card
+    app$wait_for_js("window.__hovers.some((hover) => hover.kind === 'stage' && hover.id === 'check')")
+    # A verb after it, so the server has had everything the page said before
+    press(app, "select_none")
+    expect_identical(seen_by_server(app)$hovered, list())
+    # And a card after the stage is reported again
+    app$run_js("document.querySelector('#map [data-card=\"a\"]').dispatchEvent(new PointerEvent('pointerenter'))")
+    wait_for_server(app, "d.hovered.length === 1")
+  })
+
+  it("sends input$map_selected only when the selection changes, not for a hide, a highlight or a stage pick", {
+    app <- open_app("stage-map-verbs")
+    wait_for_server(app, "d.state !== null")
+    runs <- seen_by_server(app)$selected_runs
+    press(app, "hide_b")
+    press(app, "light")
+    app$run_js(
+      "document.querySelector('#map [data-stage=\"check\"]').dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }))"
+    )
+    wait_for_server(app, "d.state.stage.length === 1")
+    press(app, "show_b")
+    expect_identical(seen_by_server(app)$selected_runs, runs)
+    # A change of the selection does count
+    press(app, "select_c")
+    wait_for_server(app, "d.selected.length === 1")
+    expect_identical(seen_by_server(app)$selected_runs, runs + 1L)
+  })
+
   it("leaves via, at and seq out of the engine's event on a lone map", {
     app <- open_app("stage-map-verbs")
     app$run_js(
@@ -375,6 +410,24 @@ describe("the map in a Shiny app that builds its page on the server", {
       ),
       "auto"
     )
+  })
+
+  it("keeps every command sent to a map in a hidden tab, however many, and applies them when the tab is shown", {
+    app <- open_app("stage-map-dynamic", "main")
+    click_now(app, "#hide_many")
+    app$run_js("document.querySelector('a[data-value=\"Many\"]').click()")
+    # Every card is hidden, so none is in the page: the map is drawn when its root is
+    app$wait_for_js("document.querySelector('#many_map > div') !== null")
+    wait_for_server(app, "d.many_hidden === 150")
+    expect_identical(app$get_js("document.querySelectorAll('#many_map [data-card]').length"), 0L)
+  })
+
+  it("tells the server the selection and the state of a map drawn in a hidden tab once the tab is shown", {
+    app <- open_app("stage-map-dynamic", "main")
+    app$run_js("document.querySelector('a[data-value=\"Eager\"]').click()")
+    app$wait_for_js("document.querySelector('#eager_map [data-card]') !== null")
+    wait_for_server(app, "d.eager_state !== null && d.eager_selected !== null")
+    expect_identical(seen_by_server(app)$eager_selected, list())
   })
 
   it("draws a map in a modal", {
