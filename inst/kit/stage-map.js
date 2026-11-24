@@ -6538,7 +6538,7 @@
       const LAYOUTS = ['grid', 'levels', 'dates'];
       const LINES = ['solid', 'dashed', 'dotted', 'dashdot'];
       const ENDS = ['arrow', 'ring', 'none'];
-      const STEP_PANEL = ['file', 'code', 'highlight'];
+      const STEP_PANEL = ['file', 'code', 'code_lines', 'highlight'];
       const LISTS = {
         stages: { min: 1, required: ['id', 'label'], optional: ['kicker', 'text', 'date', 'flag', 'tone', ...STEP_PANEL] },
         lanes: { min: 1, required: ['id', 'label'], optional: ['tone', 'text'] },
@@ -6579,8 +6579,9 @@
         disabled: [(v) => typeof v === 'boolean', 'true or false'],
         quiet: [(v) => typeof v === 'boolean', 'true or false'],
         date: [isDate, 'a date written YYYY-MM-DD'],
-        highlight: [(v) => typeof v === 'string' && LINE_LIST.test(v), 'line numbers such as "3, 5-7"'],
+        code_lines: [(v) => typeof v === 'string' && LINE_LIST.test(v), 'line numbers such as "3, 5-7"'],
       };
+      RULES.highlight = RULES.code_lines;
       const TEXT = [(v) => typeof v === 'string', 'text'];
       const ID = [(v) => typeof v === 'string' && v.trim() !== '', 'text that is not empty, or a number'];
 
@@ -6611,7 +6612,7 @@
         const bad = ids.find((x) => !ID[0](x));
         if (bad !== undefined) return no(`"ids" must be card ids (text or numbers), not ${show(bad)}`);
         const gone = ids.find((x) => !cards.includes(x));
-        if (gone !== undefined) return no(`"ids" names ${show(gone)}, which is not an id in "nodes"${hint(gone, cards)}`);
+        if (gone !== undefined) return no(`"ids" names ${show(gone)}, which is not an id in "cards"${hint(gone, cards)}`);
         if (!ids.length) return none;
         const out = [];
         for (const row of listOf(value.links)) {
@@ -6648,15 +6649,22 @@
         return Number.isInteger(k) && k >= MIN_COLUMNS && k <= MAX_COLUMNS ? k : null;
       }
 
+      const CARDS = Symbol('the name of the cards in the data');
+      const BOTH = Symbol('cards and nodes both given');
       function normalise(d) {
         if (!util.isObject(d)) return d;
         const out = { ...d };
+        const [cards, nodes] = [given(d, 'cards'), given(d, 'nodes')];
+        out[CARDS] = cards || !nodes ? 'cards' : 'nodes';
+        out[BOTH] = cards && nodes;
+        if (cards) out.nodes = d.cards;
+        delete out.cards;
         const text = (row, key) => {
           if (typeof row[key] === 'number' && Number.isFinite(row[key])) row[key] = String(row[key]);
         };
         for (const name of Object.keys(LISTS)) {
-          if (d[name] === undefined || d[name] === null) continue;
-          const rows = util.isObject(d[name]) ? [d[name]] : d[name];
+          if (out[name] === undefined || out[name] === null) continue;
+          const rows = util.isObject(out[name]) ? [out[name]] : out[name];
           if (!Array.isArray(rows)) continue;
           out[name] = rows.map((row) => {
             if (!util.isObject(row)) return row;
@@ -6680,11 +6688,16 @@
         const done = () => ({ problems: p, notes: [...notes.values()] });
         const { isObject } = util;
         if (!isObject(d)) {
-          p.push(`the data must be an object with "options", "stages", "lanes" and "nodes", not ${kind(d)}`);
+          p.push(`the data must be an object with "options", "stages", "lanes" and "cards", not ${kind(d)}`);
           return done();
         }
+        if (d[BOTH]) {
+          p.push('the data gives both "cards" and "nodes"; give one: "cards", or "nodes", its old name');
+          return done();
+        }
+        const said = (name) => (name === 'nodes' ? d[CARDS] : name);
         for (const key of Object.keys(d)) {
-          const top = ['options', ...Object.keys(LISTS)];
+          const top = ['options', 'cards', ...Object.keys(LISTS)];
           if (!top.includes(key) && typo(key, top)) note(`|${key}`, unused('The data', 'a field', key, top));
         }
 
@@ -6700,19 +6713,19 @@
           const value = d[name];
           rows[name] = [];
           if (value === undefined || value === null) {
-            if (spec.min) p.push(`"${name}" is missing; it must be a list of rows with ${oneOf(spec.required)}`);
+            if (spec.min) p.push(`"${said(name)}" is missing; it must be a list of rows with ${oneOf(spec.required)}`);
             continue;
           }
           if (!Array.isArray(value)) {
-            p.push(`"${name}" must be a list of rows (records), not ${kind(value)}`);
+            p.push(`"${said(name)}" must be a list of rows (records), not ${kind(value)}`);
             continue;
           }
-          if (value.length < spec.min) p.push(`"${name}" must have at least ${spec.min} row`);
+          if (value.length < spec.min) p.push(`"${said(name)}" must have at least ${spec.min} row`);
           const seen = new Set();
           let whole = true;
           const known = [...spec.required, ...spec.optional];
           value.forEach((row, i) => {
-            const at = `"${name}" row ${i + 1}`;
+            const at = `"${said(name)}" row ${i + 1}`;
             if (!isObject(row)) {
               p.push(`${at} must be an object with ${oneOf(spec.required)}, not ${show(row)}`);
               whole = false;
@@ -6720,7 +6733,7 @@
             }
             rows[name].push([row, i + 1]);
             for (const key of Object.keys(row)) {
-              if (!known.includes(key) && typo(key, known)) note(`${name}|${key}`, unused(`"${name}"`, 'a column', key, known));
+              if (!known.includes(key) && typo(key, known)) note(`${name}|${key}`, unused(`"${said(name)}"`, 'a column', key, known));
             }
             for (const key of spec.required) {
               if (!given(row, key)) {
@@ -6734,9 +6747,11 @@
               const [ok, what] = key === 'status' ? statusRule : (JOINS[name]?.[key] ? ID : RULES[key] || TEXT);
               if (!ok(row[key])) p.push(`${at}: "${key}" must be ${what}, not ${show(row[key])}`);
             }
+            if (given(row, 'code_lines') && given(row, 'highlight'))
+              p.push(`${at}: give "code_lines" or "highlight", its old name, not both`);
             if (spec.required.includes('id') && !ID[0](row.id)) whole = false;
             else if (typeof row.id === 'string') {
-              if (seen.has(row.id)) p.push(`${at}: the id ${show(row.id)} is used twice in "${name}"`);
+              if (seen.has(row.id)) p.push(`${at}: the id ${show(row.id)} is used twice in "${said(name)}"`);
               seen.add(row.id);
             }
           });
@@ -6756,7 +6771,7 @@
         const joins = (name, key, value, target, at) => {
           if (!ids[target] || typeof value !== 'string') return;
           if (!ids[target].has(value))
-            p.push(`${at}: "${key}" is ${show(value)}, which is not an id in "${target}"${hint(value, ids[target])}`);
+            p.push(`${at}: "${key}" is ${show(value)}, which is not an id in "${said(target)}"${hint(value, ids[target])}`);
         };
         const check = (name, row, n, key, target, values) => {
           if (d[target] === undefined || d[target] === null) {
@@ -6765,7 +6780,7 @@
             absent.get(k)[3]++;
             return;
           }
-          const at = `"${name}" row ${n}${typeof row.id === 'string' ? ` (${show(row.id)})` : ''}`;
+          const at = `"${said(name)}" row ${n}${typeof row.id === 'string' ? ` (${show(row.id)})` : ''}`;
           for (const one of values) joins(name, key, one, target, at);
         };
         for (const [name, fields] of Object.entries(JOINS)) {
@@ -6785,7 +6800,7 @@
         for (const [name, key, target, count] of absent.values()) {
           if (LISTS[target].min) continue;
           const which = count === 1 ? '1 row gives' : `${count} rows give`;
-          p.push(`"${name}": ${which} a "${key}", but there is no "${target}" list; add one or leave "${key}" out`);
+          p.push(`"${said(name)}": ${which} a "${key}", but there is no "${said(target)}" list; add one or leave "${key}" out`);
         }
 
         const o = d.options ?? {};
@@ -8003,10 +8018,10 @@
         q('.v-sm-panel').classList.toggle('v-sm-two', Boolean(code));
         if (!code) return;
         const lines = code.split('\n');
-        const marked = lineSet(entry.highlight, lines.length);
+        const marked = lineSet(linesOf(entry), lines.length);
         q('.v-sm-fname').textContent = entry.file || 'File';
         q('.v-sm-fnote').textContent = marked.size
-          ? `Changed lines: ${String(entry.highlight).replace(/\s*-\s*/g, ' to ')}.`
+          ? `Changed lines: ${String(linesOf(entry)).replace(/\s*-\s*/g, ' to ')}.`
           : '';
         q('.v-sm-code').setAttribute('aria-label', entry.file || 'File');
         q('.v-sm-code code').replaceChildren(
@@ -8131,9 +8146,10 @@
         return { show, choose };
       }
 
+      const linesOf = (e) => (given(e, 'code_lines') ? e.code_lines : e.highlight);
       const stepEntry = (s) =>
         s.stage
-          ? { ...s.stage, kicker: s.kicker || s.stage.kicker, ...(s.code ? { file: s.file, code: s.code, highlight: s.highlight } : {}) }
+          ? { ...s.stage, kicker: s.kicker || s.stage.kicker, ...(s.code ? { file: s.file, code: s.code, code_lines: linesOf(s) } : {}) }
           : {
               id: s.id,
               textField: 'steps.text',
@@ -8142,7 +8158,7 @@
               text: s.text,
               file: s.file,
               code: s.code,
-              highlight: s.highlight,
+              code_lines: linesOf(s),
             };
 
       function changesAt(m, i) {

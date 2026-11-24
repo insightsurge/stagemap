@@ -29,6 +29,32 @@ describe("the bundled stage-map engine", {
     expect_match(style, paste0("\\.", expected$css, "\\b"))
   })
 
+  it("lists the data and option fields the package reads, apart from the old names it skips", {
+    # Given the contract's rows, one per field (paths such as "cards.id")
+    rows <- kit_contract()$r
+    # And the old names: a row that has `old_name_of`, and every row under one
+    old <- vapply(rows, function(row) !is.null(row$old_name_of), logical(1))
+    old_paths <- vapply(rows[old], function(row) paste(row$block, row$field), "")
+    under_old <- function(row) any(vapply(old_paths, function(path) startsWith(paste(row$block, row$field), path), NA))
+    skipped <- vapply(rows, under_old, logical(1))
+    expect_true(any(old), label = "the contract marks some old names")
+    # Then each remaining row is a field of the package's spec, with the contract's type
+    for (row in rows[!skipped]) {
+      path <- strsplit(row$field, ".", fixed = TRUE)[[1]]
+      fields <- sm_spec()$fields
+      found <- if (identical(row$block, "options")) {
+        fields$options$fields[[path[[1]]]]
+      } else {
+        fields[[path[[1]]]]
+      }
+      for (name in path[-1L]) {
+        found <- found$fields[[name]]
+      }
+      expect_false(is.null(found), info = row$field)
+      expect_identical(found$type, row$kit_type, info = row$field)
+    }
+  })
+
   it("has every command the package relies on", {
     contract <- kit_contract()
     commands <- unlist(contract$commands)

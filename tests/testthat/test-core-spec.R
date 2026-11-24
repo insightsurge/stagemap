@@ -13,15 +13,14 @@ describe("sm_spec()", {
 
   it("lists the required fields of the data's lists", {
     fields <- sm_spec()$fields
-    expect_true(all(c("options", "stages", "lanes", "nodes") %in% names(fields)))
-    expect_true(fields$nodes$required)
+    expect_true(all(c("options", "stages", "lanes", "cards") %in% names(fields)))
     expect_false(fields$links$required)
-    expect_true(fields$nodes$fields$stage$required)
-    expect_identical(fields$nodes$fields$tone$values[1:3], c("teal", "good", "warn"))
+    expect_true(fields$cards$fields$stage$required)
+    expect_identical(fields$cards$fields$tone$values[1:3], c("teal", "good", "warn"))
   })
 
   it("reads a status as an id the data names, with no fixed list of values", {
-    status <- sm_spec()$fields$nodes$fields$status
+    status <- sm_spec()$fields$cards$fields$status
     expect_identical(status$type, "id")
     expect_null(status$values)
   })
@@ -36,7 +35,7 @@ describe("sm_spec()", {
     expect_identical(options$fields$layout$default, "grid")
     expect_identical(options$fields$hosted$type, "words")
     expect_identical(options$fields$hosted$values, c("title", "details", "stage", "steps", "zones"))
-    expect_false(sm_spec()$fields$nodes$fields$milestone$default)
+    expect_false(sm_spec()$fields$cards$fields$milestone$default)
   })
 
   it("keeps what each command and event carries", {
