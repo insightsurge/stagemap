@@ -4,10 +4,10 @@
 \alias{add_links}
 \title{Add links between cards to a stage map}
 \usage{
-add_links(x, links, ..., kinds = NULL)
+add_links(map, links, ..., kinds = NULL)
 }
 \arguments{
-\item{x}{A \code{\link[=stage_map]{stage_map()}} widget.}
+\item{map}{A \code{\link[=stage_map]{stage_map()}} widget.}
 
 \item{links}{A data frame with one row per link. See "Columns". \code{NULL}, or a data frame with no rows (such as
 \code{data.frame()}), adds no links.}
@@ -41,7 +41,7 @@ A column the engine has no field for stays in the data the widget keeps in R and
 
 \examples{
 map <- stage_map(
-  nodes = data.frame(
+  cards = data.frame(
     id = c("a", "b"),
     label = c("Draft", "Review"),
     stage = c("w", "c"),

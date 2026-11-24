@@ -25,8 +25,17 @@ sm_kit_version <- function() {
   sm_read("stage-map.json")$version
 }
 
+# The fields of the contract that this package reads: every one except an old name. The contract marks an old name with
+# `old_name_of` and still lists it, because the engine reads it for a time; R takes and sends only the new name, so a
+# list of old names is not kept here.
+current_fields <- function(fields) {
+  checkmate::assert_list(fields, null.ok = TRUE)
+  fields[!vapply(fields, function(field) !is.null(field$old_name_of), logical(1))]
+}
+
 # Normalises one field of a data description: its type, whether it is required, the allowed values and nested fields.
-# The contract's `json` (any JSON) becomes `any`.
+# The contract's `json` (any JSON) becomes `any`. A field the contract marks as an old name is left out (see
+# current_fields()).
 normalise_field <- function(field) {
   checkmate::assert_list(field)
   type <- field$type
@@ -38,7 +47,7 @@ normalise_field <- function(field) {
     required = isTRUE(field$required),
     values = unlist(field$values),
     default = field$default,
-    fields = if (!is.null(field$fields)) lapply(field$fields, normalise_field)
+    fields = if (!is.null(field$fields)) lapply(current_fields(field$fields), normalise_field)
   )
 }
 
@@ -46,7 +55,7 @@ normalise_field <- function(field) {
 # them as the data's `options` object, so the options are one more field, named `options`.
 entry_fields <- function(contract) {
   checkmate::assert_list(contract)
-  fields <- lapply(contract$data, normalise_field)
+  fields <- lapply(current_fields(contract$data), normalise_field)
   if (!is.null(contract$options)) {
     fields$options <- normalise_field(contract$options)
   }

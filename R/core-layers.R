@@ -31,21 +31,21 @@ sm_rebuild <- function(
 }
 
 # Adds `fields` (fields of the map's data, such as a list of rows) and `options` (fields of its `options` object) to
-# the widget `x`, then builds it again, so the converter checks the new data as it checks the rest. A value that is
+# the widget `map`, then builds it again, so the converter checks the new data as it checks the rest. A value that is
 # NULL adds nothing. A field the map does not take, or one the widget already has, is a `stagemap_error_layer`.
-sm_add_data <- function(x, fields, options = list(), call = rlang::caller_env()) {
+sm_add_data <- function(map, fields, options = list(), call = rlang::caller_env()) {
   checkmate::assert_list(fields, names = "unique")
   checkmate::assert_list(options, names = "unique")
   checkmate::assert_environment(call)
-  if (!inherits(x, "stagemap_widget")) {
+  if (!inherits(map, "stagemap_widget")) {
     sm_abort(
-      c("{.arg x} must be a widget made by a stagemap function.", "x" = "It is {.cls {class(x)}}."),
+      c("{.arg map} must be a widget made by a stagemap function.", "x" = "It is {.cls {class(map)}}."),
       class = "stagemap_error_widget",
       call = call
     )
   }
   spec <- sm_spec()
-  data <- sm_widget_data(x)
+  data <- sm_widget_data(map)
   # Options given as a named vector (c(title = "T")) are a list from here on, so more can be added to them.
   if (!is.null(data$options)) {
     data$options <- as.list(data$options)
@@ -71,7 +71,7 @@ sm_add_data <- function(x, fields, options = list(), call = rlang::caller_env())
   if (length(options) > 0L) {
     data$options[names(options)] <- options
   }
-  sm_rebuild(x, data, call = call)
+  sm_rebuild(map, data, call = call)
 }
 
 # Refuses a name the spec lacks, or one the data already holds. `prefix` is the path shown before the name.

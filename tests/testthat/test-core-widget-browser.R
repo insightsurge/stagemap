@@ -4,7 +4,7 @@ skip_without_chrome()
 describe("the htmlwidgets binding", {
   data <- function() {
     data <- map_data()
-    data$nodes <- data.frame(id = c("a", "b"), label = c("A", "B"), stage = c("s", "s"), lane = "l")
+    data$cards <- data.frame(id = c("a", "b"), label = c("A", "B"), stage = c("s", "s"), lane = "l")
     data
   }
   cards <- "document.querySelectorAll('#map [data-card]').length"
@@ -34,7 +34,7 @@ describe("the htmlwidgets binding", {
     wait_for_page(page, paste(cards, "=== 2"))
     # Given a render with one node more, sent to the instance htmlwidgets made
     more <- data()
-    more$nodes <- rbind(more$nodes, data.frame(id = "c", label = "C", stage = "s", lane = "l"))
+    more$cards <- rbind(more$cards, data.frame(id = "c", label = "C", stage = "s", lane = "l"))
     x <- jsonlite::toJSON(sm_widget(more)$x, auto_unbox = TRUE, null = "null", json_verbatim = TRUE)
     page_js(
       page,

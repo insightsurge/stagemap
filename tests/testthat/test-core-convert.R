@@ -192,8 +192,8 @@ describe("convert_problems() for names", {
     names(frame)[2] <- "id"
     expect_identical(convert_problems(list(rows = frame), made_up), "`rows` has the column `id` more than once.")
     data <- map_data()
-    data$nodes <- cbind(data$nodes, id = "z")
+    data$cards <- cbind(data$cards, id = "z")
     error <- expect_error(sm_widget(data), class = "stagemap_error_data")
-    expect_match(conditionMessage(error), "`nodes` has the column `id` more than once.", fixed = TRUE)
+    expect_match(conditionMessage(error), "`cards` has the column `id` more than once.", fixed = TRUE)
   })
 })

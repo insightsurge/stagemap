@@ -29,7 +29,7 @@ describe("the bundled stage-map engine", {
     expect_match(style, paste0("\\.", expected$css, "\\b"))
   })
 
-  it("lists the data and option fields the package reads, apart from the old names it skips", {
+  it("lists the data and option fields the package reads, and leaves out the old names", {
     # Given the contract's rows, one per field (paths such as "cards.id")
     rows <- kit_contract()$r
     # And the old names: a row that has `old_name_of`, and every row under one
@@ -38,20 +38,25 @@ describe("the bundled stage-map engine", {
     under_old <- function(row) any(vapply(old_paths, function(path) startsWith(paste(row$block, row$field), path), NA))
     skipped <- vapply(rows, under_old, logical(1))
     expect_true(any(old), label = "the contract marks some old names")
-    # Then each remaining row is a field of the package's spec, with the contract's type
-    for (row in rows[!skipped]) {
+    # The field of the package's spec that a row describes, or NULL
+    in_spec <- function(row) {
       path <- strsplit(row$field, ".", fixed = TRUE)[[1]]
       fields <- sm_spec()$fields
-      found <- if (identical(row$block, "options")) {
-        fields$options$fields[[path[[1]]]]
-      } else {
-        fields[[path[[1]]]]
-      }
+      found <- if (identical(row$block, "options")) fields$options$fields[[path[[1]]]] else fields[[path[[1]]]]
       for (name in path[-1L]) {
         found <- found$fields[[name]]
       }
+      found
+    }
+    # Then each other row is a field of the spec, with the contract's type
+    for (row in rows[!skipped]) {
+      found <- in_spec(row)
       expect_false(is.null(found), info = row$field)
       expect_identical(found$type, row$kit_type, info = row$field)
+    }
+    # And no old name is in the spec, so R neither takes nor sends one
+    for (row in rows[skipped]) {
+      expect_null(in_spec(row), info = row$field)
     }
   })
 

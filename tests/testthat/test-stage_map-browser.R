@@ -72,7 +72,7 @@ describe("stage_map() in a browser", {
   })
 
   it("draws statuses given as rows, cells of several columns, bundled links and a step's changes without error", {
-    nodes <- data.frame(
+    cards <- data.frame(
       id = c("a", "b", "c", "d"),
       label = c("A", "B", "C", "D"),
       stage = c("s1", "s1", "s1", "s2"),
@@ -80,7 +80,7 @@ describe("stage_map() in a browser", {
       status = c("done", "blocked", "running", "blocked")
     )
     map <- stage_map(
-      nodes,
+      cards,
       data.frame(id = c("s1", "s2"), label = c("One", "Two")),
       data.frame(id = "l", label = "Lane"),
       statuses = data.frame(

@@ -23,7 +23,7 @@ describe("sm_widget()", {
   it("writes the data as the engine reads it", {
     parsed <- as_list(sm_widget(map_data())$x$data)
     expect_identical(parsed$options, list(title = "T"))
-    expect_identical(parsed$nodes, list(list(id = "a", label = "A", stage = "s", lane = "l")))
+    expect_identical(parsed$cards, list(list(id = "a", label = "A", stage = "s", lane = "l")))
   })
 
   it("sizes by content: full width, and a height of auto", {
@@ -51,7 +51,7 @@ describe("sm_widget()", {
 
   it("turns every problem into one classed error that holds them all", {
     bad <- map_data()
-    bad$nodes$tone <- "bogus"
+    bad$cards$tone <- "bogus"
     bad$stages$id <- NA
     error <- expect_error(sm_widget(bad), class = "stagemap_error_data")
     expect_length(error$problems, 2L)
@@ -59,7 +59,7 @@ describe("sm_widget()", {
 
   it("lists up to ten problems and counts the rest", {
     bad <- map_data()
-    bad$nodes <- data.frame(id = NA_character_, label = NA_character_, stage = NA_character_, lane = NA_character_)
+    bad$cards <- data.frame(id = NA_character_, label = NA_character_, stage = NA_character_, lane = NA_character_)
     bad$stages <- data.frame(id = NA_character_, label = NA_character_)
     bad$lanes <- data.frame(id = NA_character_, label = NA_character_)
     bad$options <- list(layout = "bogus", legend = "x", motion = "x", summary = "x")

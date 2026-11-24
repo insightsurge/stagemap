@@ -3,7 +3,7 @@ describe("stage_map() statuses", {
   it("names the tone it does not know and the ones it knows", {
     expect_snapshot(
       stage_map(
-        nodes = data.frame(id = "a", label = "A", stage = "s", lane = "l", status = "blocked"),
+        cards = data.frame(id = "a", label = "A", stage = "s", lane = "l", status = "blocked"),
         stages = data.frame(id = "s", label = "S"),
         lanes = data.frame(id = "l", label = "L"),
         statuses = data.frame(id = "blocked", label = "Blocked", tone = "purple")
@@ -15,7 +15,7 @@ describe("stage_map() statuses", {
   it("names the status a card uses that the map does not know, and the fix", {
     expect_snapshot(
       stage_map(
-        nodes = data.frame(id = "a", label = "A", stage = "s", lane = "l", status = "blocked"),
+        cards = data.frame(id = "a", label = "A", stage = "s", lane = "l", status = "blocked"),
         stages = data.frame(id = "s", label = "S"),
         lanes = data.frame(id = "l", label = "L")
       ),
@@ -41,7 +41,7 @@ describe("stage_map() arguments", {
 describe("add_steps() changes", {
   it("names the step and the card the data lacks, and the fix", {
     map <- stage_map(
-      nodes = data.frame(id = "a", label = "A", stage = "s", lane = "l"),
+      cards = data.frame(id = "a", label = "A", stage = "s", lane = "l"),
       stages = data.frame(id = "s", label = "S"),
       lanes = data.frame(id = "l", label = "L")
     )

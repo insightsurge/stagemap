@@ -6,7 +6,7 @@ describe("stage_map() arguments", {
   })
 
   it("refuses data that is not a data frame", {
-    expect_error(slim(nodes = list(id = "a")), "nodes")
+    expect_error(slim(cards = list(id = "a")), "cards")
     expect_error(slim(stages = "s"), "stages")
     expect_error(slim(lanes = 1), "lanes")
   })
@@ -136,41 +136,41 @@ describe("stage_map() arguments", {
       class = "stagemap_error_data"
     )
     expect_identical(error$call[[1]], quote(stage_map))
-    expect_match(error$problems[1], "`nodes` needs a column `label`.", fixed = TRUE)
+    expect_match(error$problems[1], "`cards` needs a column `label`.", fixed = TRUE)
   })
 
   it("counts an optional column that is all NA as left out, as readr types an empty column", {
-    nodes <- data.frame(id = "a", label = "A", stage = "s", lane = "l", sub = NA, status = NA)
+    cards <- data.frame(id = "a", label = "A", stage = "s", lane = "l", sub = NA, status = NA)
     stages <- data.frame(id = "s", label = "S", date = NA)
-    widget <- slim(nodes = nodes, stages = stages)
-    expect_null(data_of(widget)$nodes[[1]]$sub)
+    widget <- slim(cards = cards, stages = stages)
+    expect_null(data_of(widget)$cards[[1]]$sub)
     expect_null(data_of(widget)$stages[[1]]$date)
   })
 })
 
 describe("stage_map() and the columns the engine has no field for", {
-  nodes <- data.frame(id = c("a", "b"), label = c("A", "B"), stage = "s", lane = "l", owner = c("Ann", "Bo"), n = 3:4)
+  cards <- data.frame(id = c("a", "b"), label = c("A", "B"), stage = "s", lane = "l", owner = c("Ann", "Bo"), n = 3:4)
 
   it("takes them without a warning, in any of the three data frames", {
-    expect_no_warning(slim(nodes = nodes, stages = data.frame(id = "s", label = "S", rank = 1)))
-    expect_no_warning(slim(nodes = nodes, lanes = data.frame(id = "l", label = "L", team = "x")))
+    expect_no_warning(slim(cards = cards, stages = data.frame(id = "s", label = "S", rank = 1)))
+    expect_no_warning(slim(cards = cards, lanes = data.frame(id = "l", label = "L", team = "x")))
   })
 
   it("does not send them to the engine", {
-    json <- unclass(slim(nodes = nodes)$x$data)
+    json <- unclass(slim(cards = cards)$x$data)
     expect_false(grepl("owner|Ann", json))
-    expect_identical(names(data_of(slim(nodes = nodes))$nodes[[1]]), c("id", "label", "stage", "lane"))
+    expect_identical(names(data_of(slim(cards = cards))$cards[[1]]), c("id", "label", "stage", "lane"))
   })
 
   it("keeps them in the data the widget holds in R, for the functions that read the map there", {
-    widget <- slim(nodes = nodes)
-    expect_identical(sm_widget_data(widget)$nodes$owner, c("Ann", "Bo"))
-    expect_identical(sm_widget_data(widget)$nodes$n, 3:4)
+    widget <- slim(cards = cards)
+    expect_identical(sm_widget_data(widget)$cards$owner, c("Ann", "Bo"))
+    expect_identical(sm_widget_data(widget)$cards$n, 3:4)
   })
 
   it("keeps them after a layer is added", {
-    widget <- add_links(slim(nodes = nodes), data.frame(from = "a", to = "b", weight = 2))
-    expect_identical(sm_widget_data(widget)$nodes$owner, c("Ann", "Bo"))
+    widget <- add_links(slim(cards = cards), data.frame(from = "a", to = "b", weight = 2))
+    expect_identical(sm_widget_data(widget)$cards$owner, c("Ann", "Bo"))
     expect_identical(sm_widget_data(widget)$links$weight, 2)
   })
 
@@ -284,37 +284,37 @@ describe("stage_map() mapping", {
   })
 
   it("lets a card use the id of a status given in the data frame", {
-    nodes <- data.frame(id = "a", label = "A", stage = "s", lane = "l", status = "blocked")
-    widget <- slim(nodes = nodes, statuses = data.frame(id = "blocked", label = "Blocked"))
-    expect_identical(data_of(widget)$nodes[[1]]$status, "blocked")
+    cards <- data.frame(id = "a", label = "A", stage = "s", lane = "l", status = "blocked")
+    widget <- slim(cards = cards, statuses = data.frame(id = "blocked", label = "Blocked"))
+    expect_identical(data_of(widget)$cards[[1]]$status, "blocked")
   })
 
   it("refuses a card status that is neither built in nor in statuses, naming the value, the ids and the fix", {
-    nodes <- data.frame(id = c("a", "b"), label = c("A", "B"), stage = "s", lane = "l", status = c("done", "zzz"))
-    error <- expect_error(slim(nodes = nodes), class = "stagemap_error_data")
+    cards <- data.frame(id = c("a", "b"), label = c("A", "B"), stage = "s", lane = "l", status = c("done", "zzz"))
+    error <- expect_error(slim(cards = cards), class = "stagemap_error_data")
     message <- conditionMessage(error)
-    expect_match(message, "nodes$status", fixed = TRUE)
+    expect_match(message, "cards$status", fixed = TRUE)
     expect_match(message, "\"zzz\"", fixed = TRUE)
     expect_match(message, "\"done\", \"running\", \"waiting\", \"failed\", and \"skipped\"", fixed = TRUE)
     expect_match(message, "add it to `statuses`", fixed = TRUE)
     # The ids of a statuses data frame are allowed, and so are the five built-in ones
-    expect_no_error(slim(nodes = nodes, statuses = data.frame(id = "zzz", label = "Z")))
-    expect_no_error(slim(nodes = nodes[1, ]))
+    expect_no_error(slim(cards = cards, statuses = data.frame(id = "zzz", label = "Z")))
+    expect_no_error(slim(cards = cards[1, ]))
   })
 
   it("takes the built-in status ids from the engine's contract, not from a list of its own", {
     built_in <- names(sm_spec()$fields$options$fields$statuses$fields)
     expect_gt(length(built_in), 0L)
     for (id in built_in) {
-      expect_no_error(slim(nodes = data.frame(id = "a", label = "A", stage = "s", lane = "l", status = id)))
+      expect_no_error(slim(cards = data.frame(id = "a", label = "A", stage = "s", lane = "l", status = id)))
     }
   })
 
   it("compares ids as the page receives them: 100000 is \"100000\", never \"1e+05\"", {
-    nodes <- data.frame(id = 100000L, label = "A", stage = "s", lane = "l", status = 100000)
-    widget <- slim(nodes = nodes, statuses = data.frame(id = "100000", label = "Big"))
-    expect_identical(data_of(widget)$nodes[[1]]$status, "100000")
-    widget <- slim(nodes = nodes, statuses = data.frame(id = 100000, label = "Big"))
+    cards <- data.frame(id = 100000L, label = "A", stage = "s", lane = "l", status = 100000)
+    widget <- slim(cards = cards, statuses = data.frame(id = "100000", label = "Big"))
+    expect_identical(data_of(widget)$cards[[1]]$status, "100000")
+    widget <- slim(cards = cards, statuses = data.frame(id = 100000, label = "Big"))
     expect_identical(data_of(widget)$statuses[[1]]$id, "100000")
     expect_error(slim(statuses = data.frame(id = c(100000, 100000), label = c("A", "B"))), "statuses$id", fixed = TRUE)
   })
@@ -340,12 +340,12 @@ describe("stage_map() mapping", {
 
   it("sends numeric ids as text, so a card's stage still names its stage", {
     widget <- slim(
-      nodes = data.frame(id = 1:2, label = c("A", "B"), stage = 7, lane = "l"),
+      cards = data.frame(id = 1:2, label = c("A", "B"), stage = 7, lane = "l"),
       stages = data.frame(id = 7, label = "S")
     )
     data <- data_of(widget)
-    expect_identical(data$nodes[[2]]$id, "2")
-    expect_identical(data$nodes[[1]]$stage, "7")
+    expect_identical(data$cards[[2]]$id, "2")
+    expect_identical(data$cards[[1]]$stage, "7")
     expect_identical(data$stages[[1]]$id, "7")
   })
 
@@ -373,7 +373,7 @@ describe("stage_map() mapping", {
 describe("stage_map() highlight", {
   it("sends the ids and the links to the engine's highlight option, with ids as text and links as rows", {
     widget <- slim(
-      nodes = data.frame(id = 1:2, label = c("A", "B"), stage = "s", lane = "l"),
+      cards = data.frame(id = 1:2, label = c("A", "B"), stage = "s", lane = "l"),
       highlight = list(ids = c(1, 2), links = data.frame(from = 1, to = 2, kind = "k"))
     )
     expect_identical(
@@ -439,11 +439,45 @@ describe("stage_map() highlight", {
 describe("the defaults the help pages quote", {
   it("come from the contract", {
     expect_identical(sm_default("options", "layout"), "`\"grid\"`")
-    expect_identical(sm_default("nodes", "milestone"), "`FALSE`")
+    expect_identical(sm_default("cards", "milestone"), "`FALSE`")
     expect_identical(sm_default("options", "legend"), "`TRUE`")
   })
 
   it("refuse a field the contract gives no default", {
     expect_error(sm_default("options", "title"), class = "stagemap_error_spec")
+  })
+})
+
+describe("stage_map() names", {
+  it("takes the cards as its first argument, with no default, and not under its old name", {
+    expect_identical(names(formals(stage_map))[[1]], "cards")
+    expect_true(is.symbol(formals(stage_map)$cards) && !nzchar(as.character(formals(stage_map)$cards)))
+    error <- expect_error(
+      stage_map(
+        cards = data.frame(id = "a", label = "A", stage = "s", lane = "l"),
+        stages = data.frame(id = "s", label = "S"),
+        lanes = data.frame(id = "l", label = "L"),
+        nodes = data.frame(id = "a", label = "A", stage = "s", lane = "l")
+      ),
+      class = "stagemap_error_dots"
+    )
+    expect_match(conditionMessage(error), "nodes", fixed = TRUE)
+    expect_error(stage_map(), "cards")
+  })
+
+  it("sends the cards under their name, and never the old one", {
+    data <- data_of(slim())
+    expect_identical(names(data$cards[[1]]), c("id", "label", "stage", "lane"))
+    expect_null(data$nodes)
+  })
+
+  it("sends the lines of a stage's and a step's code as code_lines, and drops the old column name", {
+    stages <- data.frame(id = "s", label = "S", file = "f.R", code = "a\nb", code_lines = "2")
+    expect_identical(data_of(slim(stages = stages))$stages[[1]]$code_lines, "2")
+    steps <- data.frame(id = "p", label = "P", file = "f.R", code = "a\nb", code_lines = "1")
+    expect_identical(data_of(add_steps(slim(), steps))$steps[[1]]$code_lines, "1")
+    old <- data.frame(id = "s", label = "S", file = "f.R", code = "a\nb", highlight = "2")
+    expect_null(data_of(slim(stages = old))$stages[[1]]$highlight)
+    expect_null(data_of(add_steps(slim(), cbind(steps[1:4], highlight = "1")))$steps[[1]]$highlight)
   })
 })

@@ -5,7 +5,7 @@
 \title{Draw work moving through stages and lanes}
 \usage{
 stage_map(
-  nodes,
+  cards,
   stages,
   lanes,
   ...,
@@ -28,7 +28,7 @@ stage_map(
 )
 }
 \arguments{
-\item{nodes}{A data frame with one row per card. Columns are listed under "Columns".}
+\item{cards}{A data frame with one row per card. Columns are listed under "Columns".}
 
 \item{stages}{A data frame with one row per stage (a column of the picture). See "Columns".}
 
@@ -130,7 +130,7 @@ optional column counts as left out. Ids are written as text, so \code{7} and \co
 
 Required columns are marked with an asterisk.
 \itemize{
-\item \code{nodes}: \verb{id*}, \verb{label*}, \verb{stage*}, \verb{lane*}, \code{sub} (a second line, such as a person), \code{status} (the id of a
+\item \code{cards}: \verb{id*}, \verb{label*}, \verb{stage*}, \verb{lane*}, \code{sub} (a second line, such as a person), \code{status} (the id of a
 status: one of the five built-in ones, \code{"done"}, \code{"running"}, \code{"waiting"}, \code{"failed"} and \code{"skipped"}, or an id
 you add with \code{statuses}), \code{tone}, \code{text} (shown in the card's details), \code{zone} (a zone id, see \code{\link[=add_zones]{add_zones()}}),
 \code{milestone} (\code{TRUE} to draw the card as a milestone; left out, it is \code{FALSE}),
@@ -138,15 +138,15 @@ you add with \code{statuses}), \code{tone}, \code{text} (shown in the card's det
 \code{\link[=add_variants]{add_variants()}}).
 \item \code{stages}: \verb{id*}, \verb{label*}, \code{kicker}, \code{text}, \code{date} (a \code{Date}, or text like \code{"2026-03-02"}), \code{flag} (a word shown
 on the stage's head, such as \code{"Stuck"}), \code{tone} (the flag's colour), \code{file}, \code{code} (a file's text, shown in the
-side panel under \code{file}), \code{highlight} (the lines of \code{code} to mark, such as \code{"3, 5-7"}).
+side panel under \code{file}), \code{code_lines} (the lines of \code{code} to mark, such as \code{"3, 5-7"}).
 \item \code{lanes}: \verb{id*}, \verb{label*}, \code{tone}, \code{text}.
 }
 
-A \code{nodes} row can also have \code{hidden} (\code{TRUE} leaves the card out of the picture), \code{disabled} (\code{TRUE} dims it and
+A \code{cards} row can also have \code{hidden} (\code{TRUE} leaves the card out of the picture), \code{disabled} (\code{TRUE} dims it and
 stops it being chosen) and \code{reason} (why the card is in its state; the map shows it on a disabled card); left out,
 \code{hidden} and \code{disabled} are \code{FALSE} and \code{FALSE}.
 
-The \code{text} columns of \code{nodes}, \code{stages}, \code{lanes}, \code{steps} and \code{zones}, and the \code{note} of a zone, are read as
+The \code{text} columns of \code{cards}, \code{stages}, \code{lanes}, \code{steps} and \code{zones}, and the \code{note} of a zone, are read as
 Markdown, so \verb{*word*}, backticks and \verb{[words](https://example.org)} draw as formatting. A zone's \code{text} and \code{note}
 are one line.
 
@@ -166,7 +166,7 @@ engine's icons). A row whose \code{id} is a built-in id restyles that status (it
 add a sixth. A row with any other id adds a status of your own, such as \code{"blocked"}.
 }
 
-\code{nodes$status} (and the \code{status} of \code{\link[=add_steps]{add_steps()}}'s \code{changes}) may then use any id from \code{statuses}; any other id is
+\code{cards$status} (and the \code{status} of \code{\link[=add_steps]{add_steps()}}'s \code{changes}) may then use any id from \code{statuses}; any other id is
 an error of class \code{stagemap_error_data} that names it, lists the ids allowed and says to add it to \code{statuses}. An id
 given twice in a \code{statuses} data frame is an error too. A \code{tone} is checked against the tones listed under
 "Columns", and the error names the value and lists the ones allowed. Give \code{statuses} in one form per call.
@@ -184,7 +184,7 @@ in. The glide follows the reader's reduced-motion setting. \code{motion = FALSE}
 
 \examples{
 map <- stage_map(
-  nodes = data.frame(
+  cards = data.frame(
     id = c("draft", "review"),
     label = c("Draft", "Review"),
     stage = c("write", "check"),

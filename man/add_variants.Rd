@@ -4,10 +4,10 @@
 \alias{add_variants}
 \title{Add variants to a stage map}
 \usage{
-add_variants(x, variants, ...)
+add_variants(map, variants, ...)
 }
 \arguments{
-\item{x}{A \code{\link[=stage_map]{stage_map()}} widget.}
+\item{map}{A \code{\link[=stage_map]{stage_map()}} widget.}
 
 \item{variants}{A data frame with one row per variant. See "Columns". \code{NULL}, or a data frame with no rows (such
 as \code{data.frame()}), adds no variants.}
@@ -33,7 +33,7 @@ Required columns are marked with an asterisk.
 
 \examples{
 map <- stage_map(
-  nodes = data.frame(id = "a", label = "Draft", stage = "w", lane = "docs", variants = "full"),
+  cards = data.frame(id = "a", label = "Draft", stage = "w", lane = "docs", variants = "full"),
   stages = data.frame(id = "w", label = "Write"),
   lanes = data.frame(id = "docs", label = "Docs"),
   variant = "full"

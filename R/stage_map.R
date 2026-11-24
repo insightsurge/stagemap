@@ -19,22 +19,22 @@
 #' @section Columns:
 #' Required columns are marked with an asterisk.
 #'
-#' * `nodes`: `id*`, `label*`, `stage*`, `lane*`, `sub` (a second line, such as a person), `status` (the id of a
+#' * `cards`: `id*`, `label*`, `stage*`, `lane*`, `sub` (a second line, such as a person), `status` (the id of a
 #'   status: one of the five built-in ones, `"done"`, `"running"`, `"waiting"`, `"failed"` and `"skipped"`, or an id
 #'   you add with `statuses`), `tone`, `text` (shown in the card's details), `zone` (a zone id, see [add_zones()]),
-#'   `milestone` (`TRUE` to draw the card as a milestone; left out, it is `r sm_default("nodes", "milestone")`),
+#'   `milestone` (`TRUE` to draw the card as a milestone; left out, it is `r sm_default("cards", "milestone")`),
 #'   `variants` (variant ids separated by commas, such as `"full, docs"`; left out, the card is in every variant; see
 #'   [add_variants()]).
 #' * `stages`: `id*`, `label*`, `kicker`, `text`, `date` (a `Date`, or text like `"2026-03-02"`), `flag` (a word shown
 #'   on the stage's head, such as `"Stuck"`), `tone` (the flag's colour), `file`, `code` (a file's text, shown in the
-#'   side panel under `file`), `highlight` (the lines of `code` to mark, such as `"3, 5-7"`).
+#'   side panel under `file`), `code_lines` (the lines of `code` to mark, such as `"3, 5-7"`).
 #' * `lanes`: `id*`, `label*`, `tone`, `text`.
 #'
-#' A `nodes` row can also have `hidden` (`TRUE` leaves the card out of the picture), `disabled` (`TRUE` dims it and
+#' A `cards` row can also have `hidden` (`TRUE` leaves the card out of the picture), `disabled` (`TRUE` dims it and
 #' stops it being chosen) and `reason` (why the card is in its state; the map shows it on a disabled card); left out,
-#' `hidden` and `disabled` are `r sm_default("nodes", "hidden")` and `r sm_default("nodes", "disabled")`.
+#' `hidden` and `disabled` are `r sm_default("cards", "hidden")` and `r sm_default("cards", "disabled")`.
 #'
-#' The `text` columns of `nodes`, `stages`, `lanes`, `steps` and `zones`, and the `note` of a zone, are read as
+#' The `text` columns of `cards`, `stages`, `lanes`, `steps` and `zones`, and the `note` of a zone, are read as
 #' Markdown, so `*word*`, backticks and `[words](https://example.org)` draw as formatting. A zone's `text` and `note`
 #' are one line.
 #'
@@ -51,7 +51,7 @@
 #'   engine's icons). A row whose `id` is a built-in id restyles that status (its label, colour and icon), and does not
 #'   add a sixth. A row with any other id adds a status of your own, such as `"blocked"`.
 #'
-#' `nodes$status` (and the `status` of [add_steps()]'s `changes`) may then use any id from `statuses`; any other id is
+#' `cards$status` (and the `status` of [add_steps()]'s `changes`) may then use any id from `statuses`; any other id is
 #' an error of class `stagemap_error_data` that names it, lists the ids allowed and says to add it to `statuses`. An id
 #' given twice in a `statuses` data frame is an error too. A `tone` is checked against the tones listed under
 #' "Columns", and the error names the value and lists the ones allowed. Give `statuses` in one form per call.
@@ -64,7 +64,7 @@
 #' When a step of [add_steps()] moves a card to another stage, the card glides there, and a card that appears fades
 #' in. The glide follows the reader's reduced-motion setting. `motion = FALSE` turns it off.
 #'
-#' @param nodes A data frame with one row per card. Columns are listed under "Columns".
+#' @param cards A data frame with one row per card. Columns are listed under "Columns".
 #' @param stages A data frame with one row per stage (a column of the picture). See "Columns".
 #' @param lanes A data frame with one row per lane (a row of the picture). See "Columns". Links read best when they
 #'   run along a lane, so choose lanes that follow the work's flow (a topic, a product, a team that hands work on),
@@ -127,7 +127,7 @@
 #' @family stage map
 #' @examples
 #' map <- stage_map(
-#'   nodes = data.frame(
+#'   cards = data.frame(
 #'     id = c("draft", "review"),
 #'     label = c("Draft", "Review"),
 #'     stage = c("write", "check"),
@@ -144,7 +144,7 @@
 #' map
 #' @export
 stage_map <- function(
-  nodes,
+  cards,
   stages,
   lanes,
   ...,
@@ -165,7 +165,7 @@ stage_map <- function(
   height = NULL,
   element_id = NULL
 ) {
-  checkmate::assert_data_frame(nodes)
+  checkmate::assert_data_frame(cards)
   checkmate::assert_data_frame(stages)
   checkmate::assert_data_frame(lanes)
   checkmate::assert_string(title, min.chars = 1L, null.ok = TRUE)
@@ -218,7 +218,7 @@ stage_map <- function(
     options = drop_nulls(options),
     stages = stages,
     lanes = lanes,
-    nodes = nodes,
+    cards = cards,
     statuses = rows
   )
   widget <- sm_widget(
@@ -281,7 +281,7 @@ drop_nulls <- function(x) {
   x[!vapply(x, is.null, logical(1))]
 }
 
-# The contract's default for the field `name` of `block` (`"options"`, or the name of a data list such as `"nodes"`),
+# The contract's default for the field `name` of `block` (`"options"`, or the name of a data list such as `"cards"`),
 # written as it reads in a help page. Used by the roxygen text only, so a help page cannot state a default the engine
 # does not have.
 sm_default <- function(block, name) {
@@ -318,7 +318,7 @@ stage_map_status_ids <- function(data) {
   unique(c(built_in, if (is.data.frame(data$statuses)) as_text(data$statuses$id)))
 }
 
-# The error lines for the status ids in `found` (a column named `field`, such as "nodes$status") that the map does not
+# The error lines for the status ids in `found` (a column named `field`, such as "cards$status") that the map does not
 # know, with the ids allowed and the fix; NULL when all are known. The text is ready to use in a cli message. Callers:
 # stage_map_check_statuses() and stage_map_check_changes().
 stage_map_status_problems <- function(found, field, data) {
@@ -347,7 +347,7 @@ stage_map_check_statuses <- function(data, call) {
     unique(ids[!is.na(ids) & duplicated(ids)])
   }
   problems <- c(
-    stage_map_status_problems(data$nodes$status, "nodes$status", data),
+    stage_map_status_problems(data$cards$status, "cards$status", data),
     if (length(twice) > 0L) {
       c(
         "x" = cli_escape(cli::format_inline("{.field statuses$id} has ids given more than once: {.val {twice}}.")),
