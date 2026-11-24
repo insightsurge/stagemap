@@ -13,12 +13,16 @@ URL: https://insightsurge.github.io/stagemap/, https://github.com/insightsurge/s
 BugReports: https://github.com/insightsurge/stagemap/issues
 Depends: 
     R (>= 4.1.0)
-Suggests: 
+Imports: 
     checkmate,
-    chromote,
     cli,
-    covr,
+    htmltools,
+    htmlwidgets,
     jsonlite,
+    rlang
+Suggests: 
+    chromote,
+    covr,
     shiny,
     shinytest2 (>= 0.5.0),
     testthat (>= 3.1.7),
