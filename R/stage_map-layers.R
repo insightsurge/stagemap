@@ -218,11 +218,9 @@ stage_map_check_changes <- function(changes, steps, map_data, call) {
 }
 
 # The error line for cards that `changes` changes twice at one step (the engine allows one row per card per step), with
-# the rows to look at; NULL when there are none. Rows with an NA step or card are the converter's to report.
+# the rows to look at; NULL when there are none. Rows with an NA step or card are the converter's to report. Caller:
+# stage_map_check_changes(), after the converter accepted `changes`, so its `step` and `card` columns exist.
 stage_map_twice_problems <- function(changes) {
-  if (!all(c("step", "card") %in% names(changes))) {
-    return(NULL)
-  }
   step <- as_text(changes$step)
   card <- as_text(changes$card)
   key <- ifelse(is.na(step) | is.na(card), NA_character_, paste(step, card, sep = "\r"))
