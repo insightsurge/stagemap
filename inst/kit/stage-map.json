@@ -1,0 +1,2385 @@
+{
+  "product": "stagemap",
+  "version": "0.51.0",
+  "visual": "stage-map",
+  "global": "stagemap",
+  "prefix": "stagemap",
+  "css": "sm",
+  "root": {
+    "class": "sm",
+    "attribute": "data-stagemap-visual"
+  },
+  "files": [
+    "d3.min.js",
+    "stage-map.css",
+    "stage-map.js"
+  ],
+  "data": {
+    "stages": {
+      "type": "list",
+      "required": true,
+      "fields": {
+        "id": {
+          "type": "id",
+          "required": true,
+          "example": "build"
+        },
+        "label": {
+          "type": "string",
+          "required": true,
+          "example": "Build"
+        },
+        "kicker": {
+          "type": "string",
+          "required": false,
+          "example": "Day 2"
+        },
+        "text": {
+          "type": "markdown",
+          "required": false,
+          "example": "Five pieces of work run side by side."
+        },
+        "date": {
+          "type": "date",
+          "required": false,
+          "example": "2026-03-03"
+        },
+        "flag": {
+          "type": "string",
+          "required": false,
+          "example": "Stuck"
+        },
+        "tone": {
+          "type": "enum",
+          "required": false,
+          "values": [
+            "teal",
+            "good",
+            "warn",
+            "bad",
+            "muted",
+            "orange",
+            "blue",
+            "violet",
+            "pink",
+            "gold",
+            "grey"
+          ]
+        },
+        "file": {
+          "type": "string",
+          "required": false,
+          "example": "NEWS.md"
+        },
+        "code": {
+          "type": "string",
+          "required": false,
+          "example": "# 2.0.0\n\n- The parser reads files with empty rows."
+        },
+        "highlight": {
+          "type": "string",
+          "required": false,
+          "example": "3, 5-7"
+        }
+      }
+    },
+    "lanes": {
+      "type": "list",
+      "required": true,
+      "fields": {
+        "id": {
+          "type": "id",
+          "required": true,
+          "example": "core"
+        },
+        "label": {
+          "type": "string",
+          "required": true,
+          "example": "Core"
+        },
+        "tone": {
+          "type": "enum",
+          "required": false,
+          "values": [
+            "teal",
+            "good",
+            "warn",
+            "bad",
+            "muted",
+            "orange",
+            "blue",
+            "violet",
+            "pink",
+            "gold",
+            "grey"
+          ]
+        },
+        "text": {
+          "type": "markdown",
+          "required": false,
+          "example": "The package code."
+        }
+      }
+    },
+    "nodes": {
+      "type": "list",
+      "required": true,
+      "fields": {
+        "id": {
+          "type": "id",
+          "required": true,
+          "example": "parser"
+        },
+        "label": {
+          "type": "string",
+          "required": true,
+          "example": "Parser rewrite"
+        },
+        "stage": {
+          "type": "id",
+          "required": true,
+          "example": "build"
+        },
+        "lane": {
+          "type": "id",
+          "required": true,
+          "example": "core"
+        },
+        "sub": {
+          "type": "string",
+          "required": false,
+          "example": "Contributor"
+        },
+        "status": {
+          "type": "id",
+          "required": false,
+          "example": "done"
+        },
+        "tone": {
+          "type": "enum",
+          "required": false,
+          "values": [
+            "teal",
+            "good",
+            "warn",
+            "bad",
+            "muted",
+            "orange",
+            "blue",
+            "violet",
+            "pink",
+            "gold",
+            "grey"
+          ]
+        },
+        "text": {
+          "type": "markdown",
+          "required": false,
+          "example": "The data reader is rewritten so empty rows no longer stop it."
+        },
+        "zone": {
+          "type": "id",
+          "required": false,
+          "example": "day-one"
+        },
+        "milestone": {
+          "type": "boolean",
+          "required": false,
+          "default": false
+        },
+        "variants": {
+          "type": "string",
+          "required": false,
+          "example": "full, patch"
+        },
+        "hidden": {
+          "type": "boolean",
+          "required": false,
+          "default": false
+        },
+        "disabled": {
+          "type": "boolean",
+          "required": false,
+          "default": false
+        },
+        "reason": {
+          "type": "string",
+          "required": false,
+          "example": "Waits for the review"
+        }
+      }
+    },
+    "links": {
+      "type": "list",
+      "required": false,
+      "fields": {
+        "from": {
+          "type": "id",
+          "required": true,
+          "example": "parser"
+        },
+        "to": {
+          "type": "id",
+          "required": true,
+          "example": "parser-review"
+        },
+        "kind": {
+          "type": "id",
+          "required": false,
+          "example": "built"
+        },
+        "label": {
+          "type": "string",
+          "required": false,
+          "example": "3 systems"
+        },
+        "step": {
+          "type": "scalar",
+          "required": false,
+          "example": "sent-back"
+        },
+        "variants": {
+          "type": "string",
+          "required": false,
+          "example": "full"
+        }
+      }
+    },
+    "kinds": {
+      "type": "list",
+      "required": false,
+      "fields": {
+        "id": {
+          "type": "id",
+          "required": true,
+          "example": "merged"
+        },
+        "label": {
+          "type": "string",
+          "required": true,
+          "example": "merged"
+        },
+        "line": {
+          "type": "enum",
+          "required": false,
+          "values": [
+            "solid",
+            "dashed",
+            "dotted",
+            "dashdot"
+          ]
+        },
+        "end": {
+          "type": "enum",
+          "required": false,
+          "values": [
+            "arrow",
+            "ring",
+            "none"
+          ]
+        },
+        "tone": {
+          "type": "enum",
+          "required": false,
+          "values": [
+            "teal",
+            "good",
+            "warn",
+            "bad",
+            "muted",
+            "orange",
+            "blue",
+            "violet",
+            "pink",
+            "gold",
+            "grey"
+          ]
+        },
+        "quiet": {
+          "type": "boolean",
+          "required": false,
+          "default": false
+        }
+      }
+    },
+    "statuses": {
+      "type": "list",
+      "required": false,
+      "fields": {
+        "id": {
+          "type": "id",
+          "required": true,
+          "example": "blocked"
+        },
+        "label": {
+          "type": "string",
+          "required": false,
+          "example": "Blocked"
+        },
+        "tone": {
+          "type": "enum",
+          "required": false,
+          "values": [
+            "teal",
+            "good",
+            "warn",
+            "bad",
+            "muted",
+            "orange",
+            "blue",
+            "violet",
+            "pink",
+            "gold",
+            "grey"
+          ],
+          "example": "bad"
+        },
+        "icon": {
+          "type": "icon",
+          "required": false,
+          "example": "lock"
+        }
+      }
+    },
+    "zones": {
+      "type": "list",
+      "required": false,
+      "fields": {
+        "id": {
+          "type": "id",
+          "required": true,
+          "example": "day-one"
+        },
+        "label": {
+          "type": "string",
+          "required": true,
+          "example": "Agreed on day one"
+        },
+        "text": {
+          "type": "markdown",
+          "required": false,
+          "example": "Nothing is built before this",
+          "inline": true
+        },
+        "note": {
+          "type": "markdown",
+          "required": false,
+          "example": "Scope, design and tests are settled together.",
+          "inline": true
+        },
+        "tone": {
+          "type": "enum",
+          "required": false,
+          "values": [
+            "teal",
+            "good",
+            "warn",
+            "bad",
+            "muted",
+            "orange",
+            "blue",
+            "violet",
+            "pink",
+            "gold",
+            "grey"
+          ]
+        }
+      }
+    },
+    "steps": {
+      "type": "list",
+      "required": false,
+      "fields": {
+        "id": {
+          "type": "id",
+          "required": true,
+          "example": "sent-back"
+        },
+        "label": {
+          "type": "string",
+          "required": true,
+          "example": "The scales go back"
+        },
+        "kicker": {
+          "type": "string",
+          "required": false,
+          "example": "Day 3"
+        },
+        "text": {
+          "type": "markdown",
+          "required": false,
+          "example": "One colour ramp fails the contrast check, so the scales go back to Build."
+        },
+        "stage": {
+          "type": "id",
+          "required": false,
+          "example": "review"
+        },
+        "file": {
+          "type": "string",
+          "required": false,
+          "example": "NEWS.md"
+        },
+        "code": {
+          "type": "string",
+          "required": false,
+          "example": "# 2.0.0\n\n- The parser reads files with empty rows."
+        },
+        "highlight": {
+          "type": "string",
+          "required": false,
+          "example": "3, 5-7"
+        }
+      }
+    },
+    "changes": {
+      "type": "list",
+      "required": false,
+      "fields": {
+        "step": {
+          "type": "id",
+          "required": true,
+          "example": "sent-back"
+        },
+        "card": {
+          "type": "id",
+          "required": true,
+          "example": "scales-review"
+        },
+        "status": {
+          "type": "id",
+          "required": false,
+          "example": "running"
+        },
+        "stage": {
+          "type": "id",
+          "required": false,
+          "example": "build"
+        },
+        "hidden": {
+          "type": "boolean",
+          "required": false
+        }
+      }
+    },
+    "variants": {
+      "type": "list",
+      "required": false,
+      "fields": {
+        "id": {
+          "type": "id",
+          "required": true,
+          "example": "full"
+        },
+        "label": {
+          "type": "string",
+          "required": true,
+          "example": "Full release"
+        }
+      }
+    }
+  },
+  "options": {
+    "type": "object",
+    "required": false,
+    "fields": {
+      "layout": {
+        "type": "enum",
+        "required": false,
+        "values": [
+          "grid",
+          "levels",
+          "dates"
+        ],
+        "default": "grid"
+      },
+      "title": {
+        "type": "string",
+        "required": false,
+        "example": "Release 2.0, from plan to tag"
+      },
+      "sub": {
+        "type": "markdown",
+        "required": false,
+        "example": "Dots move one step at a time; timing is illustrative, not elapsed work.",
+        "inline": true
+      },
+      "label": {
+        "type": "string",
+        "required": false,
+        "example": "Release 2.0 stage map"
+      },
+      "intro": {
+        "type": "markdown",
+        "required": false,
+        "example": "Press Play to start, or choose a step in the list to jump there.",
+        "inline": true
+      },
+      "motion": {
+        "type": "boolean",
+        "required": false,
+        "default": true
+      },
+      "target": {
+        "type": "id",
+        "required": false,
+        "example": "tag"
+      },
+      "variant": {
+        "type": "scalar",
+        "required": false,
+        "example": "full"
+      },
+      "statuses": {
+        "type": "object",
+        "required": false,
+        "fields": {
+          "done": {
+            "type": "string",
+            "required": false,
+            "example": "Pass",
+            "default": "done"
+          },
+          "running": {
+            "type": "string",
+            "required": false,
+            "example": "In progress",
+            "default": "running"
+          },
+          "waiting": {
+            "type": "string",
+            "required": false,
+            "example": "Waiting",
+            "default": "waiting"
+          },
+          "failed": {
+            "type": "string",
+            "required": false,
+            "example": "Failed",
+            "default": "failed"
+          },
+          "skipped": {
+            "type": "string",
+            "required": false,
+            "example": "Skipped",
+            "default": "skipped"
+          }
+        }
+      },
+      "legend": {
+        "type": "boolean",
+        "required": false,
+        "default": true
+      },
+      "summary": {
+        "type": "boolean",
+        "required": false,
+        "default": false
+      },
+      "cell_columns": {
+        "type": "scalar",
+        "required": false,
+        "example": 3,
+        "default": 1
+      },
+      "bundle_links": {
+        "type": "boolean",
+        "required": false,
+        "example": true,
+        "default": false
+      },
+      "hosted": {
+        "type": "words",
+        "required": false,
+        "values": [
+          "title",
+          "details",
+          "stage",
+          "steps",
+          "zones"
+        ],
+        "default": []
+      },
+      "dismiss": {
+        "type": "enum",
+        "required": false,
+        "values": [
+          "any",
+          "no_outside"
+        ],
+        "default": "any",
+        "description": "What lets go of a picked card or a chosen stage: any (a second click, Escape, empty space in the visual, or a click anywhere outside it) or no_outside (the same, but a click outside the visual changes nothing)."
+      },
+      "highlight": {
+        "type": "object",
+        "required": false,
+        "fields": {
+          "ids": {
+            "type": "ids",
+            "required": false,
+            "example": [
+              "scope",
+              "parser",
+              "parser-review",
+              "tag"
+            ]
+          },
+          "links": {
+            "type": "list",
+            "required": false,
+            "fields": {
+              "from": {
+                "type": "id",
+                "required": true,
+                "example": "scope"
+              },
+              "to": {
+                "type": "id",
+                "required": true,
+                "example": "parser"
+              },
+              "kind": {
+                "type": "id",
+                "required": false,
+                "example": "planned"
+              }
+            }
+          }
+        },
+        "description": "Cards (ids) and the links between them to keep clear from the first draw, with every other card and link faded, as a dimmed mark is (its words stay readable): a traced path. links left out lights every link between two of the cards; given, exactly those links, and a link with no kind every link of that pair. A hidden card stays hidden. The highlight command overrides it."
+      }
+    }
+  },
+  "commands": [
+    "select",
+    "highlight",
+    "hosted",
+    "size",
+    "history",
+    "show",
+    "hide",
+    "disable",
+    "enable",
+    "state"
+  ],
+  "command_data": {
+    "select": {
+      "data": {
+        "type": "object",
+        "fields": {
+          "id": {
+            "type": "id",
+            "required": false
+          },
+          "ids": {
+            "type": "ids",
+            "required": false
+          },
+          "kind": {
+            "type": "enum",
+            "required": false,
+            "values": [
+              "card",
+              "stage",
+              "all"
+            ]
+          }
+        }
+      },
+      "required": false,
+      "answer": "boolean",
+      "about": "Picks cards (`kind: \"card\"`, the default when ids are given: `ids` pins those cards and the last is the lead, unless `id` among them names the lead), or one stage (`kind: \"stage\"`, `id`). No data, or `kind: \"all\"`, lets go of everything. Answers true (also when nothing changed), or false (with a console warning) for an id it has not got."
+    },
+    "highlight": {
+      "data": {
+        "type": "object",
+        "fields": {
+          "ids": {
+            "type": "ids",
+            "required": false,
+            "about": "The cards to keep clear; one id alone is a list of one."
+          },
+          "links": {
+            "type": "json",
+            "required": false,
+            "about": "Rows of `from`, `to` and, if wanted, `kind` (one row alone is a list of one): exactly the links to keep clear."
+          }
+        }
+      },
+      "required": false,
+      "answer": "boolean",
+      "about": "Keeps the cards in `ids` and the links between two of them clear and fades every other card and link, as a dimmed mark is (its words stay readable): a traced path. `links` (rows of `from`, `to` and, if wanted, `kind`) lights exactly those links instead; a link with no `kind` lights every link of that pair. A highlighted link of a quiet kind shows; a hidden card stays hidden. While a highlight names cards it decides the fading: a card picked with `select` keeps its ring and details and stays clear. No data, or no `ids`, lets go (of the `highlight` option too). Fires no event. Answers true (also when nothing changed), or false (with a console warning, changing nothing) for an id it has not got, a link naming a card not in `ids`, or a link the data does not have."
+    },
+    "hosted": {
+      "data": {
+        "type": "words",
+        "values": [
+          "title",
+          "details",
+          "stage",
+          "steps",
+          "zones"
+        ]
+      },
+      "required": false,
+      "answer": "boolean",
+      "about": "Says which regions of the map the page hosts elsewhere: a list of `title`, `details`, `stage`, `steps`, `zones` (one name as text is read as a list of one); `null` is none. Answers true, or false for a region it does not know, changing nothing."
+    },
+    "size": {
+      "data": {
+        "type": "none"
+      },
+      "required": false,
+      "answer": "record",
+      "about": "Gives back `{ needs, stack_below }`, the width in pixels the map needs and the width below which it stacks; from kit 0.37.0 until a later release also `stacksBelow`, the old name of `stack_below` (sent until a later release)."
+    },
+    "history": {
+      "data": {
+        "type": "none"
+      },
+      "required": false,
+      "answer": "record",
+      "about": "Gives back an answer record (a `list` visual with one row per step) for a host to show in a pop-up."
+    },
+    "show": {
+      "data": {
+        "type": "object",
+        "fields": {
+          "id": {
+            "type": "id",
+            "required": true
+          }
+        }
+      },
+      "required": true,
+      "answer": "boolean",
+      "about": "Shows the card with that id again after a hide. Answers true, also when nothing changed, or false (with a console warning) for an id it has not got."
+    },
+    "hide": {
+      "data": {
+        "type": "object",
+        "fields": {
+          "id": {
+            "type": "id",
+            "required": true
+          }
+        }
+      },
+      "required": true,
+      "answer": "boolean",
+      "about": "Hides the card with that id (and anything under it) until `show`. Answers true, also when nothing changed, or false (with a console warning) for an id it has not got."
+    },
+    "disable": {
+      "data": {
+        "type": "object",
+        "fields": {
+          "id": {
+            "type": "id",
+            "required": true
+          },
+          "reason": {
+            "type": "string",
+            "required": true
+          }
+        }
+      },
+      "required": true,
+      "answer": "boolean",
+      "about": "Greys out the card with that id and shows the reader the reason. Answers true, also when nothing changed, or false for an id it has not got or a `reason` that is blank."
+    },
+    "enable": {
+      "data": {
+        "type": "object",
+        "fields": {
+          "id": {
+            "type": "id",
+            "required": true
+          }
+        }
+      },
+      "required": true,
+      "answer": "boolean",
+      "about": "Takes a `disable` away from the card with that id. Answers true, also when nothing changed, or false for an id it has not got."
+    },
+    "state": {
+      "data": {
+        "type": "none"
+      },
+      "required": false,
+      "answer": "record",
+      "about": "Gives back what the part shows now: `selected` (the lead card's id, else null), `selected_ids` (every card picked, the lead last), `stage` (the stage chosen, else null), `step` (the player's index, -1 at Start or without a player), `highlighted` (`{ ids, links }`, the highlight as given, links as `{ from, to, kind }`; empty lists when none), `hidden` and `disabled` (lists of ids), and `host_changes`: one row per id the host changed, `{ id, hidden, disabled, reason, badge, badge_set }`."
+    }
+  },
+  "events": [
+    "stagemap:select",
+    "stagemap:size",
+    "stagemap:hover",
+    "stagemap:link"
+  ],
+  "event_data": {
+    "stagemap:select": {
+      "kind": {
+        "type": "enum",
+        "required": true,
+        "values": [
+          "card",
+          "stage",
+          "all"
+        ],
+        "about": "What changed selection: \"card\", \"stage\", or \"all\" (when both a card and a stage were let go together)."
+      },
+      "id": {
+        "type": "id",
+        "required": true,
+        "about": "The lead card's or chosen stage's id; null when let go."
+      },
+      "ids": {
+        "type": "json",
+        "required": true,
+        "about": "List of picked card ids with the lead last, or the chosen stage's id in a one-item list; empty when let go."
+      },
+      "from": {
+        "type": "id",
+        "required": true,
+        "about": "The id that was picked before this change; null when none was picked."
+      },
+      "label": {
+        "type": "string",
+        "required": true,
+        "about": "The lead card's or chosen stage's title; null when let go."
+      },
+      "details": {
+        "type": "json",
+        "required": true,
+        "about": "The card's or stage's details record for a host panel; null when let go."
+      },
+      "about": {
+        "type": "json",
+        "required": true,
+        "about": "Always null on this visual."
+      },
+      "still": {
+        "type": "json",
+        "required": true,
+        "about": "When one kind was let go while the other stays picked, { kind, id, ids, details } for what stays picked; null otherwise."
+      },
+      "by": {
+        "type": "enum",
+        "required": true,
+        "values": [
+          "reader",
+          "host",
+          "data"
+        ],
+        "about": "Who changed the selection: \"reader\", \"host\" (a command), or \"data\" (new data or options)."
+      },
+      "via": {
+        "type": "enum",
+        "required": false,
+        "values": [
+          "click",
+          "key",
+          "command"
+        ],
+        "about": "How it happened (kit 0.37.0): \"click\" (pointer, touch or a click away), \"key\" (Enter, Space, Escape or a screen reader's press), \"command\" (the host's select, hide or disable), or null for new data. Kind \"all\" takes the first change's. Only when the page's trail is on."
+      },
+      "at": {
+        "type": "string",
+        "required": false,
+        "about": "When it happened, stamped by the kit. Only when the page's trail is on."
+      },
+      "seq": {
+        "type": "integer",
+        "required": false,
+        "about": "Its place in the page's order of events, stamped by the kit. Only when the page's trail is on."
+      },
+      "part": {
+        "type": "string",
+        "required": true,
+        "about": "The part's name, stamped by the kit on every event."
+      },
+      "name": {
+        "type": "string",
+        "required": true,
+        "about": "The row's name, stamped by the kit on every event (null when the part has none)."
+      }
+    },
+    "stagemap:size": {
+      "needs": {
+        "type": "number",
+        "required": true,
+        "about": "Width in pixels the map needs to draw without scrolling."
+      },
+      "stack_below": {
+        "type": "integer",
+        "required": true,
+        "about": "Width in pixels below which the grid stacks stage by stage (500); null for levels and dates layouts, which never stack. Same name as columns' option."
+      },
+      "stacksBelow": {
+        "type": "integer",
+        "required": true,
+        "about": "The old name of stack_below, with the same value: sent from kit 0.37.0 until a later release. Readers fall back to it for copies made before 0.37.0."
+      },
+      "at": {
+        "type": "string",
+        "required": false,
+        "about": "When it happened, stamped by the kit. Only when the page's trail is on."
+      },
+      "seq": {
+        "type": "integer",
+        "required": false,
+        "about": "Its place in the page's order of events, stamped by the kit. Only when the page's trail is on."
+      },
+      "part": {
+        "type": "string",
+        "required": true,
+        "about": "The part's name, stamped by the kit on every event."
+      },
+      "name": {
+        "type": "string",
+        "required": true,
+        "about": "The row's name, stamped by the kit on every event (null when the part has none)."
+      }
+    },
+    "stagemap:hover": {
+      "kind": {
+        "type": "string",
+        "required": true,
+        "about": "What kind of mark the pointer rests on: \"card\" or \"stage\"."
+      },
+      "id": {
+        "type": "id",
+        "required": true,
+        "about": "The id of the card or stage; null when the pointer left it."
+      },
+      "at": {
+        "type": "string",
+        "required": false,
+        "about": "When it happened, stamped by the kit. Only when the page's trail is on."
+      },
+      "seq": {
+        "type": "integer",
+        "required": false,
+        "about": "Its place in the page's order of events, stamped by the kit. Only when the page's trail is on."
+      },
+      "part": {
+        "type": "string",
+        "required": true,
+        "about": "The part's name, stamped by the kit on every event."
+      },
+      "name": {
+        "type": "string",
+        "required": true,
+        "about": "The row's name, stamped by the kit on every event (null when the part has none)."
+      }
+    },
+    "stagemap:link": {
+      "href": {
+        "type": "string",
+        "required": true,
+        "about": "The address of the link the reader clicked."
+      },
+      "by": {
+        "type": "enum",
+        "required": true,
+        "values": [
+          "reader"
+        ],
+        "about": "Who acted: always \"reader\"."
+      },
+      "field": {
+        "type": "string",
+        "required": true,
+        "about": "Which text of the entry the link was in; null when not given."
+      },
+      "id": {
+        "type": "id",
+        "required": true,
+        "about": "The id of the row the link belongs to; null when not given."
+      },
+      "at": {
+        "type": "string",
+        "required": false,
+        "about": "When it happened, stamped by the kit. Only when the page's trail is on."
+      },
+      "seq": {
+        "type": "integer",
+        "required": false,
+        "about": "Its place in the page's order of events, stamped by the kit. Only when the page's trail is on."
+      },
+      "part": {
+        "type": "string",
+        "required": true,
+        "about": "The part's name, stamped by the kit on every event."
+      },
+      "name": {
+        "type": "string",
+        "required": true,
+        "about": "The row's name, stamped by the kit on every event (null when the part has none)."
+      }
+    }
+  },
+  "tokens": {
+    "--stagemap-stage-map-target": "The target card's outline (default: the page's accent).",
+    "--stagemap-stage-map-card-line": "Every card's outline (default: the page's line-strong).",
+    "--stagemap-stage-map-band": "The stage bands (default: the page's panel-soft).",
+    "--stagemap-stage-map-selected": "The chosen stage (default: the page's accent-soft).",
+    "--stagemap-stage-map-hover": "The edge of the card under the pointer or focus (default: the page's accent).",
+    "--stagemap-stage-map-disabled": "A disabled card's edge, dimmed (default: the page's muted)."
+  },
+  "r": [
+    {
+      "block": "options",
+      "field": "layout",
+      "r_name": "layout",
+      "segments": [],
+      "kit_type": "enum",
+      "r_type": "character",
+      "values": [
+        "grid",
+        "levels",
+        "dates"
+      ],
+      "required": false,
+      "default": "grid"
+    },
+    {
+      "block": "options",
+      "field": "title",
+      "r_name": "title",
+      "segments": [],
+      "kit_type": "string",
+      "r_type": "character",
+      "values": null,
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "options",
+      "field": "sub",
+      "r_name": "sub",
+      "segments": [],
+      "kit_type": "markdown",
+      "r_type": "character",
+      "values": null,
+      "required": false,
+      "default": null,
+      "markdown": "inline"
+    },
+    {
+      "block": "options",
+      "field": "label",
+      "r_name": "label",
+      "segments": [],
+      "kit_type": "string",
+      "r_type": "character",
+      "values": null,
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "options",
+      "field": "intro",
+      "r_name": "intro",
+      "segments": [],
+      "kit_type": "markdown",
+      "r_type": "character",
+      "values": null,
+      "required": false,
+      "default": null,
+      "markdown": "inline"
+    },
+    {
+      "block": "options",
+      "field": "motion",
+      "r_name": "motion",
+      "segments": [],
+      "kit_type": "boolean",
+      "r_type": "logical",
+      "values": null,
+      "required": false,
+      "default": true
+    },
+    {
+      "block": "options",
+      "field": "target",
+      "r_name": "target",
+      "segments": [],
+      "kit_type": "id",
+      "r_type": "character|double",
+      "values": null,
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "options",
+      "field": "variant",
+      "r_name": "variant",
+      "segments": [],
+      "kit_type": "scalar",
+      "r_type": "character|double",
+      "values": null,
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "options",
+      "field": "statuses",
+      "r_name": "statuses",
+      "segments": [],
+      "kit_type": "object",
+      "r_type": "list",
+      "values": null,
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "options",
+      "field": "statuses.done",
+      "r_name": "done",
+      "segments": [
+        "object"
+      ],
+      "kit_type": "string",
+      "r_type": "character",
+      "values": null,
+      "required": false,
+      "default": "done"
+    },
+    {
+      "block": "options",
+      "field": "statuses.running",
+      "r_name": "running",
+      "segments": [
+        "object"
+      ],
+      "kit_type": "string",
+      "r_type": "character",
+      "values": null,
+      "required": false,
+      "default": "running"
+    },
+    {
+      "block": "options",
+      "field": "statuses.waiting",
+      "r_name": "waiting",
+      "segments": [
+        "object"
+      ],
+      "kit_type": "string",
+      "r_type": "character",
+      "values": null,
+      "required": false,
+      "default": "waiting"
+    },
+    {
+      "block": "options",
+      "field": "statuses.failed",
+      "r_name": "failed",
+      "segments": [
+        "object"
+      ],
+      "kit_type": "string",
+      "r_type": "character",
+      "values": null,
+      "required": false,
+      "default": "failed"
+    },
+    {
+      "block": "options",
+      "field": "statuses.skipped",
+      "r_name": "skipped",
+      "segments": [
+        "object"
+      ],
+      "kit_type": "string",
+      "r_type": "character",
+      "values": null,
+      "required": false,
+      "default": "skipped"
+    },
+    {
+      "block": "options",
+      "field": "legend",
+      "r_name": "legend",
+      "segments": [],
+      "kit_type": "boolean",
+      "r_type": "logical",
+      "values": null,
+      "required": false,
+      "default": true
+    },
+    {
+      "block": "options",
+      "field": "summary",
+      "r_name": "summary",
+      "segments": [],
+      "kit_type": "boolean",
+      "r_type": "logical",
+      "values": null,
+      "required": false,
+      "default": false
+    },
+    {
+      "block": "options",
+      "field": "cell_columns",
+      "r_name": "cell_columns",
+      "segments": [],
+      "kit_type": "scalar",
+      "r_type": "character|double",
+      "values": null,
+      "required": false,
+      "default": 1
+    },
+    {
+      "block": "options",
+      "field": "bundle_links",
+      "r_name": "bundle_links",
+      "segments": [],
+      "kit_type": "boolean",
+      "r_type": "logical",
+      "values": null,
+      "required": false,
+      "default": false
+    },
+    {
+      "block": "options",
+      "field": "hosted",
+      "r_name": "hosted",
+      "segments": [],
+      "kit_type": "words",
+      "r_type": "character",
+      "values": [
+        "title",
+        "details",
+        "stage",
+        "steps",
+        "zones"
+      ],
+      "required": false,
+      "default": []
+    },
+    {
+      "block": "options",
+      "field": "dismiss",
+      "r_name": "dismiss",
+      "segments": [],
+      "kit_type": "enum",
+      "r_type": "character",
+      "values": [
+        "any",
+        "no_outside"
+      ],
+      "required": false,
+      "default": "any"
+    },
+    {
+      "block": "options",
+      "field": "highlight",
+      "r_name": "highlight",
+      "segments": [],
+      "kit_type": "object",
+      "r_type": "list",
+      "values": null,
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "options",
+      "field": "highlight.ids",
+      "r_name": "ids",
+      "segments": [
+        "object"
+      ],
+      "kit_type": "ids",
+      "r_type": "character|double",
+      "values": null,
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "options",
+      "field": "highlight.links",
+      "r_name": "links",
+      "segments": [
+        "object"
+      ],
+      "kit_type": "list",
+      "r_type": "data.frame",
+      "values": null,
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "options",
+      "field": "highlight.links.from",
+      "r_name": "from",
+      "segments": [
+        "object",
+        "records"
+      ],
+      "kit_type": "id",
+      "r_type": "character|double",
+      "values": null,
+      "required": true,
+      "default": null
+    },
+    {
+      "block": "options",
+      "field": "highlight.links.to",
+      "r_name": "to",
+      "segments": [
+        "object",
+        "records"
+      ],
+      "kit_type": "id",
+      "r_type": "character|double",
+      "values": null,
+      "required": true,
+      "default": null
+    },
+    {
+      "block": "options",
+      "field": "highlight.links.kind",
+      "r_name": "kind",
+      "segments": [
+        "object",
+        "records"
+      ],
+      "kit_type": "id",
+      "r_type": "character|double",
+      "values": null,
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "stages",
+      "r_name": "stages",
+      "segments": [],
+      "kit_type": "list",
+      "r_type": "data.frame",
+      "values": null,
+      "required": true,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "stages.id",
+      "r_name": "id",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "id",
+      "r_type": "character|double",
+      "values": null,
+      "required": true,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "stages.label",
+      "r_name": "label",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "string",
+      "r_type": "character",
+      "values": null,
+      "required": true,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "stages.kicker",
+      "r_name": "kicker",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "string",
+      "r_type": "character",
+      "values": null,
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "stages.text",
+      "r_name": "text",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "markdown",
+      "r_type": "character",
+      "values": null,
+      "required": false,
+      "default": null,
+      "markdown": "block"
+    },
+    {
+      "block": "data",
+      "field": "stages.date",
+      "r_name": "date",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "date",
+      "r_type": "Date",
+      "values": null,
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "stages.flag",
+      "r_name": "flag",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "string",
+      "r_type": "character",
+      "values": null,
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "stages.tone",
+      "r_name": "tone",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "enum",
+      "r_type": "character",
+      "values": [
+        "teal",
+        "good",
+        "warn",
+        "bad",
+        "muted",
+        "orange",
+        "blue",
+        "violet",
+        "pink",
+        "gold",
+        "grey"
+      ],
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "stages.file",
+      "r_name": "file",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "string",
+      "r_type": "character",
+      "values": null,
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "stages.code",
+      "r_name": "code",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "string",
+      "r_type": "character",
+      "values": null,
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "stages.highlight",
+      "r_name": "highlight",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "string",
+      "r_type": "character",
+      "values": null,
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "lanes",
+      "r_name": "lanes",
+      "segments": [],
+      "kit_type": "list",
+      "r_type": "data.frame",
+      "values": null,
+      "required": true,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "lanes.id",
+      "r_name": "id",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "id",
+      "r_type": "character|double",
+      "values": null,
+      "required": true,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "lanes.label",
+      "r_name": "label",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "string",
+      "r_type": "character",
+      "values": null,
+      "required": true,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "lanes.tone",
+      "r_name": "tone",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "enum",
+      "r_type": "character",
+      "values": [
+        "teal",
+        "good",
+        "warn",
+        "bad",
+        "muted",
+        "orange",
+        "blue",
+        "violet",
+        "pink",
+        "gold",
+        "grey"
+      ],
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "lanes.text",
+      "r_name": "text",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "markdown",
+      "r_type": "character",
+      "values": null,
+      "required": false,
+      "default": null,
+      "markdown": "block"
+    },
+    {
+      "block": "data",
+      "field": "nodes",
+      "r_name": "nodes",
+      "segments": [],
+      "kit_type": "list",
+      "r_type": "data.frame",
+      "values": null,
+      "required": true,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "nodes.id",
+      "r_name": "id",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "id",
+      "r_type": "character|double",
+      "values": null,
+      "required": true,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "nodes.label",
+      "r_name": "label",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "string",
+      "r_type": "character",
+      "values": null,
+      "required": true,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "nodes.stage",
+      "r_name": "stage",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "id",
+      "r_type": "character|double",
+      "values": null,
+      "required": true,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "nodes.lane",
+      "r_name": "lane",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "id",
+      "r_type": "character|double",
+      "values": null,
+      "required": true,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "nodes.sub",
+      "r_name": "sub",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "string",
+      "r_type": "character",
+      "values": null,
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "nodes.status",
+      "r_name": "status",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "id",
+      "r_type": "character|double",
+      "values": null,
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "nodes.tone",
+      "r_name": "tone",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "enum",
+      "r_type": "character",
+      "values": [
+        "teal",
+        "good",
+        "warn",
+        "bad",
+        "muted",
+        "orange",
+        "blue",
+        "violet",
+        "pink",
+        "gold",
+        "grey"
+      ],
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "nodes.text",
+      "r_name": "text",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "markdown",
+      "r_type": "character",
+      "values": null,
+      "required": false,
+      "default": null,
+      "markdown": "block"
+    },
+    {
+      "block": "data",
+      "field": "nodes.zone",
+      "r_name": "zone",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "id",
+      "r_type": "character|double",
+      "values": null,
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "nodes.milestone",
+      "r_name": "milestone",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "boolean",
+      "r_type": "logical",
+      "values": null,
+      "required": false,
+      "default": false
+    },
+    {
+      "block": "data",
+      "field": "nodes.variants",
+      "r_name": "variants",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "string",
+      "r_type": "character",
+      "values": null,
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "nodes.hidden",
+      "r_name": "hidden",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "boolean",
+      "r_type": "logical",
+      "values": null,
+      "required": false,
+      "default": false
+    },
+    {
+      "block": "data",
+      "field": "nodes.disabled",
+      "r_name": "disabled",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "boolean",
+      "r_type": "logical",
+      "values": null,
+      "required": false,
+      "default": false
+    },
+    {
+      "block": "data",
+      "field": "nodes.reason",
+      "r_name": "reason",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "string",
+      "r_type": "character",
+      "values": null,
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "links",
+      "r_name": "links",
+      "segments": [],
+      "kit_type": "list",
+      "r_type": "data.frame",
+      "values": null,
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "links.from",
+      "r_name": "from",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "id",
+      "r_type": "character|double",
+      "values": null,
+      "required": true,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "links.to",
+      "r_name": "to",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "id",
+      "r_type": "character|double",
+      "values": null,
+      "required": true,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "links.kind",
+      "r_name": "kind",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "id",
+      "r_type": "character|double",
+      "values": null,
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "links.label",
+      "r_name": "label",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "string",
+      "r_type": "character",
+      "values": null,
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "links.step",
+      "r_name": "step",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "scalar",
+      "r_type": "character|double",
+      "values": null,
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "links.variants",
+      "r_name": "variants",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "string",
+      "r_type": "character",
+      "values": null,
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "kinds",
+      "r_name": "kinds",
+      "segments": [],
+      "kit_type": "list",
+      "r_type": "data.frame",
+      "values": null,
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "kinds.id",
+      "r_name": "id",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "id",
+      "r_type": "character|double",
+      "values": null,
+      "required": true,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "kinds.label",
+      "r_name": "label",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "string",
+      "r_type": "character",
+      "values": null,
+      "required": true,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "kinds.line",
+      "r_name": "line",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "enum",
+      "r_type": "character",
+      "values": [
+        "solid",
+        "dashed",
+        "dotted",
+        "dashdot"
+      ],
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "kinds.end",
+      "r_name": "end",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "enum",
+      "r_type": "character",
+      "values": [
+        "arrow",
+        "ring",
+        "none"
+      ],
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "kinds.tone",
+      "r_name": "tone",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "enum",
+      "r_type": "character",
+      "values": [
+        "teal",
+        "good",
+        "warn",
+        "bad",
+        "muted",
+        "orange",
+        "blue",
+        "violet",
+        "pink",
+        "gold",
+        "grey"
+      ],
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "kinds.quiet",
+      "r_name": "quiet",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "boolean",
+      "r_type": "logical",
+      "values": null,
+      "required": false,
+      "default": false
+    },
+    {
+      "block": "data",
+      "field": "statuses",
+      "r_name": "statuses",
+      "segments": [],
+      "kit_type": "list",
+      "r_type": "data.frame",
+      "values": null,
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "statuses.id",
+      "r_name": "id",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "id",
+      "r_type": "character|double",
+      "values": null,
+      "required": true,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "statuses.label",
+      "r_name": "label",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "string",
+      "r_type": "character",
+      "values": null,
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "statuses.tone",
+      "r_name": "tone",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "enum",
+      "r_type": "character",
+      "values": [
+        "teal",
+        "good",
+        "warn",
+        "bad",
+        "muted",
+        "orange",
+        "blue",
+        "violet",
+        "pink",
+        "gold",
+        "grey"
+      ],
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "statuses.icon",
+      "r_name": "icon",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "icon",
+      "r_type": "character",
+      "values": null,
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "zones",
+      "r_name": "zones",
+      "segments": [],
+      "kit_type": "list",
+      "r_type": "data.frame",
+      "values": null,
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "zones.id",
+      "r_name": "id",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "id",
+      "r_type": "character|double",
+      "values": null,
+      "required": true,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "zones.label",
+      "r_name": "label",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "string",
+      "r_type": "character",
+      "values": null,
+      "required": true,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "zones.text",
+      "r_name": "text",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "markdown",
+      "r_type": "character",
+      "values": null,
+      "required": false,
+      "default": null,
+      "markdown": "inline"
+    },
+    {
+      "block": "data",
+      "field": "zones.note",
+      "r_name": "note",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "markdown",
+      "r_type": "character",
+      "values": null,
+      "required": false,
+      "default": null,
+      "markdown": "inline"
+    },
+    {
+      "block": "data",
+      "field": "zones.tone",
+      "r_name": "tone",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "enum",
+      "r_type": "character",
+      "values": [
+        "teal",
+        "good",
+        "warn",
+        "bad",
+        "muted",
+        "orange",
+        "blue",
+        "violet",
+        "pink",
+        "gold",
+        "grey"
+      ],
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "steps",
+      "r_name": "steps",
+      "segments": [],
+      "kit_type": "list",
+      "r_type": "data.frame",
+      "values": null,
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "steps.id",
+      "r_name": "id",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "id",
+      "r_type": "character|double",
+      "values": null,
+      "required": true,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "steps.label",
+      "r_name": "label",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "string",
+      "r_type": "character",
+      "values": null,
+      "required": true,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "steps.kicker",
+      "r_name": "kicker",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "string",
+      "r_type": "character",
+      "values": null,
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "steps.text",
+      "r_name": "text",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "markdown",
+      "r_type": "character",
+      "values": null,
+      "required": false,
+      "default": null,
+      "markdown": "block"
+    },
+    {
+      "block": "data",
+      "field": "steps.stage",
+      "r_name": "stage",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "id",
+      "r_type": "character|double",
+      "values": null,
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "steps.file",
+      "r_name": "file",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "string",
+      "r_type": "character",
+      "values": null,
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "steps.code",
+      "r_name": "code",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "string",
+      "r_type": "character",
+      "values": null,
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "steps.highlight",
+      "r_name": "highlight",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "string",
+      "r_type": "character",
+      "values": null,
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "changes",
+      "r_name": "changes",
+      "segments": [],
+      "kit_type": "list",
+      "r_type": "data.frame",
+      "values": null,
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "changes.step",
+      "r_name": "step",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "id",
+      "r_type": "character|double",
+      "values": null,
+      "required": true,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "changes.card",
+      "r_name": "card",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "id",
+      "r_type": "character|double",
+      "values": null,
+      "required": true,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "changes.status",
+      "r_name": "status",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "id",
+      "r_type": "character|double",
+      "values": null,
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "changes.stage",
+      "r_name": "stage",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "id",
+      "r_type": "character|double",
+      "values": null,
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "changes.hidden",
+      "r_name": "hidden",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "boolean",
+      "r_type": "logical",
+      "values": null,
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "variants",
+      "r_name": "variants",
+      "segments": [],
+      "kit_type": "list",
+      "r_type": "data.frame",
+      "values": null,
+      "required": false,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "variants.id",
+      "r_name": "id",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "id",
+      "r_type": "character|double",
+      "values": null,
+      "required": true,
+      "default": null
+    },
+    {
+      "block": "data",
+      "field": "variants.label",
+      "r_name": "label",
+      "segments": [
+        "records"
+      ],
+      "kit_type": "string",
+      "r_type": "character",
+      "values": null,
+      "required": true,
+      "default": null
+    }
+  ]
+}

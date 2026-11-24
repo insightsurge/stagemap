@@ -5,8 +5,30 @@ Scripts for working on stagemap. None of them ship with the package (`tools/` is
 | File or folder | What it is |
 |---|---|
 | `build-site.R` | Builds the pkgdown site into `site/` |
+| `copy-kit.R` | Copies the stage-map engine into `inst/kit/` (see below) |
 
 Run every script from the package root, for example `Rscript tools/build-site.R`.
+
+## Updating the stage-map engine
+
+The engine that draws a map (a script, a stylesheet, its contract, and the d3 library it draws with) ships in
+`inst/kit/`. That folder is a generated copy: never edit a file in it, run the script again instead.
+
+```
+Rscript tools/copy-kit.R <path to the engine's checkout> [<date, YYYY-MM-DD>]
+```
+
+The argument is the engine's own checkout on your machine; nothing about it is written into the package. The script takes
+a snapshot of the checkout's `origin/main` (after a fetch; uncommitted work in the checkout never gets in), runs the
+engine's own freshness check, builds the engine under stagemap's names, checks the build against its checksums and
+against the engine's own names, and writes the files and `inst/kit/kit.json` (engine version, source commit, date,
+the sha256 of every file, the names). It needs `python3`, `git` and the `jsonlite` package. The date is the argument,
+or else the commit's date, never the clock, so a second run on the same commit changes nothing (`git status` stays
+clean). After a copy, run `gate fast` and `gate tests --filter kit`: `tests/testthat/test-kit.R` checks that the engine
+still has every command, event and name the package relies on (the list is in `tests/testthat/helper-kit.R`; extend it
+when stagemap starts to use another). A new copy also needs a look at `inst/COPYRIGHTS` when the engine takes in third-party
+files. `biome.json` leaves `inst/kit/` as built: its override turns the formatter and the lint rules off for the folder instead
+of excluding it, because Biome exits 1 ("No files were processed") when every file under `inst/` is excluded.
 
 ## The quality gate
 

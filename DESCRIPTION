@@ -8,6 +8,7 @@ Description: Builds relation maps from nodes placed by stage and lane and
     values, lays the map out the same way on every run and writes it as an
     SVG image.
 License: MIT + file LICENSE
+Copyright: inst/COPYRIGHTS
 URL: https://insightsurge.github.io/stagemap/, https://github.com/insightsurge/stagemap
 BugReports: https://github.com/insightsurge/stagemap/issues
 Depends: 

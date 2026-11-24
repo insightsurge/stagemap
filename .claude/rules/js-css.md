@@ -60,6 +60,7 @@ Labels as in `r-code.md` (CRAN / house). Reasons and sources: `docs/standards.md
   in CSS and JS and R can switch animation off; no automatic animation longer than 5 s unless it can be paused;
   graphics colours keep 3:1 contrast in light and dark.
 - **house:** ES2015+ for evergreen browsers (Chrome, Edge, Firefox, Safari); Biome formats and lints (`biome.json`,
-  2 spaces, width 120, single quotes); the gate's `biome` step and CI run it.
+  2 spaces, width 120, single quotes); the gate's `biome` step and CI run it. `inst/kit/` is a generated copy and is left
+  as built ([bundled files](bundled-files.md)).
 - **house:** every new file here is listed in `inst/COPYRIGHTS` (see `bundled-files.md`).
 - **house:** once the engine exists, record engine changes users notice in `NEWS.md`.
