@@ -47,6 +47,12 @@ check_lines <- function(fault, fix) {
   c("x" = cli_escape(fault), "i" = cli_escape(fix))
 }
 
+# A column or table name as cli writes a field: `x` is a path such as "links$from".
+format_field <- function(x) {
+  checkmate::assert_string(x)
+  cli::format_inline("{.field {x}}")
+}
+
 # The problems with ids that are given twice in a table, as cli message lines; NULL when there are none.
 stage_map_duplicate_problems <- function(data) {
   checkmate::assert_list(data, names = "named")
@@ -56,10 +62,12 @@ stage_map_duplicate_problems <- function(data) {
     if (length(twice) == 0L) {
       return(NULL)
     }
-    row <- stage_map_tables[[name]]$row
     check_lines(
-      cli::format_inline("{.field {name}$id} has ids given more than once: {.val {twice}}."),
-      cli::format_inline("Give each {row} one row.")
+      paste0(
+        format_field(paste0(name, "$id")),
+        cli::format_inline(" has ids given more than once: {.val {twice}}.")
+      ),
+      paste0("Give each ", stage_map_tables[[name]]$row, " one row.")
     )
   })
   unlist(lines)
@@ -76,18 +84,13 @@ stage_map_join_problems <- function(data) {
     }
     found <- column_ids(column, isTRUE(join$split))
     to <- join$to
-    field <- paste0(join$table, "$", join$column)
+    field <- format_field(paste0(join$table, "$", join$column))
+    target_ids <- format_field(paste0(to, "$id"))
     if (!is.data.frame(data[[to]])) {
       if (identical(to, "kinds") && length(found) > 0L) {
         return(check_lines(
-          cli::format_inline("{.field {field}} names kinds ({.val {found}}), but no {.arg kinds} were given."),
-          paste0(
-            "Give the kinds in ",
-            stage_map_tables$kinds$given,
-            ", or leave ",
-            cli::format_inline("{.field {field}}"),
-            " out."
-          )
+          paste0(field, cli::format_inline(" names kinds ({.val {found}}), but no {.arg kinds} were given.")),
+          paste0("Give the kinds in ", stage_map_tables$kinds$given, ", or leave ", field, " out.")
         ))
       }
       return(NULL)
@@ -97,9 +100,13 @@ stage_map_join_problems <- function(data) {
       return(NULL)
     }
     check_lines(
-      cli::format_inline("{.field {field}} has ids that {.field {to}$id} lacks: {.val {bad}}."),
+      paste0(field, " has ids that ", target_ids, cli::format_inline(" lacks: {.val {bad}}.")),
       paste0(
-        cli::format_inline("Use an id from {.field {to}$id}, or add that {stage_map_tables[[to]]$row} to "),
+        "Use an id from ",
+        target_ids,
+        ", or add that ",
+        stage_map_tables[[to]]$row,
+        " to ",
         stage_map_tables[[to]]$given,
         "."
       )
@@ -119,7 +126,7 @@ stage_map_option_problems <- function(data) {
     }
     check_lines(
       cli::format_inline("{.arg {option}} is not a {stage_map_tables[[to]]$row} of the map: {.val {value}}."),
-      cli::format_inline("Use an id from {.field {to}$id}.")
+      paste0("Use an id from ", format_field(paste0(to, "$id")), ".")
     )
   }
   c(one("target", "cards"), one("variant", "variants"))
