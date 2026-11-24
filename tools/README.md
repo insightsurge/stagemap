@@ -5,6 +5,7 @@ Scripts for working on stagemap. None of them ship with the package (`tools/` is
 | File or folder | What it is |
 |---|---|
 | `build-site.R` | Builds the pkgdown site into `site/` |
+| `check-release.R` | The by-hand release check (see below) |
 | `copy-kit.R` | Copies the stage-map engine into `inst/kit/` (see below) |
 
 Run every script from the package root, for example `Rscript tools/build-site.R`.
@@ -29,6 +30,17 @@ still has every command, event and name the package relies on (the list is in `t
 when stagemap starts to use another). A new copy also needs a look at `inst/COPYRIGHTS` when the engine takes in third-party
 files. `biome.json` leaves `inst/kit/` as built: its override turns the formatter and the lint rules off for the folder instead
 of excluding it, because Biome exits 1 ("No files were processed") when every file under `inst/` is excluded.
+
+## The release check
+
+Run `Rscript tools/check-release.R` by hand, from the package root, before the repository goes public and before every
+release; it is not part of the tests or the gate. It fails, with one line per problem, when a file in `inst/kit/` is
+missing, is not listed in `inst/kit/kit.json` or does not match its sha256; when the public text (README, DESCRIPTION,
+NEWS, `_pkgdown.yml`, `R/`, `man/`, `vignettes/`, `inst/kit/`, `inst/COPYRIGHTS`, `tools/`, `.github/`) names the project
+the engine is built from; when the maintainer address is a noreply address; when DESCRIPTION has no URL or BugReports;
+or when a founder placeholder is left in a release file. It fetches the links in DESCRIPTION and `_pkgdown.yml` only once
+the repository is public; until then it prints a `SKIP` line and the links are unchecked, so a release needs a run
+without that line.
 
 ## The quality gate
 
