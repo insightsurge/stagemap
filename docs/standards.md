@@ -156,9 +156,8 @@ The engine is most of what a user sees, so it has its own rules. All of these ar
   `mount`, `update` and `resize` (htmlwidgets has no destroy hook; `destroy` serves re-renders and a later own
   binding). The engine never depends on htmlwidgets, so the wrapper can later be replaced by stagemap's own Shiny
   output binding (dropping a hard dependency) without changing the engine or the R functions.
-- The widget's markup comes from a `stagemap_html()` hook that ignores htmlwidgets' `style` argument, so sizes travel
-  as `data-*` attributes rather than an inline `style=` in the markup. (htmlwidgets' runtime still sets sizes through
-  `el.style` in standalone pages, such as `saveWidget()` output and the RStudio viewer.)
+- The widget's markup is htmlwidgets' own container, sized by the widget's `width` and `height` (htmlwidgets' runtime
+  sets sizes through `el.style` in standalone pages, such as `saveWidget()` output and the RStudio viewer).
 - shiny stays in `Suggests`: maps work in Quarto, R Markdown and pkgdown without it.
 - One accepted exception to "no `eval`" below: htmlwidgets' own runtime uses `eval()` for `JS()` and `onRender()`.
   stagemap's own R and JS code never uses `JS()` or `onRender()`; a user who adds them opts into that `eval()`.

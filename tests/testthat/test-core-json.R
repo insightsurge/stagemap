@@ -44,13 +44,19 @@ describe("convert_json()", {
     )
   })
 
-  it("warns once about names the spec lacks, drops them, and says what is valid", {
-    data <- list(rows = rows(n = c(TRUE, FALSE), extra_col = 3:4), opts = list(title = "T", other = 1), unknown = 1)
+  it("warns once about names the spec lacks in an object, drops them, and says what is valid", {
+    data <- list(rows = rows(n = c(TRUE, FALSE)), opts = list(title = "T", other = 1), unknown = 1)
     warning <- expect_warning(json <- convert_json(data, made_up), class = "stagemap_warning_unused_columns")
     expect_s3_class(warning, "stagemap_warning")
-    expect_identical(warning$dropped, list("." = "unknown", rows = "extra_col", opts = "other"))
-    expect_match(conditionMessage(warning), "id, n, kind, day, meta, tags", fixed = TRUE)
-    expect_false(grepl("extra_col|other|unknown", unclass(json)))
+    expect_identical(warning$dropped, list("." = "unknown", opts = "other"))
+    expect_match(conditionMessage(warning), "title, flag", fixed = TRUE)
+    expect_false(grepl("other|unknown", unclass(json)))
+  })
+
+  it("drops a column of a data frame that the spec lacks without a warning, and keeps the rest of the row", {
+    data <- list(rows = rows(n = c(TRUE, FALSE), extra_col = 3:4))
+    expect_no_warning(json <- convert_json(data, made_up))
+    expect_identical(as_list(json)$rows, list(list(id = "x", n = TRUE), list(id = "y", n = FALSE)))
   })
 
   it("escapes every less-than sign, so a string cannot end the page's script", {
@@ -145,14 +151,14 @@ describe("convert_json()", {
     expect_identical(unclass(convert_json(list(who = c(a = 1)))), "{\"who\":{\"a\":1}}")
   })
 
-  it("drops the names a list, an object and a column lack a field for, naming each path once", {
+  it("drops the names an object lacks a field for, and the columns of a data frame quietly, naming each path once", {
     spec <- list(
       list_of = field("list", fields = list(id = field("string"))),
       bag = field("object", fields = list(id = field("string")))
     )
     data <- list(list_of = data.frame(id = c(1, 2), mine = 2:3), bag = list(id = 1, mine = c(a = 2)))
     warning <- expect_warning(json <- convert_json(data, spec), class = "stagemap_warning_unused_columns")
-    expect_identical(warning$dropped, list(list_of = "mine", bag = "mine"))
+    expect_identical(warning$dropped, list(bag = "mine"))
     parsed <- as_list(json)
     expect_identical(parsed$list_of, list(list(id = "1"), list(id = "2")))
     expect_identical(parsed$bag, list(id = "1"))

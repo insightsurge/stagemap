@@ -48,3 +48,10 @@ reference:
   - title: Package
     contents:
       - stagemap-package
+  - title: Stage maps
+    contents:
+      - stage_map
+      - add_links
+      - add_zones
+      - add_steps
+      - add_variants

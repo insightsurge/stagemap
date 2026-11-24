@@ -8,7 +8,7 @@ paths:
 
 Labels as in `r-code.md` (CRAN / house). Reasons and sources: `docs/standards.md`.
 
-- **CRAN:** source for everything: plain, readable, unminified JS and CSS in `inst/www/`; no build step, no bundler,
+- **CRAN:** source for everything: plain, readable, unminified JS and CSS: the engine in `inst/kit/` and the widget binding in `inst/htmlwidgets/stage_map.js`; no build step, no bundler,
   no `node_modules`, no minified files without their source. Everything ships in the package: no CDN, no requests
   to other sites. **house:** no bundled fonts: text uses the host page's font (the Shiny app's bslib theme, the
   Quarto or pkgdown site), read from the page, like the colours.
@@ -16,8 +16,7 @@ Labels as in `r-code.md` (CRAN / house). Reasons and sources: `docs/standards.md
   theme's colours; no AI-generated images.
 - **house:** maps are an htmlwidget around stagemap's own engine (#7). The engine has its own API (`mount`,
   `update`, `resize`, `destroy`) and never depends on htmlwidgets; the widget binding calls `mount`, `update` and
-  `resize`. Markup comes from a `stagemap_html()` hook that ignores htmlwidgets' `style` argument, so sizes travel as
-  `data-*` attributes. stagemap's code never uses `htmlwidgets::JS()` or `onRender()`, so htmlwidgets' runtime
+  `resize`. The markup is htmlwidgets' own container, sized by the widget's `width` and `height`. stagemap's code never uses `htmlwidgets::JS()` or `onRender()`, so htmlwidgets' runtime
   `eval()` runs only if a user adds them. Reasons: `docs/standards.md`, section 3.
 - **house:** one global namespace (`window.stagemap`), guard against loading twice, state kept per element, several
   maps per page, no listeners left behind.

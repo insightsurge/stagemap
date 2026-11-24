@@ -7,21 +7,25 @@
 # The helpers below run once per column, row or value and are reached only from convert_prepare(), which asserts its
 # own inputs, so they do not repeat the assertions.
 
-# Notes the names of a container that the spec has no field for, and returns the names to keep. `dropped` is an
-# environment filled while converting; the row number is left out of the path so that every row of a column adds to one
-# entry. `what` is "column" for a data frame and "name" for an object, so that the warning calls the thing by its
-# right word (the warning adds the plural s).
+# Returns the names of a container to keep: those the spec has a field for. An unknown column of a data frame is left
+# out of what is sent, quietly: it stays in the R data (`sm_widget_data()`), for the functions that read the map in R
+# and for Shiny events, so a table with many columns draws without a warning. An unknown name inside an object or a
+# record (a misspelt option) is noted in `dropped`, an environment filled while converting, for one warning; the row
+# number is left out of the path so that every row of a column adds to one entry. `what` is "column" for a data frame
+# and "name" for an object.
 drop_unknown <- function(found, spec_fields, label, dropped, what = "name") {
   unknown <- setdiff(found, names(spec_fields))
   if (length(unknown) == 0L) {
     return(found)
   }
-  key <- gsub("\\[[0-9]+\\]", "", label)
-  if (!nzchar(key)) {
-    key <- "."
+  if (!identical(what, "column")) {
+    key <- gsub("\\[[0-9]+\\]", "", label)
+    if (!nzchar(key)) {
+      key <- "."
+    }
+    seen <- dropped$items[[key]]
+    dropped$items[[key]] <- list(names = union(seen$names, unknown), valid = names(spec_fields), what = what)
   }
-  seen <- dropped$items[[key]]
-  dropped$items[[key]] <- list(names = union(seen$names, unknown), valid = names(spec_fields), what = what)
   intersect(found, names(spec_fields))
 }
 
@@ -107,8 +111,9 @@ prepare_object <- function(value, fields, label, dropped) {
   out[!vapply(out, is.null, logical(1))]
 }
 
-# `value` prepared for writing: it follows the spec and drops what the spec lacks, with one warning; with NULL for
-# `fields` it takes any value as it is (a command's data). Not yet text, so a caller can put it inside a larger tree.
+# `value` prepared for writing: it follows the spec and drops what the spec lacks (a name inside an object, with one
+# warning; a column of a data frame, quietly); with NULL for `fields` it takes any value as it is (a command's data).
+# Not yet text, so a caller can put it inside a larger tree.
 convert_prepare <- function(value, fields = NULL, path = "", call = rlang::caller_env()) {
   checkmate::assert_list(fields, names = "named", null.ok = TRUE)
   checkmate::assert_string(path)

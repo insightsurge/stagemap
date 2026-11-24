@@ -53,19 +53,19 @@ describe("sm_add_data()", {
     expect_identical(added$height, 300)
   })
 
-  it("warns once about a column the engine lacks, when the data comes in", {
-    expect_warning(
-      sm_add_data(widget(), list(extra = data.frame(id = "b", n = 1))),
-      class = "stagemap_warning_unused_columns"
-    )
+  it("takes a column the engine lacks without a warning, and keeps it in the R data but not in the page's", {
+    added <- NULL
+    expect_no_warning(added <- sm_add_data(widget(), list(extra = data.frame(id = "b", n = 1))))
+    expect_identical(sm_widget_data(added)$extra, data.frame(id = "b", n = 1))
+    expect_identical(data_of(added)$extra, list(list(id = "b")))
   })
 })
 
 describe("sm_rebuild()", {
-  it("does not repeat a warning about columns the first build already gave", {
+  it("does not repeat a warning about names the first build already gave", {
     local_spec(list(fields = made_up_fields))
     expect_warning(
-      widget <- sm_widget(list(rows = data.frame(id = "a", n = 1))),
+      widget <- sm_widget(list(rows = data.frame(id = "a"), options = list(note = "N", colour = "red"))),
       class = "stagemap_warning_unused_columns"
     )
     expect_no_warning(sm_rebuild(widget, sm_widget_data(widget)))

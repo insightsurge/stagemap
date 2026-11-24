@@ -2,4 +2,9 @@
 
 S3method(format,stagemap_proxy)
 S3method(print,stagemap_proxy)
+export(add_links)
+export(add_steps)
+export(add_variants)
+export(add_zones)
+export(stage_map)
 importFrom(rlang,"%||%")

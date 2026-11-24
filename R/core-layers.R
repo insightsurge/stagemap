@@ -8,9 +8,9 @@ sm_widget_data <- function(x) {
   x$stagemap$data
 }
 
-# Builds the widget `x` again from new R data. Its size, element id and kept choices stay unless given. A column the
+# Builds the widget `x` again from new R data. Its size, element id and kept choices stay unless given. A name the
 # engine lacks was warned about when its data came in (sm_widget() or sm_add_data()), so a rebuild gives that warning
-# no more: a pipe of three layer calls warns about the nodes' extra column once, not four times.
+# no more: a pipe of three layer calls warns about a misspelt option once, not four times.
 sm_rebuild <- function(
   x,
   data,
@@ -57,7 +57,7 @@ sm_add_data <- function(x, fields, options = list(), call = rlang::caller_env())
     layer_check("options", spec$fields, list(), "", call)
     layer_check(as.character(names(options)), spec$fields$options$fields, data$options, "options$", call)
   }
-  # The new data's own warnings, once: the columns the engine lacks in what this call adds. Data with problems is left
+  # The new data's own warnings, once: the names the engine lacks in what this call adds. Data with problems is left
   # to the rebuild, which stops with them all.
   added <- spec$fields[names(fields)]
   if (length(fields) > 0L && length(convert_problems(fields, added)) == 0L) {
