@@ -2,6 +2,7 @@
 % Please edit documentation in R/stagemap-package.R
 \docType{package}
 \name{stagemap-package}
+\alias{stagemap}
 \alias{stagemap-package}
 \title{stagemap: Relation Maps for 'Shiny' and 'Quarto'}
 \description{

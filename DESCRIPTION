@@ -12,12 +12,10 @@ URL: https://insightsurge.github.io/stagemap/, https://github.com/insightsurge/s
 BugReports: https://github.com/insightsurge/stagemap/issues
 Depends: 
     R (>= 4.1.0)
-Imports: 
-    checkmate,
-    cli,
-    grDevices
 Suggests: 
+    checkmate,
     chromote,
+    cli,
     covr,
     jsonlite,
     shiny,
