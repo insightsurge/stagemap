@@ -18,14 +18,15 @@ rows (such as \code{data.frame()}), adds no steps and no player.}
 Every \code{changes$step} must be an id in \code{steps$id}, every \code{changes$card} an id in the map's \code{cards$id}, every
 \code{changes$stage} an id in its \code{stages$id} and every \code{changes$status} a status of the map; a card can change once
 at a step. An id that does not match, or a card changed twice at a step, is an error of class
-\code{stagemap_error_layer} that names the ids or rows (a missing column is an error of class \code{stagemap_error_data}).
-See "Columns".}
+\code{stagemap_error_data} that names the ids or rows. \code{changes} without \code{steps} is an error of class
+\code{stagemap_error_layer}. See "Columns".}
 
 \item{intro}{The caption shown before the first step, as one string, or \code{NULL} for none. Added only with \code{steps}.}
 }
 \value{
 The widget, with the steps added. A widget that has steps already is an error of class
-\code{stagemap_error_layer}.
+\code{stagemap_error_layer}. A \code{stage} of a step that is not a stage of the map, a \code{step} of a link that is not in
+\code{steps}, and an id given twice in \code{steps}, are errors of class \code{stagemap_error_data} that name the ids.
 }
 \description{
 Turns the map into a story the reader plays step by step, with a caption for each step. Without steps, the map

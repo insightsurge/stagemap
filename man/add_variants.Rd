@@ -16,7 +16,8 @@ as \code{data.frame()}), adds no variants.}
 }
 \value{
 The widget, with the variants added. A widget that has variants already is an error of class
-\code{stagemap_error_layer}.
+\code{stagemap_error_layer}. A variant id of a card or a link, or the \code{variant} of \code{\link[=stage_map]{stage_map()}}, that is not in
+\code{variants}, and an id given twice in \code{variants}, are errors of class \code{stagemap_error_data} that name the ids.
 }
 \description{
 Variants are versions of one map that the reader switches between, such as a full release and a docs-only one. A

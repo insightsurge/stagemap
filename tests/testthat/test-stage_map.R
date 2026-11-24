@@ -28,7 +28,8 @@ describe("stage_map() arguments", {
   })
 
   it("takes target and variant given as whole numbers, and sends them as text like any id", {
-    options <- data_of(slim(target = 7, variant = 100000L))$options
+    map <- slim(cards = data.frame(id = 7, label = "A", stage = "s", lane = "l"), target = 7, variant = 100000L)
+    options <- data_of(map)$options
     expect_identical(options$target, "7")
     expect_identical(options$variant, "100000")
     expect_identical(data_of(slim(target = "a", variant = "v"))$options$variant, "v")

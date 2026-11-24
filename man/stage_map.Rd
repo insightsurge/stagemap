@@ -107,8 +107,8 @@ map is drawn inside \code{\link[shiny:renderUI]{shiny::renderUI()}}, so its inpu
 }
 \value{
 An HTML widget (class \code{stagemap_widget}). Print it to view it, use it in R Markdown or Quarto, or pipe it
-into an \verb{add_*()} function. A problem in the data is an error of class \code{stagemap_error_data} that lists up to ten
-problems with their paths.
+into an \verb{add_*()} function. A problem in the data, an id that does not join and an id given twice are errors of
+class \code{stagemap_error_data}: a problem in the data lists up to ten problems with their paths.
 }
 \description{
 A stage map shows pieces of work (cards) placed in stages (columns) and lanes (rows), with a status on each card.
@@ -119,8 +119,11 @@ with \code{\link[=add_steps]{add_steps()}} (which brings the player) and variant
 }
 \details{
 Each list in the picture is one data frame, one row per record, and ids join the lists the way a key joins two data
-frames: a card's \code{stage} and \code{lane} name a stage id and a lane id. The engine that draws the map checks these joins
-and shows what is wrong inside the widget.
+frames: a card's \code{stage} and \code{lane} name a stage id and a lane id. R checks each join, and an id given twice in a
+table, when both tables are there, in whichever order they come, and stops with an error of class
+\code{stagemap_error_data} that names the ids. A card's \code{zone} or \code{variants}, a link's \code{step} and a map's \code{variant} name
+tables that a later call may add: until it does they are not checked in R, and a table that is never added leaves
+the engine to show the problem inside the widget.
 
 Column names are the engine's field names. A column the engine has no field for is not sent to it and gives no
 warning: it stays in the data the widget keeps in R, so a table that carries more columns than the map needs can be

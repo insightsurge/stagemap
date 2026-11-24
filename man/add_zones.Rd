@@ -16,7 +16,8 @@ add_zones(map, zones, ...)
 }
 \value{
 The widget, with the zones added. A widget that has zones already is an error of class
-\code{stagemap_error_layer}.
+\code{stagemap_error_layer}. A \code{zone} of a card that is not in \code{zones}, and an id given twice in \code{zones}, are errors of
+class \code{stagemap_error_data} that name the ids.
 }
 \description{
 Draws a labelled outline around a group of cards, such as "Needs sign-off". A card joins a zone through its \code{zone}

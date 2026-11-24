@@ -7,8 +7,11 @@
 #' with [add_steps()] (which brings the player) and variants with [add_variants()].
 #'
 #' Each list in the picture is one data frame, one row per record, and ids join the lists the way a key joins two data
-#' frames: a card's `stage` and `lane` name a stage id and a lane id. The engine that draws the map checks these joins
-#' and shows what is wrong inside the widget.
+#' frames: a card's `stage` and `lane` name a stage id and a lane id. R checks each join, and an id given twice in a
+#' table, when both tables are there, in whichever order they come, and stops with an error of class
+#' `stagemap_error_data` that names the ids. A card's `zone` or `variants`, a link's `step` and a map's `variant` name
+#' tables that a later call may add: until it does they are not checked in R, and a table that is never added leaves
+#' the engine to show the problem inside the widget.
 #'
 #' Column names are the engine's field names. A column the engine has no field for is not sent to it and gives no
 #' warning: it stays in the data the widget keeps in R, so a table that carries more columns than the map needs can be
@@ -124,8 +127,8 @@
 #'   map is drawn inside [shiny::renderUI()], so its inputs have a known name.
 #'
 #' @returns An HTML widget (class `stagemap_widget`). Print it to view it, use it in R Markdown or Quarto, or pipe it
-#'   into an `add_*()` function. A problem in the data is an error of class `stagemap_error_data` that lists up to ten
-#'   problems with their paths.
+#'   into an `add_*()` function. A problem in the data, an id that does not join and an id given twice are errors of
+#'   class `stagemap_error_data`: a problem in the data lists up to ten problems with their paths.
 #' @family stage map
 #' @examples
 #' map <- stage_map(
@@ -237,6 +240,7 @@ stage_map <- function(
   )
   # After the converter, so a missing column or a bad tone is reported first, with the rest of the data's problems.
   stage_map_check_statuses(drop_nulls(data), call)
+  stage_map_check_data(drop_nulls(data), call)
   widget
 }
 
