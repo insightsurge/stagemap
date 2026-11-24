@@ -79,6 +79,7 @@ trace_ready <- all(vapply(
   logical(1)
 ))
 trace_function <- function(name) get(name, envir = asNamespace("stagemap"))
+stage_choices <- setNames(stages$id, stages$label)
 
 # --- The page -------------------------------------------------------------------------------------------------------
 
@@ -111,8 +112,14 @@ ui <- fluidPage(
       selectInput("direction", "Direction", c("downstream", "upstream", "both")),
       actionButton("trace", "Trace from the chosen cards"),
       actionButton("orphans", "Cards with no link"),
-      actionButton("missing", "Missing a link to the chosen card"),
-      verbatimTextOutput("trace_note", placeholder = TRUE)
+      selectInput("missing_stage", "Cards of this stage ...", stage_choices, selected = "check"),
+      selectInput("missing_linked", "... with no link to this stage", stage_choices, selected = "build"),
+      actionButton("missing", "Find the gaps"),
+      # A long answer wraps inside the box instead of running off its right edge.
+      textOutput(
+        "trace_note",
+        container = function(...) tags$pre(style = "white-space: pre-wrap; overflow-wrap: anywhere;", ...)
+      )
     ),
     mainPanel(
       width = 8,
@@ -154,20 +161,34 @@ server <- function(input, output, session) {
     stage_map_highlight(proxy, ids)
     note(sprintf("%s: %s", what, if (length(ids) > 0L) paste(ids, collapse = ", ") else "none"))
   }
+  # An error from a trace call is shown in the note; left alone, it would end the session.
+  show_errors <- function(code) {
+    tryCatch(code, error = function(e) note(paste("Could not answer:", conditionMessage(e))))
+  }
   observeEvent(input$trace, {
     req(trace_ready, input$ids)
-    reached <- trace_function("sm_trace")(build_map(input$layout), input$ids, direction = input$direction)
-    show_trace(reached$id, "Reached")
+    show_errors({
+      reached <- trace_function("sm_trace")(build_map(input$layout), input$ids, direction = input$direction)
+      show_trace(reached$id, "Reached")
+    })
   })
   observeEvent(input$orphans, {
     req(trace_ready)
-    loose <- trace_function("sm_orphans")(build_map(input$layout))
-    show_trace(loose$id, "No link")
+    show_errors({
+      loose <- trace_function("sm_orphans")(build_map(input$layout))
+      show_trace(loose$id, "No link")
+    })
   })
   observeEvent(input$missing, {
-    req(trace_ready, length(input$ids) == 1L)
-    gaps <- trace_function("sm_missing")(build_map(input$layout), "check", linked_to = input$ids)
-    show_trace(gaps$id, "Missing a link")
+    req(trace_ready, input$missing_stage, input$missing_linked)
+    show_errors({
+      gaps <- trace_function("sm_missing")(
+        build_map(input$layout),
+        input$missing_stage,
+        linked_to = input$missing_linked
+      )
+      show_trace(gaps$id, "Missing a link")
+    })
   })
   output$trace_note <- renderText(note())
 
