@@ -25,20 +25,14 @@ describe("the data error", {
   })
 })
 
-describe("the unused-columns warning", {
-  it("names the dropped column and the valid ones", {
-    data <- map_data()
-    data$nodes$n <- 3
-    expect_snapshot(invisible(sm_widget(data)))
-  })
-
-  it("calls an unknown entry of a named vector a name, not a column", {
+describe("the warning about names the engine lacks", {
+  it("names the dropped name and the valid ones", {
     data <- map_data()
     data$options$statuses <- c(done = "Pass", bogus = "x")
     expect_snapshot(invisible(sm_widget(data)))
   })
 
-  it("says columns or names when both were dropped", {
+  it("names a misspelt option and says nothing of an extra column beside it", {
     data <- map_data()
     data$nodes$n <- 1
     data$options$statuses <- c(done = "Pass", bogus = "x")

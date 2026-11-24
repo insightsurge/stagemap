@@ -28,16 +28,7 @@
       x `nodes$milestone` must be TRUE or FALSE, not character.
       i ... and 1 more.
 
-# the unused-columns warning / names the dropped column and the valid ones
-
-    Code
-      invisible(sm_widget(data))
-    Condition
-      Warning:
-      Some columns have no field in the stage-map engine, so they were left out.
-      i Dropped `n` from `nodes`. Valid columns: id, label, stage, lane, sub, status, tone, text, zone, milestone, variants, hidden, disabled, reason.
-
-# the unused-columns warning / calls an unknown entry of a named vector a name, not a column
+# the warning about names the engine lacks / names the dropped name and the valid ones
 
     Code
       invisible(sm_widget(data))
@@ -46,13 +37,12 @@
       Some names have no field in the stage-map engine, so they were left out.
       i Dropped `bogus` from `options$statuses`. Valid names: done, running, waiting, failed, skipped.
 
-# the unused-columns warning / says columns or names when both were dropped
+# the warning about names the engine lacks / names a misspelt option and says nothing of an extra column beside it
 
     Code
       invisible(sm_widget(data))
     Condition
       Warning:
-      Some columns or names have no field in the stage-map engine, so they were left out.
+      Some names have no field in the stage-map engine, so they were left out.
       i Dropped `bogus` from `options$statuses`. Valid names: done, running, waiting, failed, skipped.
-      i Dropped `n` from `nodes`. Valid columns: id, label, stage, lane, sub, status, tone, text, zone, milestone, variants, hidden, disabled, reason.
 

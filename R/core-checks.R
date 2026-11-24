@@ -26,7 +26,8 @@ sm_warn <- function(message, class, ..., call = rlang::caller_env(), .envir = pa
   cli::cli_warn(message, class = c(class, "stagemap_warning"), ..., call = call, .envir = .envir)
 }
 
-# One warning for everything the converter left out because the engine has no field for it (see drop_unknown()).
+# One warning for every name the converter left out of an object because the engine has no field for it (see
+# drop_unknown(); the unknown columns of a data frame are left out quietly).
 warn_dropped <- function(dropped, call) {
   checkmate::assert_environment(dropped)
   checkmate::assert_environment(call)
@@ -36,19 +37,16 @@ warn_dropped <- function(dropped, call) {
     function(path) {
       where <- if (identical(path, ".")) "the data" else paste0("`", path, "`")
       cli_escape(sprintf(
-        "Dropped %s from %s. Valid %s: %s.",
+        "Dropped %s from %s. Valid names: %s.",
         paste0("`", items[[path]]$names, "`", collapse = ", "),
         where,
-        paste0(items[[path]]$what, "s"),
         paste(items[[path]]$valid, collapse = ", ")
       ))
     },
     ""
   )
-  words <- unique(vapply(items, function(item) paste0(item$what, "s"), ""))
-  what <- if (length(words) == 1L) words else "columns or names"
   sm_warn(
-    c(sprintf("Some %s have no field in the stage-map engine, so they were left out.", what), bullets(lines, "i")),
+    c("Some names have no field in the stage-map engine, so they were left out.", bullets(lines, "i")),
     class = "stagemap_warning_unused_columns",
     dropped = lapply(items, function(item) item$names),
     call = call

@@ -7,7 +7,21 @@ kit_relied_on <- list(
   # What the engine announces, with the package's prefix.
   events = c("stagemap:select", "stagemap:size", "stagemap:hover", "stagemap:link"),
   # The options the package sends or checks, by their names in the contract's `options`.
-  options = c("dismiss"),
+  options = c(
+    "layout",
+    "title",
+    "intro",
+    "motion",
+    "target",
+    "variant",
+    "statuses",
+    "legend",
+    "cell_columns",
+    "bundle_links",
+    "highlight",
+    "dismiss",
+    "hosted"
+  ),
   # The fields of an event the page hands to R (`input$<id>_selected`, `input$<id>_hover`), as the contract names them.
   # The reader passes every field the contract lists; these are the ones the tests and the help pages name.
   event_fields = list(
