@@ -1,6 +1,6 @@
 # The Shiny plumbing between R and a drawn map: a proxy that sends commands to the page, a reader for the state the page
 # reports, the readers for what the page says the reader did, and the registration of those readers. Everything here
-# is internal; the exported functions that build on it come later.
+# is internal; the exported functions that build on it are in stage_map-shiny.R.
 
 # The id without the namespace of `session` (a module's prefix, empty outside a module): the id may be plain or already
 # namespaced, and the page names its inputs without the prefix.
@@ -90,13 +90,16 @@ input_name <- function(id, suffix, session) {
   paste(without_namespace(id, session), suffix, sep = "_")
 }
 
-# The newest revision of the reader's choice that R has seen in this map (0 if none). The page numbers its choices, and
-# drops a `select` older than its own latest one.
+# The newest revision of the reader's choice that R has seen in this map (0 if none). The page numbers the reader's
+# choices, sends the number to a private input and drops a `select` older than its own latest one.
 latest_revision <- function(proxy) {
   checkmate::assert_class(proxy, "stagemap_proxy")
-  seen <- shiny::isolate(proxy$session$input[[input_name(proxy$id, "selected", proxy$session)]])
-  if (is.list(seen) && !is.null(seen$revision)) as.integer(seen$revision) else 0L
+  seen <- shiny::isolate(proxy$session$input[[input_name(proxy$id, revision_suffix, proxy$session)]])
+  if (is.numeric(seen) && length(seen) == 1L && !is.na(seen)) as.integer(seen) else 0L
 }
+
+# The private input of the reader's choice count: `<output id>_stagemap_revision`. The page writes it under this name.
+revision_suffix <- "stagemap_revision"
 
 # Keeps the commands of one session in call order and sends them all in one onFlushed callback, which runs after the
 # flush's outputs. sendCustomMessage() writes at once and would overtake the outputs of the same flush.
@@ -148,96 +151,79 @@ print.stagemap_proxy <- function(x, ...) {
 
 # --- What the page tells R ---------------------------------------------------------------------------------------
 
-# An event of the engine as R sees it: one value per field the contract lists for that event, in the contract's order,
-# so a field the engine adds or stamps (`via`, `at`, `seq`, `part`, `name`) reaches R without a change here. `event` is
-# the event's short name ("select"), `value` what the page sent. A scalar the page left out is `NA` of its type (never
-# NULL); `ids` is a character vector (`character(0)` for none); the other `json` fields (`details`, `about`, `still`)
-# are lists or NULL, and `details$kpis` is always a list. A choice by the reader carries the page's own number for it,
-# `revision`, as an integer (0 when there is none).
-sm_event <- function(event, value) {
-  checkmate::assert_string(event, min.chars = 1L)
-  spec <- sm_spec()
-  fields <- spec$event_data[[paste(spec$prefix, event, sep = ":")]]
-  if (is.null(fields)) {
-    sm_abort("The stage-map engine has no event {.val {event}}.", class = "stagemap_error_unknown")
-  }
-  out <- lapply(names(fields), function(name) event_field(name, fields[[name]]$type, value[[name]]))
-  names(out) <- names(fields)
-  if (identical(event, "select")) {
-    out$revision <- as.integer(value$revision %||% 0L)
-  }
-  out
-}
-
-# One field of an event, as R holds it, by the type the contract gives it.
-event_field <- function(name, type, x) {
-  checkmate::assert_string(name, min.chars = 1L)
-  checkmate::assert_string(type, min.chars = 1L)
-  if (identical(name, "ids")) {
-    return(as.character(unlist(x)))
-  }
-  switch(
-    type,
-    integer = if (is.null(x)) NA_integer_ else as.integer(x),
-    number = if (is.null(x)) NA_real_ else as.numeric(x),
-    json = if (is.list(x) && !is.null(x$kpis)) {
-      x$kpis <- as.list(x$kpis)
-      x
-    } else {
-      x
-    },
-    if (is.null(x)) NA_character_ else as.character(x)
-  )
-}
+# The fields of a pick (`input$<id>_pick`), in order. The engine's `select` event holds more (`details`, `about`, `via`,
+# `at`, `seq`, `part` and `name`); they are not passed, and fields may be added here later but none removed. test-kit.R
+# checks that the contract still lists each.
+pick_fields <- c("kind", "id", "ids", "from", "label", "still", "by")
 
 # The fields of the state that hold ids. The contract describes them in words ("lists of ids"), so the names are kept
 # here, and test-kit.R checks that the contract still says so.
 state_id_lists <- c("selected_ids", "hidden", "disabled")
 
-# The state a map reported in answer to the `state` command. Shiny hands over JSON arrays as lists; a list of single
-# values becomes a vector (`selected_ids` is a character vector), and an empty list stays `list()` because R cannot
-# tell what it would have held, except for the fields that hold ids: those are `character(0)` when empty, as `ids` is
-# in an event. The highlight's `ids` is one of them.
+# Ids as the page sent them (a vector, or a list from an empty or one-item array) as a character vector: `character(0)`
+# for none.
+as_id_vector <- function(x) as.character(unlist(x))
+
+# One field of a pick that is text: NULL when the page sent nothing, never NA.
+pick_text <- function(x) if (is.null(x)) NULL else as.character(x)
+
+# The input handler for `input$<id>_selected` and `input$<id>_hovered`: a character vector, and `character(0)` for the
+# empty list Shiny makes of an empty array (without this, `req()` would let an empty selection through).
+sm_ids_value <- function(value, shinysession, name) as_id_vector(value)
+
+# The input handler for `input$<id>_pick`: the seven fields of `pick_fields`, whatever else the page sent. A field with
+# nothing to say is NULL (not NA), `ids` is `character(0)`, and `still` is NULL or a list of `kind`, `id` and `ids`.
+sm_pick_value <- function(value, shinysession, name) {
+  still <- value$still
+  list(
+    kind = pick_text(value$kind),
+    id = pick_text(value$id),
+    ids = as_id_vector(value$ids),
+    from = pick_text(value$from),
+    label = pick_text(value$label),
+    still = if (!is.null(still)) {
+      list(kind = pick_text(still$kind), id = pick_text(still$id), ids = as_id_vector(still$ids))
+    },
+    by = pick_text(value$by)
+  )
+}
+
+# The highlighted links of the state as a data frame with the columns `from`, `to` and `kind` (NA for a link with no
+# kind), and no rows when there are none, so it can be given back to stage_map_highlight() as it is.
+state_links <- function(links) {
+  column <- function(name) {
+    vapply(links, function(link) as.character(link[[name]] %||% NA_character_), character(1))
+  }
+  data.frame(from = column("from"), to = column("to"), kind = column("kind"))
+}
+
+# The input handler for `input$<id>_state`: the six fields of the state R sees, from what the engine answered to the
+# `state` command. Ids are character vectors (`character(0)` when none); `stage` has length 0 or 1; `step` counts from
+# 1, with 0 at the start or without a player (the engine counts from 0 and says -1 for that); `highlighted$links` is a
+# data frame. The engine's `selected_ids` is `selected` here, and its `selected` (the lead) and `host_changes` are not
+# passed. Anything that is not a list passes as it is.
 sm_state_value <- function(value, shinysession, name) {
-  state <- simplify_state(value)
-  if (!is.list(state)) {
-    return(state)
+  if (!is.list(value)) {
+    return(value)
   }
-  for (field in intersect(state_id_lists, names(state))) {
-    state[[field]] <- as.character(unlist(state[[field]]))
-  }
-  if (is.list(state$highlighted) && "ids" %in% names(state$highlighted)) {
-    state$highlighted$ids <- as.character(unlist(state$highlighted$ids))
-  }
-  state
-}
-
-# Recursive: it runs once per node of one answer, and its only caller passes what Shiny decoded, so it asserts nothing.
-simplify_state <- function(x) {
-  if (!is.list(x)) {
-    return(x)
-  }
-  x <- lapply(x, simplify_state)
-  single <- function(item) is.atomic(item) && length(item) == 1L
-  if (is.null(names(x)) && length(x) > 0L && all(vapply(x, single, logical(1)))) {
-    return(unlist(x, use.names = FALSE))
-  }
-  x
-}
-
-# The input handler for the event `event`: what Shiny calls with the value the page sent.
-sm_event_reader <- function(event) {
-  checkmate::assert_string(event, min.chars = 1L)
-  force(event)
-  function(value, shinysession, name) sm_event(event, value)
+  list(
+    selected = as_id_vector(value$selected_ids),
+    stage = as_id_vector(value$stage),
+    step = as.integer(value$step %||% -1L) + 1L,
+    highlighted = list(
+      ids = as_id_vector(value$highlighted$ids),
+      links = state_links(value$highlighted$links)
+    ),
+    hidden = as_id_vector(value$hidden),
+    disabled = as_id_vector(value$disabled)
+  )
 }
 
 # On load, only the input types the widget uses are registered. Shiny is never loaded here.
 .onLoad <- function(libname, pkgname) {
   register <- function(...) {
-    for (event in c("select", "hover")) {
-      shiny::registerInputHandler(paste0("stagemap.", event), sm_event_reader(event), force = TRUE)
-    }
+    shiny::registerInputHandler("stagemap.ids", sm_ids_value, force = TRUE)
+    shiny::registerInputHandler("stagemap.pick", sm_pick_value, force = TRUE)
     shiny::registerInputHandler("stagemap.state", sm_state_value, force = TRUE)
   }
   if (isNamespaceLoaded("shiny")) {
