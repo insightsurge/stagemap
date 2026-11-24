@@ -26,7 +26,8 @@ One test file per R file (`R/layout.R` is tested in `tests/testthat/test-layout.
   `expect_snapshot()` skips itself on CRAN instead.
 - **Helpers** live in `tests/testthat/helper-<name>.R`, which testthat loads before every file: `helper-extended.R`
   (`skip_unless_extended()`), `helper-chrome.R` (`skip_without_chrome()` and the shared Chromes), `helper-layout.R`
-  (what the layout test reads). A helper used by one file only stays at the top of that file.
+  (what the layout test reads), `helper-kit.R` (the names the package relies on in the bundled engine, and where to
+  find its files). A helper used by one file only stays at the top of that file.
 - **Apps** for shinytest2 are in `tests/testthat/apps/<name>/app.R`.
 
 ## Where each kind runs
