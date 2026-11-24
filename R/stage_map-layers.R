@@ -266,6 +266,8 @@ stage_map_twice_problems <- function(changes) {
 
 #' Add variants to a stage map
 #'
+#' `r lifecycle::badge("experimental")`
+#'
 #' Variants are versions of one map that the reader switches between, such as a full release and a docs-only one. A
 #' card or a link lists the variants it belongs to in its `variants` column; [stage_map()]'s `variant` says which to
 #' start on.

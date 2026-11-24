@@ -41,6 +41,9 @@
 #' Markdown, so `*word*`, backticks and `[words](https://example.org)` draw as formatting. A zone's `text` and `note`
 #' are one line.
 #'
+#' The names `parent` (on `stages` and `lanes`) and `gate` (on `stages`) are set aside for columns a later version may
+#' add: leave them out of your own columns in those tables.
+#'
 #' A `tone` is one of `"teal"`, `"good"`, `"warn"`, `"bad"`, `"muted"`, `"orange"`, `"blue"`, `"violet"`, `"pink"`,
 #' `"gold"` or `"grey"`.
 #'
@@ -82,11 +85,14 @@
 #'   error that names it.
 #' @param title The map's title, as one string, drawn above it. `NULL` draws no title; the drawing is then named "Stage
 #'   map" for screen readers.
-#' @param layout One of the layouts the engine lists: `"grid"` (the default), `"levels"` or `"dates"`. The grid puts stages in columns and lanes in rows; `"levels"` draws
-#'   each lane as a band flowing into `target`; `"dates"` draws a table of lanes by stages with one stage per day and no
-#'   links.
-#' @param target The id of the card the levels layout flows into, as text or a whole number. `NULL` for none.
-#' @param variant The id of the variant to start on (levels layout), from [add_variants()], as text or a whole number.
+#' @param layout One of the layouts the engine lists: `"grid"` (the default), `"levels"` or `"dates"`. The grid puts
+#'   stages in columns and lanes in rows; `"levels"` draws each lane as a band flowing into `target`; `"dates"` draws a
+#'   table of lanes by stages with one stage per day and no links. `r lifecycle::badge("experimental")` The `"levels"`
+#'   and `"dates"` layouts, and `target` and `variant` that go with them, may change. The list of layouts may grow.
+#' @param target `r lifecycle::badge("experimental")` The id of the card the levels layout flows into, as text or a
+#'   whole number. It must be a card of the map. `NULL` for none.
+#' @param variant `r lifecycle::badge("experimental")` The id of the variant to start on (levels layout), from
+#'   [add_variants()], as text or a whole number. It must be a variant of the map once [add_variants()] has added them.
 #'   `NULL` lets the engine choose.
 #' @param statuses Your words and looks for the statuses, in one of two forms (see "Statuses"): a named character
 #'   vector giving your word for a built-in status, such as `c(done = "Pass")`, or a data frame with the columns `id*`,

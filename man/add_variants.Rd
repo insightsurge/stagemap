@@ -20,6 +20,9 @@ The widget, with the variants added. A widget that has variants already is an er
 \code{variants}, and an id given twice in \code{variants}, are errors of class \code{stagemap_error_data} that name the ids.
 }
 \description{
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}
+}
+\details{
 Variants are versions of one map that the reader switches between, such as a full release and a docs-only one. A
 card or a link lists the variants it belongs to in its \code{variants} column; \code{\link[=stage_map]{stage_map()}}'s \code{variant} says which to
 start on.

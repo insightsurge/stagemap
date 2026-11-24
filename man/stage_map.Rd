@@ -48,13 +48,16 @@ error that names it.}
 \item{title}{The map's title, as one string, drawn above it. \code{NULL} draws no title; the drawing is then named "Stage
 map" for screen readers.}
 
-\item{layout}{One of the layouts the engine lists: \code{"grid"} (the default), \code{"levels"} or \code{"dates"}. The grid puts stages in columns and lanes in rows; \code{"levels"} draws
-each lane as a band flowing into \code{target}; \code{"dates"} draws a table of lanes by stages with one stage per day and no
-links.}
+\item{layout}{One of the layouts the engine lists: \code{"grid"} (the default), \code{"levels"} or \code{"dates"}. The grid puts
+stages in columns and lanes in rows; \code{"levels"} draws each lane as a band flowing into \code{target}; \code{"dates"} draws a
+table of lanes by stages with one stage per day and no links. \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}} The \code{"levels"}
+and \code{"dates"} layouts, and \code{target} and \code{variant} that go with them, may change. The list of layouts may grow.}
 
-\item{target}{The id of the card the levels layout flows into, as text or a whole number. \code{NULL} for none.}
+\item{target}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}} The id of the card the levels layout flows into, as text or a
+whole number. It must be a card of the map. \code{NULL} for none.}
 
-\item{variant}{The id of the variant to start on (levels layout), from \code{\link[=add_variants]{add_variants()}}, as text or a whole number.
+\item{variant}{\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}} The id of the variant to start on (levels layout), from
+\code{\link[=add_variants]{add_variants()}}, as text or a whole number. It must be a variant of the map once \code{\link[=add_variants]{add_variants()}} has added them.
 \code{NULL} lets the engine choose.}
 
 \item{statuses}{Your words and looks for the statuses, in one of two forms (see "Statuses"): a named character
@@ -154,6 +157,9 @@ stops it being chosen) and \code{reason} (why the card is in its state; the map 
 The \code{text} columns of \code{cards}, \code{stages}, \code{lanes}, \code{steps} and \code{zones}, and the \code{note} of a zone, are read as
 Markdown, so \verb{*word*}, backticks and \verb{[words](https://example.org)} draw as formatting. A zone's \code{text} and \code{note}
 are one line.
+
+The names \code{parent} (on \code{stages} and \code{lanes}) and \code{gate} (on \code{stages}) are set aside for columns a later version may
+add: leave them out of your own columns in those tables.
 
 A \code{tone} is one of \code{"teal"}, \code{"good"}, \code{"warn"}, \code{"bad"}, \code{"muted"}, \code{"orange"}, \code{"blue"}, \code{"violet"}, \code{"pink"},
 \code{"gold"} or \code{"grey"}.
