@@ -16,8 +16,8 @@ sm_trace(
 \arguments{
 \item{map}{A \code{\link[=stage_map]{stage_map()}} widget.}
 
-\item{ids}{Card ids to start from, as text or whole numbers (never \code{NA}). \code{NULL} or a length-zero vector returns no
-rows.}
+\item{ids}{Card ids to start from, as text (a factor counts as text) or whole numbers (never \code{NA}). \code{NULL} or a
+length-zero vector returns no rows.}
 
 \item{...}{Must stay empty. It makes every argument after it a named argument, and a typo in an argument's name an
 error that names it.}
@@ -25,8 +25,8 @@ error that names it.}
 \item{direction}{Which way to follow links: \code{"downstream"} (the default, from \code{from} to \code{to}), \code{"upstream"} (from
 \code{to} to \code{from}), or \code{"both"}.}
 
-\item{kinds}{Link kind ids to follow, as text or whole numbers (never \code{NA}). \code{NULL}, the default, follows every link,
-including links without a kind. \code{character(0)} follows no links.}
+\item{kinds}{Link kind ids to follow, as text (a factor counts as text) or whole numbers (never \code{NA}). \code{NULL}, the
+default, follows every link, including links without a kind. \code{character(0)} follows no links.}
 
 \item{max_distance}{Maximum number of links to follow: a whole number from \code{0}, or \code{Inf} (the default, no limit). \code{0}
 returns only the start cards.}
@@ -39,7 +39,7 @@ A plain data frame with row names \code{1} to \code{n} and columns:
 reach the card. Never \code{NA}.
 \item \code{distance} (integer): number of links from a start card (\code{0L} for start cards).
 \item \code{through} (character): id of the card this card was reached from, nearer the start (\code{NA} for start cards). In an
-upstream row the link itself runs from \code{id} to \code{through}.
+upstream row the link itself runs from \code{id} to \code{through}; in a \code{"both"} row it may run either way.
 \item \code{kind} (character): kind id of the link that reached this card (\code{NA} for start cards and unlabelled links).
 }
 
@@ -48,13 +48,16 @@ With empty \code{ids}, the data frame has zero rows and the same column types. A
 }
 \description{
 Walks links breadth first from one or more start cards. Rows are ordered by \code{distance}, then the order of \code{cards} in
-the map. When several links reach a card at the same distance, the first in \code{links} order wins.
+the map. When several links reach a card at the same distance, the first in \code{links} order wins. Every card and link
+in the map counts: hidden cards, variants and the changes of \code{\link[=add_steps]{add_steps()}} are ignored.
 }
 \details{
 With \code{direction = "both"}, the downstream and upstream walks run apart from the start cards and are joined, so a
 trace never follows one link downstream and the next upstream. A card reached by both walks (in a loop, or between
 two start cards) appears once with \code{direction = "both"}, the shorter \code{distance}, and the \code{through} and \code{kind} of
-that walk; on a tie, the downstream walk wins.
+that walk; on a tie, the downstream walk wins. Because such a card is one row, \code{through} does not say which way its
+link runs (look in \code{links}), and \code{distance} is not always the \code{distance} of the \code{through} card plus 1: the
+\code{through} column forms a path only within one walk, and the row of a \code{"both"} card may come from the other walk.
 }
 \examples{
 map <- stage_map(

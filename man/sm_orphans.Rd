@@ -16,7 +16,8 @@ no matches, the data frame has zero rows and the same column types. A wrong \cod
 }
 \description{
 Lists cards that appear at neither end of any link, in the order of \code{cards} in the map. When the map has no links,
-every card is returned.
+every card is returned. Every card and link in the map counts: hidden cards, variants and the changes of
+\code{\link[=add_steps]{add_steps()}} are ignored.
 }
 \examples{
 map <- stage_map(

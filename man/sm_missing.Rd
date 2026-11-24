@@ -2,23 +2,25 @@
 % Please edit documentation in R/trace.R
 \name{sm_missing}
 \alias{sm_missing}
-\title{Find cards missing a direct link to another stage}
+\title{Find cards missing a direct link to a stage}
 \usage{
 sm_missing(map, stage, linked_to, ..., kinds = NULL)
 }
 \arguments{
 \item{map}{A \code{\link[=stage_map]{stage_map()}} widget.}
 
-\item{stage}{Stage id to inspect, as text or a whole number.}
+\item{stage}{Stage id to inspect, as text (a factor counts as text) or a whole number (never \code{NA}). A stage with no
+cards, from the map's \code{stages} table or the levels of a factor, is accepted and gives zero rows.}
 
-\item{linked_to}{Stage id to check links against, as text or a whole number. May equal \code{stage}. Empty stages present
-in the map's \code{stages} table or as factor levels are accepted.}
+\item{linked_to}{Stage id to check links against, as text (a factor counts as text) or a whole number (never \code{NA}).
+May equal \code{stage}. A stage with no cards is accepted: every card in \code{stage} is then listed, and when \code{stage} has
+no cards either, the result has zero rows.}
 
 \item{...}{Must stay empty. It makes every argument after it a named argument, and a typo in an argument's name an
 error that names it.}
 
-\item{kinds}{Link kind ids to count, as text or whole numbers (never \code{NA}). \code{NULL}, the default, counts links of any
-kind. \code{character(0)} counts no links.}
+\item{kinds}{Link kind ids to count, as text (a factor counts as text) or whole numbers (never \code{NA}). \code{NULL}, the
+default, counts links of any kind. \code{character(0)} counts no links.}
 }
 \value{
 A plain data frame with row names \code{1} to \code{n} and character columns \code{id}, \code{label}, \code{stage} and \code{lane}. With
@@ -27,7 +29,8 @@ no matches, the data frame has zero rows and the same column types. A wrong \cod
 }
 \description{
 Lists cards in \code{stage} with no direct link, in either direction, to any card in \code{linked_to}. Rows stay in the order
-of \code{cards} in the map.
+of \code{cards} in the map. When \code{linked_to} equals \code{stage}, a card linked to itself counts as linked. Every card and link
+in the map counts: hidden cards, variants and the changes of \code{\link[=add_steps]{add_steps()}} are ignored.
 }
 \examples{
 map <- stage_map(

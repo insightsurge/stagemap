@@ -1,22 +1,25 @@
 #' Trace links from start cards
 #'
 #' Walks links breadth first from one or more start cards. Rows are ordered by `distance`, then the order of `cards` in
-#' the map. When several links reach a card at the same distance, the first in `links` order wins.
+#' the map. When several links reach a card at the same distance, the first in `links` order wins. Every card and link
+#' in the map counts: hidden cards, variants and the changes of [add_steps()] are ignored.
 #'
 #' With `direction = "both"`, the downstream and upstream walks run apart from the start cards and are joined, so a
 #' trace never follows one link downstream and the next upstream. A card reached by both walks (in a loop, or between
 #' two start cards) appears once with `direction = "both"`, the shorter `distance`, and the `through` and `kind` of
-#' that walk; on a tie, the downstream walk wins.
+#' that walk; on a tie, the downstream walk wins. Because such a card is one row, `through` does not say which way its
+#' link runs (look in `links`), and `distance` is not always the `distance` of the `through` card plus 1: the
+#' `through` column forms a path only within one walk, and the row of a `"both"` card may come from the other walk.
 #'
 #' @param map A [stage_map()] widget.
-#' @param ids Card ids to start from, as text or whole numbers (never `NA`). `NULL` or a length-zero vector returns no
-#'   rows.
+#' @param ids Card ids to start from, as text (a factor counts as text) or whole numbers (never `NA`). `NULL` or a
+#'   length-zero vector returns no rows.
 #' @param ... Must stay empty. It makes every argument after it a named argument, and a typo in an argument's name an
 #'   error that names it.
 #' @param direction Which way to follow links: `"downstream"` (the default, from `from` to `to`), `"upstream"` (from
 #'   `to` to `from`), or `"both"`.
-#' @param kinds Link kind ids to follow, as text or whole numbers (never `NA`). `NULL`, the default, follows every link,
-#'   including links without a kind. `character(0)` follows no links.
+#' @param kinds Link kind ids to follow, as text (a factor counts as text) or whole numbers (never `NA`). `NULL`, the
+#'   default, follows every link, including links without a kind. `character(0)` follows no links.
 #' @param max_distance Maximum number of links to follow: a whole number from `0`, or `Inf` (the default, no limit). `0`
 #'   returns only the start cards.
 #' @returns A plain data frame with row names `1` to `n` and columns:
@@ -25,7 +28,7 @@
 #'     reach the card. Never `NA`.
 #'   * `distance` (integer): number of links from a start card (`0L` for start cards).
 #'   * `through` (character): id of the card this card was reached from, nearer the start (`NA` for start cards). In an
-#'     upstream row the link itself runs from `id` to `through`.
+#'     upstream row the link itself runs from `id` to `through`; in a `"both"` row it may run either way.
 #'   * `kind` (character): kind id of the link that reached this card (`NA` for start cards and unlabelled links).
 #'
 #'   With empty `ids`, the data frame has zero rows and the same column types. A wrong `map` stops with
@@ -64,24 +67,26 @@ sm_trace <- function(
   call <- rlang::current_env()
   assert_trace_map(map, call = call)
   if (missing(ids)) {
-    cli::cli_abort(
+    sm_abort(
       "{.arg ids} is missing; supply card ids, or {.code NULL} for none.",
-      class = "stagemap_error",
+      class = "stagemap_error_arg",
       call = call
     )
   }
-  assert_ids(ids)
+  ids <- factor_text(ids)
+  kinds <- factor_text(kinds)
+  assert_ids(ids, "ids", call)
   if (identical(direction, c("downstream", "upstream", "both"))) {
     direction <- "downstream"
   }
   checkmate::assert_choice(direction, c("downstream", "upstream", "both"))
-  assert_ids(kinds)
+  assert_ids(kinds, "kinds", call)
   checkmate::assert_number(max_distance, lower = 0, finite = FALSE)
   check_dots(..., call = call)
   if (is.finite(max_distance) && max_distance != floor(max_distance)) {
-    cli::cli_abort(
+    sm_abort(
       "{.arg max_distance} must be a whole number or {.code Inf}, not {.val {max_distance}}.",
-      class = "stagemap_error",
+      class = "stagemap_error_arg",
       call = call
     )
   }
@@ -171,7 +176,8 @@ sm_trace <- function(
 #' Find cards with no links
 #'
 #' Lists cards that appear at neither end of any link, in the order of `cards` in the map. When the map has no links,
-#' every card is returned.
+#' every card is returned. Every card and link in the map counts: hidden cards, variants and the changes of
+#' [add_steps()] are ignored.
 #'
 #' @inheritParams sm_trace
 #' @returns A plain data frame with row names `1` to `n` and character columns `id`, `label`, `stage` and `lane`. With
@@ -204,17 +210,20 @@ sm_orphans <- function(map) {
   trace_cards_df(cards, keep)
 }
 
-#' Find cards missing a direct link to another stage
+#' Find cards missing a direct link to a stage
 #'
 #' Lists cards in `stage` with no direct link, in either direction, to any card in `linked_to`. Rows stay in the order
-#' of `cards` in the map.
+#' of `cards` in the map. When `linked_to` equals `stage`, a card linked to itself counts as linked. Every card and link
+#' in the map counts: hidden cards, variants and the changes of [add_steps()] are ignored.
 #'
 #' @inheritParams sm_trace
-#' @param stage Stage id to inspect, as text or a whole number.
-#' @param linked_to Stage id to check links against, as text or a whole number. May equal `stage`. Empty stages present
-#'   in the map's `stages` table or as factor levels are accepted.
-#' @param kinds Link kind ids to count, as text or whole numbers (never `NA`). `NULL`, the default, counts links of any
-#'   kind. `character(0)` counts no links.
+#' @param stage Stage id to inspect, as text (a factor counts as text) or a whole number (never `NA`). A stage with no
+#'   cards, from the map's `stages` table or the levels of a factor, is accepted and gives zero rows.
+#' @param linked_to Stage id to check links against, as text (a factor counts as text) or a whole number (never `NA`).
+#'   May equal `stage`. A stage with no cards is accepted: every card in `stage` is then listed, and when `stage` has
+#'   no cards either, the result has zero rows.
+#' @param kinds Link kind ids to count, as text (a factor counts as text) or whole numbers (never `NA`). `NULL`, the
+#'   default, counts links of any kind. `character(0)` counts no links.
 #' @returns A plain data frame with row names `1` to `n` and character columns `id`, `label`, `stage` and `lane`. With
 #'   no matches, the data frame has zero rows and the same column types. A wrong `map` stops with
 #'   `stagemap_error_widget`; an unknown stage or kind stops with `stagemap_error_id`.
@@ -235,14 +244,17 @@ sm_missing <- function(map, stage, linked_to, ..., kinds = NULL) {
   call <- rlang::current_env()
   assert_trace_map(map, call = call)
   if (missing(stage)) {
-    cli::cli_abort("{.arg stage} is missing; supply a stage id.", class = "stagemap_error", call = call)
+    sm_abort("{.arg stage} is missing; supply a stage id.", class = "stagemap_error_arg", call = call)
   }
-  assert_id(stage)
+  stage <- factor_text(stage)
+  assert_id(stage, "stage", call)
   if (missing(linked_to)) {
-    cli::cli_abort("{.arg linked_to} is missing; supply a stage id.", class = "stagemap_error", call = call)
+    sm_abort("{.arg linked_to} is missing; supply a stage id.", class = "stagemap_error_arg", call = call)
   }
-  assert_id(linked_to)
-  assert_ids(kinds)
+  linked_to <- factor_text(linked_to)
+  assert_id(linked_to, "linked_to", call)
+  kinds <- factor_text(kinds)
+  assert_ids(kinds, "kinds", call)
   check_dots(..., call = call)
 
   data <- sm_widget_data(map)
@@ -299,23 +311,50 @@ assert_trace_map <- function(map, call = rlang::caller_env()) {
   invisible(NULL)
 }
 
-# Checks one id argument (text or a whole number, never NA).
-assert_id <- function(x, label = checkmate::vname(x)) {
+# A factor argument as text, like the data columns; anything else unchanged.
+factor_text <- function(x) {
+  if (is.factor(x)) as.character(x) else x
+}
+
+# Runs `expr` (a checkmate assertion) and, when it fails, names the function the user called in the error: the
+# assertion's own call would be the helper. The error keeps its class.
+with_caller_call <- function(expr, call) {
+  checkmate::assert_environment(call)
+  tryCatch(
+    expr,
+    error = function(cnd) {
+      cnd$call <- rlang::frame_call(call)
+      stop(cnd)
+    }
+  )
+}
+
+# Checks one id argument (text or a whole number, never NA). `label` is the argument's name, `call` the function the
+# user called.
+assert_id <- function(x, label, call) {
   checkmate::assert_string(label, min.chars = 1L)
-  checkmate::assert(
-    checkmate::check_string(x, min.chars = 1L),
-    checkmate::check_int(x),
-    .var.name = paste0(label, " (one id: text, or a whole number)")
+  checkmate::assert_environment(call)
+  with_caller_call(
+    checkmate::assert(
+      checkmate::check_string(x, min.chars = 1L),
+      checkmate::check_int(x),
+      .var.name = label
+    ),
+    call
   )
 }
 
 # Checks an id vector argument (`NULL`, empty vector, or non-empty text / whole numbers without `NA`).
-assert_ids <- function(x, label = checkmate::vname(x)) {
+assert_ids <- function(x, label, call) {
   checkmate::assert_string(label, min.chars = 1L)
-  checkmate::assert(
-    checkmate::check_character(x, min.chars = 1L, any.missing = FALSE, null.ok = TRUE),
-    checkmate::check_integerish(x, any.missing = FALSE),
-    .var.name = paste0(label, " (ids: text, or whole numbers)")
+  checkmate::assert_environment(call)
+  with_caller_call(
+    checkmate::assert(
+      checkmate::check_character(x, min.chars = 1L, any.missing = FALSE, null.ok = TRUE),
+      checkmate::check_integerish(x, any.missing = FALSE),
+      .var.name = label
+    ),
+    call
   )
 }
 
@@ -378,19 +417,18 @@ trace_walk <- function(start_idx, from_idx, to_idx, link_kinds, n_cards, max_dis
   steps <- 0L
   src <- if (down) from_idx else to_idx
   dst <- if (down) to_idx else from_idx
+  # Links grouped by the card they leave, built once: each step looks at the frontier's links only.
+  by_source <- split(seq_along(src), factor(src, levels = seq_len(n_cards)))
   while (length(frontier) > 0L && steps < max_distance) {
-    edges <- which(src %in% frontier & is.na(dist[dst]))
-    next_frontier <- integer()
-    for (edge in edges) {
-      target <- dst[edge]
-      if (is.na(dist[target])) {
-        dist[target] <- steps + 1L
-        through[target] <- src[edge]
-        kind[target] <- link_kinds[edge]
-        next_frontier <- c(next_frontier, target)
-      }
-    }
-    frontier <- next_frontier
+    edges <- sort.int(unlist(by_source[frontier], use.names = FALSE))
+    edges <- edges[is.na(dist[dst[edges]])]
+    # In link order, the first link to reach a card wins.
+    edges <- edges[!duplicated(dst[edges])]
+    target <- dst[edges]
+    dist[target] <- steps + 1L
+    through[target] <- src[edges]
+    kind[target] <- link_kinds[edges]
+    frontier <- target
     steps <- steps + 1L
   }
   list(distance = dist, through = through, kind = kind)

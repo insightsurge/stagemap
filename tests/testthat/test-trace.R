@@ -224,6 +224,33 @@ describe("sm_trace()", {
     expect_identical(sm_trace(map, "A", direction = "both")$kind, result$kind)
   })
 
+  it("orders rows at the same distance by card order, not by the order of links", {
+    map <- stage_map(
+      cards = data.frame(id = c("A", "B", "C"), label = c("A", "B", "C"), stage = "S", lane = "L")
+    ) |>
+      add_links(data.frame(from = c("A", "A"), to = c("C", "B")))
+    expect_identical(sm_trace(map, "A")$id, c("A", "B", "C"))
+    expect_identical(sm_trace(map, "A")$through, c(NA_character_, "A", "A"))
+    expect_identical(sm_trace(map, "A")$distance, c(0L, 1L, 1L))
+  })
+
+  it("gives a 'both' card one row, so through does not say which way its link runs", {
+    cards <- data.frame(id = c("s", "x", "b", "d"), label = c("S", "X", "B", "D"), stage = "st", lane = "l")
+    map <- add_links(
+      stage_map(cards = cards),
+      data.frame(from = c("s", "x", "b", "b"), to = c("x", "b", "s", "d"))
+    )
+    both <- sm_trace(map, "s", direction = "both")
+    expect_identical(both$id, c("s", "x", "b", "d"))
+    expect_identical(both$direction, c("start", "both", "both", "downstream"))
+    # x is reached by the link s -> x and b by the link b -> s: both rows read "through s, distance 1".
+    expect_identical(both$through, c(NA_character_, "s", "s", "b"))
+    expect_identical(both$distance, c(0L, 1L, 1L, 3L))
+    # d is 3 links from s (s -> x -> b -> d), though b is 1 link from s in its own row.
+    expect_identical(sm_trace(map, "s")$distance, c(0L, 1L, 2L, 3L))
+    expect_identical(sm_trace(map, "s")$through, c(NA_character_, "s", "x", "b"))
+  })
+
   it("accepts numeric ids and compares them as text", {
     map <- stage_map(
       cards = data.frame(id = c(1, 2, 100000), label = c(10, 20, 30), stage = c(1, 2, 2), lane = c(1, 1, 2))
@@ -249,7 +276,7 @@ describe("sm_trace()", {
     expect_error(sm_trace(ids = "R1"), "map", class = "stagemap_error_widget")
     expect_error(sm_trace(NULL, "R1"), "map", class = "stagemap_error_widget")
     expect_error(sm_trace(list(), "R1"), "map", class = "stagemap_error_widget")
-    expect_error(sm_trace(map), "ids.*is missing", class = "stagemap_error")
+    expect_error(sm_trace(map), "ids.*is missing", class = "stagemap_error_arg")
 
     for (bad in list(NA, NA_character_, NA_integer_, "", c("R1", NA), c("R1", ""), 1.5, Inf, TRUE, list("R1"))) {
       expect_error(sm_trace(map, bad), "ids")
@@ -286,6 +313,55 @@ describe("sm_trace()", {
     expect_error(sm_trace(map, "R1", "downstream"), "unnamed value", class = "stagemap_error_dots")
   })
 
+  it("accepts factor ids and kinds as text", {
+    map <- trace_map()
+    expect_identical(sm_trace(map, factor("R1")), sm_trace(map, "R1"))
+    expect_identical(
+      sm_trace(map, factor("R1"), kinds = factor("verifies")),
+      sm_trace(map, "R1", kinds = "verifies")
+    )
+    expect_error(sm_trace(map, factor(NA)), "ids")
+    expect_error(sm_trace(map, factor("unknown-card")), "unknown-card", class = "stagemap_error_id")
+  })
+
+  it("names the function the user called in argument errors, with the label once", {
+    map <- trace_map()
+    call_name <- function(err) rlang::call_name(err$call)
+
+    err <- expect_error(sm_trace(map, TRUE), "ids", class = "simpleError")
+    expect_identical(call_name(err), "sm_trace")
+    expect_no_match(conditionMessage(err), "ids (", fixed = TRUE)
+    err <- expect_error(sm_trace(map, "R1", kinds = TRUE), "kinds", class = "simpleError")
+    expect_identical(call_name(err), "sm_trace")
+    expect_no_match(conditionMessage(err), "kinds (", fixed = TRUE)
+    err <- expect_error(sm_trace(map, "R1", max_distance = "x"), "max_distance", class = "simpleError")
+    expect_identical(call_name(err), "sm_trace")
+    err <- expect_error(sm_trace(map, "R1", direction = "sideways"), "direction", class = "simpleError")
+    expect_identical(call_name(err), "sm_trace")
+
+    err <- expect_error(sm_trace(map), "ids.*is missing", class = "stagemap_error_arg")
+    expect_s3_class(err, "stagemap_error")
+    expect_identical(call_name(err), "sm_trace")
+    err <- expect_error(sm_trace(map, "R1", max_distance = 1.5), "1.5", class = "stagemap_error_arg")
+    expect_s3_class(err, "stagemap_error")
+    expect_identical(call_name(err), "sm_trace")
+
+    err <- expect_error(sm_missing(map, TRUE, "Test"), "stage", class = "simpleError")
+    expect_identical(call_name(err), "sm_missing")
+    expect_no_match(conditionMessage(err), "stage (", fixed = TRUE)
+    err <- expect_error(sm_missing(map, "Requirement", TRUE), "linked_to", class = "simpleError")
+    expect_identical(call_name(err), "sm_missing")
+    err <- expect_error(sm_missing(map, "Requirement", "Test", kinds = TRUE), "kinds", class = "simpleError")
+    expect_identical(call_name(err), "sm_missing")
+    err <- expect_error(sm_missing(map, linked_to = "Test"), "stage.*is missing", class = "stagemap_error_arg")
+    expect_identical(call_name(err), "sm_missing")
+    err <- expect_error(sm_missing(map, "Requirement"), "linked_to.*is missing", class = "stagemap_error_arg")
+    expect_identical(call_name(err), "sm_missing")
+
+    err <- expect_error(sm_orphans(), "map", class = "stagemap_error_widget")
+    expect_identical(call_name(err), "sm_orphans")
+  })
+
   it("explains when a map has no known link kinds", {
     map <- stage_map(cards = sm_widget_data(trace_map())$cards)
     err <- expect_error(sm_trace(map, "R1", kinds = "unknown-kind"), "unknown-kind", class = "stagemap_error_id")
@@ -305,7 +381,12 @@ describe("sm_orphans()", {
     unlinked <- stage_map(cards = sm_widget_data(map)$cards)
     expect_identical(
       sm_orphans(unlinked),
-      trace_cards_df(sm_widget_data(map)$cards, seq_len(6L))
+      data.frame(
+        id = c("R1", "R2", "T1", "T2", "X1", "R3"),
+        label = c("First requirement", "Second requirement", "First test", "Second test", "Result", "Isolated"),
+        stage = c("Requirement", "Requirement", "Test", "Test", "Result", "Requirement"),
+        lane = c("L1", "L2", "L1", "L2", "L1", "L2")
+      )
     )
 
     self_loop <- stage_map(
@@ -379,6 +460,29 @@ describe("sm_missing()", {
       add_links(data.frame(from = "A", to = "B"))
     expect_identical(sm_missing(no_kind, "S1", "S2", kinds = character())$id, "A")
     expect_identical(sm_trace(no_kind, "A", kinds = character())$id, "A")
+  })
+
+  it("accepts factor stages, counts a self-link as linked and gives zero rows for an empty stage", {
+    map <- trace_map()
+    expect_identical(sm_missing(map, factor("Requirement"), factor("Test"))$id, "R3")
+
+    self <- stage_map(
+      cards = data.frame(id = c("a", "b"), label = c("A", "B"), stage = c("s1", "s1"), lane = "l")
+    ) |>
+      add_links(data.frame(from = "a", to = "a"))
+    expect_identical(sm_missing(self, "s1", "s1")$id, "b")
+
+    empty <- stage_map(
+      cards = data.frame(
+        id = "a",
+        label = "A",
+        stage = factor("s1", levels = c("s1", "none", "also-none")),
+        lane = "l"
+      )
+    )
+    expect_identical(nrow(sm_missing(empty, "none", "s1")), 0L)
+    expect_identical(nrow(sm_missing(empty, "none", "also-none")), 0L)
+    expect_identical(sm_missing(empty, "s1", "none")$id, "a")
   })
 
   it("rejects invalid maps, stages, kinds and extra arguments", {
