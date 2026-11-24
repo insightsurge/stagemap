@@ -46,6 +46,10 @@ sm_add_data <- function(x, fields, options = list(), call = rlang::caller_env())
   }
   spec <- sm_spec()
   data <- sm_widget_data(x)
+  # Options given as a named vector (c(title = "T")) are a list from here on, so more can be added to them.
+  if (!is.null(data$options)) {
+    data$options <- as.list(data$options)
+  }
   fields <- fields[!vapply(fields, is.null, logical(1))]
   options <- options[!vapply(options, is.null, logical(1))]
   layer_check(as.character(names(fields)), spec$fields, data, "", call)
@@ -58,6 +62,10 @@ sm_add_data <- function(x, fields, options = list(), call = rlang::caller_env())
   added <- spec$fields[names(fields)]
   if (length(fields) > 0L && length(convert_problems(fields, added)) == 0L) {
     convert_json(fields, added, call = call)
+  }
+  added_options <- spec$fields$options$fields
+  if (length(options) > 0L && length(convert_problems(options, added_options, "options")) == 0L) {
+    convert_json(options, added_options, path = "options", call = call)
   }
   data[names(fields)] <- fields
   if (length(options) > 0L) {

@@ -151,8 +151,11 @@
         destroy: () => {
           unmount();
           clearTimeout(pushTimer);
-          if (handles.get(el.id) === widget) handles.delete(el.id);
-          queues.delete(el.id);
+          /* A map drawn again under the same id has taken over: what waits for it stays. */
+          if (handles.get(el.id) === widget) {
+            handles.delete(el.id);
+            queues.delete(el.id);
+          }
           for (const type of listening) el.removeEventListener(type, onEvent);
           listening = [];
           window.jQuery?.(el).off('shiny:recalculating', markBusy);

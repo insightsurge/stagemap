@@ -189,9 +189,31 @@ describe("sm_send()", {
     expect_length(session$sent, 0L)
   })
 
+  it("shows the message of a data error as it is, with its braces", {
+    local_mocked_bindings(convert_json = function(...) stop("bad {x}", call. = FALSE))
+    session <- fake_session()
+    warning <- expect_warning(
+      sm_send(sm_proxy("map", session = session), "select", data = 1),
+      class = "stagemap_warning_command"
+    )
+    expect_match(conditionMessage(warning), "bad {x}", fixed = TRUE)
+    expect_no_match(conditionMessage(warning), "{{", fixed = TRUE)
+  })
+
+  it("names the function that called it in a warning, so a caller's own function is shown", {
+    session <- fake_session()
+    proxy <- sm_proxy("map", session = session)
+    select_card <- function() sm_send(proxy, "selct")
+    warning <- expect_warning(select_card(), class = "stagemap_warning_command")
+    expect_identical(warning$call, quote(select_card()))
+    pick <- function() sm_send(proxy, "select", data = new.env())
+    expect_identical(expect_warning(pick(), class = "stagemap_warning_command")$call, quote(pick()))
+  })
+
   it("checks its arguments", {
     proxy <- sm_proxy("map", session = fake_session())
     expect_error(sm_send("map", "select"), "proxy")
+    expect_error(sm_send(proxy, "select", call = 1), "call")
     expect_error(sm_send(proxy, c("a", "b")), "command")
     expect_error(sm_send(proxy, "select", dat = 1), class = "stagemap_error_dots")
   })
@@ -277,8 +299,35 @@ describe("the stagemap.state input type", {
     expect_identical(out$count, 1:2)
     expect_true("none" %in% names(out))
     expect_null(out$none)
-    expect_identical(out$hidden, list())
+    expect_identical(out$hidden, character())
     expect_identical(out$host_changes[[2]], list(id = "b", hidden = FALSE))
+  })
+
+  it("gives an empty list of ids as character(0), as an event does, and leaves other empty lists alone", {
+    out <- sm_state_value(
+      list(
+        selected_ids = list(),
+        hidden = list(),
+        disabled = list("a"),
+        highlighted = list(ids = list(), links = list()),
+        host_changes = list()
+      ),
+      NULL,
+      "view_state"
+    )
+    expect_identical(out$selected_ids, character())
+    expect_identical(out$hidden, character())
+    expect_identical(out$disabled, "a")
+    expect_identical(out$highlighted, list(ids = character(), links = list()))
+    expect_identical(out$host_changes, list())
+    # The same empty list of ids in an event
+    expect_identical(sm_event("select", list(kind = "all", ids = list()))$ids, character())
+  })
+
+  it("keeps a state without those fields as it is, and a highlight with ids as a vector", {
+    expect_identical(sm_state_value(list(step = -1L), NULL, "view_state"), list(step = -1L))
+    out <- sm_state_value(list(highlighted = list(ids = list("a", "b"), links = list())), NULL, "view_state")
+    expect_identical(out$highlighted$ids, c("a", "b"))
   })
 })
 

@@ -111,6 +111,10 @@ field_problems <- function(x, spec, label) {
       if (!is.data.frame(x)) {
         return(sprintf("`%s` must be a data frame or a list of named lists, not %s.", label, class(x)[[1]]))
       }
+      repeated <- unique(names(x)[duplicated(names(x))])
+      if (length(repeated) > 0L) {
+        return(sprintf("`%s` has the column %s more than once.", label, paste0("`", repeated, "`", collapse = ", ")))
+      }
       unlist(lapply(names(spec$fields), function(name) {
         column <- x[[name]]
         if (is.null(column)) {
@@ -121,7 +125,9 @@ field_problems <- function(x, spec, label) {
       }))
     },
     object = {
-      named <- is.list(x) && !is.data.frame(x) || (is.atomic(x) && !is.null(names(x)))
+      # A list needs names (an empty one is an object with nothing in it); so does a vector.
+      named <- (is.list(x) && !is.data.frame(x) && (length(x) == 0L || !is.null(names(x)))) ||
+        (is.atomic(x) && !is.null(names(x)))
       if (!named) {
         return(sprintf("`%s` must be a named list or a named vector, not %s.", label, class(x)[[1]]))
       }

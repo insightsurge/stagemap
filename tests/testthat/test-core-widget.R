@@ -87,6 +87,14 @@ describe("sm_output_tag()", {
     expect_no_match(html, "overflow: auto", fixed = TRUE)
   })
 
+  it("takes full width and the height of its content when called with the id alone", {
+    skip_if_not_installed("shiny")
+    html <- as.character(sm_output_tag("map"))
+    expect_match(html, "width:100%", fixed = TRUE)
+    expect_match(html, "height:auto", fixed = TRUE)
+    expect_no_match(html, "overflow: auto", fixed = TRUE)
+  })
+
   it("makes a fixed height a box that scrolls inside", {
     skip_if_not_installed("shiny")
     expect_match(as.character(sm_output_tag("map", "100%", "300px")), "overflow: auto", fixed = TRUE)

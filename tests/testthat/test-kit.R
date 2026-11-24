@@ -57,6 +57,15 @@ describe("the bundled stage-map engine", {
     }
   })
 
+  it("still describes the state fields that hold ids as lists of ids", {
+    about <- kit_contract()$command_data$state$about
+    for (field in kit_relied_on$state_id_lists) {
+      expect_match(about, paste0("`", field, "`"), fixed = TRUE, info = field)
+    }
+    expect_match(about, "(lists of ids)", fixed = TRUE)
+    expect_setequal(setdiff(kit_relied_on$state_id_lists, "highlighted"), state_id_lists)
+  })
+
   it("names only files that are in the copy", {
     # Given the files the contract says a page loads
     contract <- kit_contract()

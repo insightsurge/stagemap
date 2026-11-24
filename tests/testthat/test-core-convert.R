@@ -166,3 +166,34 @@ describe("convert_problems() for a list given as records", {
     expect_identical(convert_problems(data, spec), "`rows$obj[2]$parts` needs a column `k`.")
   })
 })
+
+describe("convert_problems() for names", {
+  it("refuses an unnamed list for an object, and lets an empty list through", {
+    expect_match(
+      convert_problems(list(rows = rows(), opts = list("grid")), made_up),
+      "`opts` must be a named list or a named vector, not list.",
+      fixed = TRUE
+    )
+    expect_identical(convert_problems(list(rows = rows(), opts = list(title = "T")), made_up), character())
+    expect_identical(convert_problems(list(rows = rows(), extra = list()), made_up), character())
+    spec <- list(opts = field("object", fields = list(title = field("string"))))
+    expect_identical(convert_problems(list(opts = list()), spec), character())
+  })
+
+  it("refuses the options of the stage map as an unnamed list", {
+    data <- map_data()
+    data$options <- list("grid")
+    error <- expect_error(sm_widget(data), class = "stagemap_error_data")
+    expect_match(conditionMessage(error), "`options` must be a named list or a named vector", fixed = TRUE)
+  })
+
+  it("refuses a data frame that has a column twice, naming the column", {
+    frame <- data.frame(id = c("a", "b"), id2 = c("c", "d"))
+    names(frame)[2] <- "id"
+    expect_identical(convert_problems(list(rows = frame), made_up), "`rows` has the column `id` more than once.")
+    data <- map_data()
+    data$nodes <- cbind(data$nodes, id = "z")
+    error <- expect_error(sm_widget(data), class = "stagemap_error_data")
+    expect_match(conditionMessage(error), "`nodes` has the column `id` more than once.", fixed = TRUE)
+  })
+})

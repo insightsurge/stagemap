@@ -30,10 +30,11 @@ sm_proxy <- function(id, session = shiny::getDefaultReactiveDomain(), defer_unti
 # `stagemap_warning_command` says so. The command's answer does not come back to R. Commands leave R after the outputs
 # of the same flush, so a command sent in the same observer as a re-render reaches the page after the new data (unless
 # the proxy was made with `defer_until_flush = FALSE`). Returns the proxy, invisibly, so calls can be piped.
-sm_send <- function(proxy, command, ..., data = NULL) {
+sm_send <- function(proxy, command, ..., data = NULL, call = rlang::caller_env()) {
   rlang::check_installed("shiny")
   checkmate::assert_class(proxy, "stagemap_proxy")
   checkmate::assert_string(command, min.chars = 1L)
+  checkmate::assert_environment(call)
   check_dots(...)
   takes <- sm_spec()$commands
   if (!command %in% takes) {
@@ -42,7 +43,8 @@ sm_send <- function(proxy, command, ..., data = NULL) {
         "The command {.val {command}} was not sent: the stage map does not take it.",
         "i" = if (length(takes) > 0L) "Commands it takes: {.val {takes}}." else "It takes no commands."
       ),
-      class = "stagemap_warning_command"
+      class = "stagemap_warning_command",
+      call = call
     )
     return(invisible(proxy))
   }
@@ -51,9 +53,10 @@ sm_send <- function(proxy, command, ..., data = NULL) {
     sm_warn(
       c(
         "The command {.val {command}} was not sent.",
-        "x" = "Its data cannot be written as JSON: {cli_escape(conditionMessage(json))}"
+        "x" = "Its data cannot be written as JSON: {conditionMessage(json)}"
       ),
-      class = "stagemap_warning_command"
+      class = "stagemap_warning_command",
+      call = call
     )
     return(invisible(proxy))
   }
@@ -187,11 +190,26 @@ event_field <- function(name, type, x) {
   )
 }
 
+# The fields of the state that hold ids. The contract describes them in words ("lists of ids"), so the names are kept
+# here, and test-kit.R checks that the contract still says so.
+state_id_lists <- c("selected_ids", "hidden", "disabled")
+
 # The state a map reported in answer to the `state` command. Shiny hands over JSON arrays as lists; a list of single
 # values becomes a vector (`selected_ids` is a character vector), and an empty list stays `list()` because R cannot
-# tell what it would have held.
+# tell what it would have held, except for the fields that hold ids: those are `character(0)` when empty, as `ids` is
+# in an event. The highlight's `ids` is one of them.
 sm_state_value <- function(value, shinysession, name) {
-  simplify_state(value)
+  state <- simplify_state(value)
+  if (!is.list(state)) {
+    return(state)
+  }
+  for (field in intersect(state_id_lists, names(state))) {
+    state[[field]] <- as.character(unlist(state[[field]]))
+  }
+  if (is.list(state$highlighted) && "ids" %in% names(state$highlighted)) {
+    state$highlighted$ids <- as.character(unlist(state$highlighted$ids))
+  }
+  state
 }
 
 # Recursive: it runs once per node of one answer, and its only caller passes what Shiny decoded, so it asserts nothing.

@@ -85,3 +85,31 @@ describe("sm_add_data() with the stage map's own fields", {
     expect_identical(parsed$options$title, "T")
   })
 })
+
+describe("sm_add_data() and the options", {
+  it("warns once about a name the engine lacks inside the options it adds", {
+    warning <- expect_warning(
+      sm_add_data(sm_widget(map_data()), list(), options = list(statuses = list(done = "P", bogus = "x"))),
+      class = "stagemap_warning_unused_columns"
+    )
+    expect_identical(warning$dropped, list("options$statuses" = "bogus"))
+    expect_match(conditionMessage(warning), "Dropped `bogus` from `options$statuses`", fixed = TRUE)
+  })
+
+  it("adds to a widget whose options were given as a named vector, and keeps both", {
+    widget <- map_data()
+    widget$options <- c(title = "T")
+    added <- sm_add_data(sm_widget(widget), list(), options = list(sub = "S"))
+    expect_identical(as_list(added$x$data)$options, list(title = "T", sub = "S"))
+    expect_identical(sm_widget_data(added)$options, list(title = "T", sub = "S"))
+  })
+
+  it("refuses an option the widget already has, also when it was given as a named vector", {
+    widget <- map_data()
+    widget$options <- c(title = "T")
+    expect_error(
+      sm_add_data(sm_widget(widget), list(), options = list(title = "U")),
+      class = "stagemap_error_layer"
+    )
+  })
+})

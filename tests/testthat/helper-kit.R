@@ -14,6 +14,8 @@ kit_relied_on <- list(
     select = c("kind", "id", "ids", "from", "label", "details", "about", "still", "by", "via", "at", "seq"),
     hover = c("kind", "id")
   ),
+  # The fields of the state that hold ids: the contract says "lists of ids" in the words of the `state` command.
+  state_id_lists = c("selected_ids", "hidden", "disabled", "highlighted"),
   # How the build is named: the global, the prefix of its attributes, tokens and events, the CSS class prefix and the
   # attribute on the element a map is drawn in.
   names = list(

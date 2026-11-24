@@ -3,7 +3,8 @@ skip_without_chrome()
 
 # Saves `widget` as a page with its files beside it, opens it in the shared Chrome and returns the page, with its
 # console messages (warnings and errors) collected in `$messages`.
-open_widget <- function(widget, env = parent.frame()) {
+# `before` is JavaScript that runs before the page's own scripts: a stand-in for the parts of Shiny the binding talks to.
+open_widget <- function(widget, before = NULL, env = parent.frame()) {
   dir <- withr::local_tempdir(.local_envir = env)
   file <- file.path(dir, "map.html")
   htmlwidgets::saveWidget(widget, file, selfcontained = FALSE)
@@ -22,6 +23,10 @@ open_widget <- function(widget, env = parent.frame()) {
   page$Runtime$exceptionThrown(function(message) {
     messages$seen <- c(messages$seen, paste("exception:", message$exceptionDetails$text))
   })
+  if (!is.null(before)) {
+    page$Page$enable()
+    page$Page$addScriptToEvaluateOnNewDocument(source = before)
+  }
   page$go_to(paste0("file://", file), timeout = browser_timeout / 1000)
   list(session = page, messages = messages)
 }
@@ -106,5 +111,41 @@ describe("the htmlwidgets binding", {
     page <- open_widget(widget)
     wait_for_page(page, "document.getElementById('map').textContent.includes('no_such_engine')")
     expect_identical(page_js(page, "document.querySelectorAll('#map [data-card]').length"), 0L)
+  })
+
+  it("keeps the commands waiting for a map drawn again under the same id when the old one is destroyed", {
+    # Given a page with a stand-in for Shiny's custom message handler, and a map drawn under the id "map"
+    shiny_stand_in <- "window.Shiny = { addCustomMessageHandler: (type, fun) => { window.__handler = fun; } };"
+    page <- open_widget(sm_widget(data(), element_id = "map"), before = shiny_stand_in)
+    wait_for_page(page, paste(cards, "=== 2"))
+    x <- jsonlite::toJSON(sm_widget(data())$x, auto_unbox = TRUE, null = "null", json_verbatim = TRUE)
+    # When a second widget takes the id but cannot draw yet (its engine is missing), R sends it a select, and the old
+    # element leaves the page, which destroys the old widget
+    page_js(
+      page,
+      sprintf(
+        "(async () => {
+          const x = %s;
+          const definition = HTMLWidgets.widgets.find((widget) => widget.name === 'stage_map');
+          const old = document.getElementById('map');
+          const element = document.createElement('div');
+          element.id = 'map';
+          element.dataset.again = 'yes';
+          document.body.append(element);
+          window.__again = definition.initialize(element, 300, 200);
+          window.__again.renderValue({ ...x, engine: { ...x.engine, global: 'not_loaded' } });
+          window.__handler({ id: 'map', command: 'select', data: { kind: 'card', ids: ['a'] }, revision: 0 });
+          old.remove();
+          await new Promise((resolve) => setTimeout(resolve, 300));
+          window.__x = x;
+        })()",
+        x
+      )
+    )
+    # And the second widget then draws
+    page_js(page, "window.__again.renderValue(window.__x)")
+    # Then the select that waited for it is applied: card a is picked
+    wait_for_page(page, "!!document.querySelector('[data-again] [data-card=\"a\"].sm-on')")
+    expect_identical(page_js(page, "document.querySelectorAll('[data-again] .sm-on').length"), 1L)
   })
 })

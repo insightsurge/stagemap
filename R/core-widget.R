@@ -77,7 +77,7 @@ sm_widget <- function(
 }
 
 # The Shiny output for the widget: the markup the render function fills.
-sm_output_tag <- function(output_id, width, height) {
+sm_output_tag <- function(output_id, width = "100%", height = "auto") {
   checkmate::assert_string(output_id, min.chars = 1L)
   assert_widget_args(width, height, NULL)
   rlang::check_installed("shiny")
