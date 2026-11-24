@@ -21,7 +21,7 @@ Labels as in `r-code.md` (CRAN / house). Reasons and sources: `docs/standards.md
   size and that every `inst/` file is in the tarball.
 
 ## Acceptance checklist for every new shipped file
-- [ ] The file is in the built tarball (`Rscript tools/cran-gate.R full`, step `tarball`).
+- [ ] The file is in the built tarball (the gate's `full` mode, step `tarball`).
 - [ ] It has the copyright and contributor records required [above](#files-the-package-ships-inst).
 - [ ] It loads offline from the installed package (no network, no CDN).
 - [ ] Its path is portable and case-correct, and it is referenced through `htmlDependency()` or `system.file()`.

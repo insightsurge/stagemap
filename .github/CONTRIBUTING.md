@@ -50,16 +50,17 @@ Stacked pull requests are fine. Base the second one on the branch below it, and 
 
 ## Before you open a pull request
 
-Run the gate from the package root:
+Run the quality gate from the package root. It is launchR's gate, the same one CI's checks use;
+[tools/README.md][gate] says how to run it (from a clone of launchR, or downloaded at the version CI uses), and its
+modes, options and exit codes. The modes:
 
 ```sh
-Rscript tools/cran-gate.R          # fast: before every commit
-Rscript tools/cran-gate.R tests    # tests and coverage: before a pull request that touches R/ or tests/
-Rscript tools/cran-gate.R full     # everything, including the built tarball: before a release
+gate fast     # before every commit
+gate tests    # tests and coverage: before a pull request that touches R/ or tests/
+gate full     # everything, including the built tarball: before a release
 ```
 
-The gate is a plain R script in `tools/`; it needs the packages listed under Setup. Modes, options and exit codes
-are in [tools/README.md][gate].
+It needs the packages listed under Setup.
 
 - `fast` checks formatting (Air and Biome), that `man/` and `NAMESPACE` match the roxygen2 comments, lint, that every
   export has `@returns`, spelling, and `R CMD check --as-cran` without the tests.
@@ -71,7 +72,7 @@ are in [tools/README.md][gate].
   `inst/WORDLIST`.
 - The docs step runs `devtools::document()` and may update `man/`, `NAMESPACE` or `DESCRIPTION`. If it fails,
   review the regenerated files and commit them with the source; see the [roxygen rules][roxygen].
-- If the gate itself gets something wrong, open an issue in mascot, where it is maintained ([CI rules][ci]).
+- If the gate itself gets something wrong, open an issue in [launchR](https://github.com/insightsurge/launchR/issues), where it is maintained ([CI rules][ci]).
 
 CI requirements are in [the CI rules][ci]; local gate results do not replace CI.
 

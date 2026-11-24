@@ -34,13 +34,13 @@ One test file per R file (`R/layout.R` is tested in `tests/testthat/test-layout.
 | Where | plain | browser | snapshot | extended |
 |---|---|---|---|---|
 | CRAN, and R CMD check in CI | yes | | | |
-| Coverage in CI, and the weekly extended-tests run on macOS and Windows | yes | | | yes |
-| CI's off-CRAN job (with Chrome) | | yes | yes | yes |
+| Coverage in CI, and the weekly `r-cmd-check-extended` run | yes | | | yes |
+| CI's `full-tests` check (with Chrome) | | yes | yes | yes |
 | `devtools::test()` and the gate's `tests` mode, locally | yes | yes | yes | yes |
 
 ## Running the tests locally
 
-- Everything: `Rscript tools/cran-gate.R tests` (with coverage), or `devtools::test()`; both set `NOT_CRAN` to true.
+- Everything: the gate's `tests` mode (with coverage; `tools/README.md` says how to run the gate), or `devtools::test()`; both set `NOT_CRAN` to true.
   The browser tests need Chrome or Chromium.
 - As CRAN runs them: `NOT_CRAN=false Rscript -e 'testthat::test_local()'` (`devtools::test()` always sets `NOT_CRAN`
   to true). Add `EXTENDED_TESTS=true` to include the extended tests, as the coverage job does.

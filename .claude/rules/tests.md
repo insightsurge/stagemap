@@ -8,8 +8,8 @@ paths:
 Labels as in `r-code.md` (CRAN / house). Reasons and sources: `docs/standards.md`. How the tests are organised (the
 four kinds of test file, their first lines, where each runs, how to run them): `tests/README.md`.
 
-- **house:** coverage of at least 70% of lines (`Rscript tools/cran-gate.R tests`; the limit is
-  `Config/cran-gate/coverage` in `DESCRIPTION`, which CI reads too; CRAN itself does not check coverage); a PR never
+- **house:** coverage of at least 70% of lines (the gate's `tests` mode; the limit is
+  `Config/quality-gate/coverage` in `DESCRIPTION`, which CI reads too; CRAN itself does not check coverage); a PR never
   lowers it. Every added runnable line in `R/` must run in a test (`new_lines`). `# nocov` is only for code that truly
   cannot run in a test, with the reason beside it. covr measures R code only; Shiny behaviour tests cover JS.
 - **house:** merge evidence fits the change. A PR that changes `R/` or `tests/` needs a `tests` or `full` gate run
@@ -49,7 +49,7 @@ four kinds of test file, their first lines, where each runs, how to run them): `
 - **CRAN:** no shinytest2 or chromote test runs on CRAN or without Chrome: its file starts with
   `skip_without_chrome()` (`helper-chrome.R`: it skips on CRAN, without chromote or withr, and when
   `chromote::find_chrome()` is `NULL`), and a shinytest2 test also skips without shinytest2. CRAN has asked that no
-  package uses Chrome when tested on CRAN. CI runs them in the `off-cran-tests` job (`NOT_CRAN: true`).
+  package uses Chrome when tested on CRAN. CI runs them in the `full-tests` check (with Chrome).
 - **house:** the tests CRAN skips live in files of their own, and nothing else does: browser tests (shinytest2,
   chromote, or any helper that starts Chrome) in `test-<name>-browser.R`, snapshot tests (`expect_snapshot()` skips
   itself on CRAN) in `test-<name>-snap.R`, and long, detailed tests that CRAN needn't run (many layout cases, every
@@ -60,13 +60,13 @@ four kinds of test file, their first lines, where each runs, how to run them): `
   is `"true"`). A snapshot file doesn't: skipped as a whole, it reports no snapshots and testthat deletes their saved
   files, so `expect_snapshot()` skips each test instead. A `-snap.R` file holds only `expect_snapshot()` calls: on CRAN
   `expect_snapshot()` skips the rest of its test, so a plain expectation beside it may never run there; put it in
-  `test-<name>.R`. The `off-cran-tests` job runs exactly those files and fails on any skip; R CMD check runs the rest.
+  `test-<name>.R`. The `full-tests` check runs them with every other test; R CMD check runs the rest.
   `test-helper-layout.R` fails when a test is in the wrong file or a file doesn't start with its skip (an argument
   check inside `expect_error()` may stay in the plain file: it fails before Chrome starts). A helper used only by one
   file's tests stays at the top of that file; one that several files need goes in `helper-<name>.R`, which loads for
   every test file.
 - **house:** R CMD check on CI fails when the tests take longer than 180 s on Ubuntu with R release
-  (`R-CMD-check.yaml`), so a pull request that makes the tests CRAN runs slower moves detailed tests to an
+  (`r-cmd-check.yaml`, its `test-time-limit`), so a pull request that makes the tests CRAN runs slower moves detailed tests to an
   `-extended.R` file or speeds them up (build a fixture once per file with `delayedAssign()`).
 - **CRAN:** tests use only declared packages and guard Suggests (`skip_if_not_installed()`); no network; files go
   to `withr::local_tempdir()`; nothing is left behind; at most 2 cores (`tests/testthat.R` lowers `getOption("Ncpus")`,

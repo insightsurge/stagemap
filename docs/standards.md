@@ -326,9 +326,9 @@ use plain words in help pages:
   together (the CRAN Cookbook, "Overall checktime") and lets long tests be optional as long as the rest exercise the
   package's features (the CRAN Repository Policy). Long, detailed tests and checks too slow for CRAN (in mascot, the
   comparison of its stored built-in characters with a fresh check of their files) go in extended files, which run in the
-  coverage job, the off-CRAN job, the gate's `tests` mode and a weekly R CMD check on macOS and Windows. R CMD check
-  on Ubuntu with R release fails when the tests take longer than 180 s, which leaves room under CRAN's 10 minutes on
-  its slower machines.
+  coverage check, the `full-tests` check, the gate's `tests` mode and the weekly `r-cmd-check-extended` run. R CMD
+  check on Ubuntu with R release fails when the tests take longer than 180 s, which leaves room under CRAN's 10
+  minutes on its slower machines.
 - **Files:** use temporary test directories; see [test rules][tests].
 - Coverage exposes R lines the tests do not exercise; CRAN does not measure it and covr does not see JS. The
   [test rules](https://github.com/insightsurge/stagemap/blob/main/.claude/rules/tests.md) own the limit,
@@ -341,14 +341,14 @@ use plain words in help pages:
 
 ### 7.1 One rule, three places
 
-Each rule is written once, in git (`air.toml`, `.lintr`, `biome.json`, the gate script, the workflows). Three layers
-run it:
+Each rule is written once: stagemap's settings in git (`air.toml`, `.lintr`, `biome.json`, the workflow inputs), the
+gate and the checks in launchR. Three layers run it:
 
 | Layer | When it runs | Status |
 |---|---|---|
 | Editor settings (`.claude/settings.json`) | While an assistant works in the repo: permission rules deny force-push, pushes to `main`, `--no-verify` and hand edits to `NAMESPACE`, `man/`, `renv/`, `LICENSE`; merging a PR (`gh pr merge`) asks for confirmation each time; attribution lines are off. Formatting is a one-line instruction (`air format .`) | In place |
-| The gate (`Rscript tools/cran-gate.R`, section 7.2) | On demand, before a commit or PR | In place |
-| CI | On every PR and push to `main`: R CMD check on six platforms, coverage, the off-CRAN tests with Chrome and lint; Mondays and on demand add the extended tests on macOS and Windows (`.github/workflows/README.md`); it cannot be skipped | In place |
+| The gate (launchR's quality gate, section 7.2) | On demand, before a commit or PR | In place |
+| CI | On every PR into `main` and push to `main`: R CMD check, lint, the no-Suggests check, the secret scan, coverage and every test CRAN skips; Mondays and on demand add R CMD check with the extended tests (`.github/workflows/README.md`); it cannot be skipped | In place |
 
 Editor permission guards do not replace checks. See the
 [contributor workflow](https://github.com/insightsurge/stagemap/blob/main/.github/CONTRIBUTING.md#workflow) for
@@ -356,25 +356,23 @@ merging and section 8 for the decision about a pre-commit framework.
 
 ### 7.2 The gate
 
-How to run it, which mode when, every option, the exit codes and the run folder: `tools/README.md` (and
-`Rscript tools/cran-gate.R --help`; `--list` shows each mode's steps). This section keeps the reasons.
+How to run it, which mode when, every option, the exit codes and the run folder: `tools/README.md` (and the gate's
+`--help`; `--list` shows each mode's steps). This section keeps the reasons.
 
-**The gate is a generic, self-contained script, maintained in mascot.** `tools/cran-gate.R` is a copy of
-[mascot's gate](https://github.com/insightsurge/mascot/tree/main/tools) and is never edited here; its self-test lives
-in mascot. A problem or a new check goes to mascot, and the new version is copied here. What is specific to a package
-is kept out of the script:
+**The gate is launchR's, and is never edited here.** launchR (<https://github.com/insightsurge/launchR>) maintains the
+gate and the CI checks for several R packages, so a fix found in one reaches the others by a version bump instead of a
+copy. A problem or a new check goes to launchR. What is specific to a package is kept out of the script:
 
 - CRAN checks always run. Style checks run when the package has the tool's settings file (`air.toml`, `.lintr`,
   `biome.json`) and are skipped with a reason otherwise. stagemap has all three.
-- Settings are `Config/cran-gate/*` fields in `DESCRIPTION`: `coverage` (default 70, which stagemap uses), `tarball-mb`
-  (default 5, at most 9 because CRAN's limit is 10; stagemap keeps 5) and `extra-dirs` (more folders to format-check
-  and lint; stagemap lists `tools`, which holds the gate itself).
+- Settings are `Config/quality-gate/*` fields in `DESCRIPTION`: `coverage` (default 70, which stagemap uses),
+  `tarball-mb` (default 5) and `extra-dirs` (more folders to format-check and lint; stagemap lists `tools`).
 
 A missing tool stops the gate, never a silent skip. The gate writes to the repository in two deliberate cases only:
 `document()` may rewrite `man/`, `NAMESPACE` and `DESCRIPTION` (the step then fails and names the files), and
 `--update-wordlist` rewrites `inst/WORDLIST`, which is never run without showing the words first (see 7.4).
 
-**The gate's self-test** lives in mascot with the gate: it plants one defect per step in a copy of a package and
+**The gate's self-test** lives in launchR with the gate: it plants one defect per step in a copy of a package and
 checks that the gate fails that step.
 
 ### 7.3 CI workflows
@@ -385,17 +383,14 @@ What each workflow runs and when, which test files run where, and the gate mode 
 A ruleset on `main` blocks force-pushes and deleting the branch; it does not require passing checks, so the rule is:
 CI green, then ask before merging.
 
-Every pull request runs the full matrix (macOS, Windows and four Ubuntu R versions); keep new jobs on Ubuntu unless
-the platform is the point.
+While the repository is private, the checks run on Ubuntu only, to save the shared Actions minutes; Windows and macOS
+join when it goes public. Keep new runs on Ubuntu unless the platform is the point.
 
 The site is built from `main` only, never on pull requests: a site build may need packages that outside
-contributors' pull requests can't install. Ubuntu runners are pinned (`ubuntu-26.04`; macOS and Windows use
-`-latest`) so an image change is a deliberate edit. Workflows take the least permissions they need and cancel
-superseded runs (except a release, and secret scans on `main`). Every job has a `timeout-minutes`, a few times its
-longest recent run, so a hung step can't hold a runner for hours. Actions from `actions/` and `r-lib/` are pinned by
-major tag; other third-party actions by full commit SHA with a `# vX.Y.Z` comment, because a tag can be moved and a
-SHA cannot. Dependabot updates both kinds and rewrites the version comment. Keep the Air and Biome versions in
-`lint.yaml` in step with the local installs and with `biome.json`.
+contributors' pull requests can't install. The checks' own jobs (runner images, permissions, time limits, pinned
+actions) are launchR's; each workflow file here calls them at a fixed launchR version, which Dependabot moves forward.
+Keep the local Air version equal to the one launchR's lint check uses (0.11.0), and Biome's equal to `biome.json`'s
+schema, which the check reads.
 
 ### 7.4 Tools
 

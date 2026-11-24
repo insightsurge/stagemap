@@ -43,8 +43,8 @@ Release checks belong to the package creator; a contribution does not require a 
 
 | Command | Result and exit code, or not run and why |
 | --- | --- |
-| `Rscript tools/cran-gate.R` | |
-| `Rscript tools/cran-gate.R tests` (if `R/` or `tests/` changed) | |
+| gate `fast` | |
+| gate `tests` (if `R/` or `tests/` changed) | |
 
 <!-- Keep applicable items. Check only completed items; leave pending work unchecked.
 For labels you cannot apply, list the suggested labels in Notes so the package creator can apply them. -->

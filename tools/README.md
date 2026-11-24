@@ -4,12 +4,23 @@ Scripts for working on stagemap. None of them ship with the package (`tools/` is
 
 | File or folder | What it is |
 |---|---|
-| `cran-gate.R` | The quality gate: one command that says whether the package would pass CRAN's checks and the house rules |
 | `build-site.R` | Builds the pkgdown site into `site/` |
 
-Run every script from the package root, for example `Rscript tools/cran-gate.R`.
+Run every script from the package root, for example `Rscript tools/build-site.R`.
 
-## The gate in plain words
+## The quality gate
+
+The gate is launchR's (<https://github.com/insightsurge/launchR>), the same script CI's checks come from; stagemap keeps
+no copy. Run it from the package root, either from a clone of launchR:
+
+```
+Rscript <launchR clone>/cli/launchr.R gate <mode>
+```
+
+or without a clone, as `.github/workflows/README.md` ("Run the checks on your computer") shows: it downloads the gate
+at the launchR version the workflows use and runs it. It needs the packages listed there, plus Air and Biome.
+
+### The gate in plain words
 
 The gate runs a fixed list of checks and prints one line per check, then a verdict:
 
@@ -25,8 +36,6 @@ that failed and were re-run, with the outcome. The folder survives the gate. You
 to re-run the gate just to find out what failed.
 
 ### Which mode when
-
-`Rscript tools/cran-gate.R <mode>`
 
 | Mode | Run it | What it checks |
 |---|---|---|
@@ -46,7 +55,7 @@ In short: `fast` while working, `tests` before a PR, `full` before a release.
 | `--filter layout` | Run only the test files whose names match, while fixing one test | PARTIAL: only for a small follow-up (below) |
 | `--no-coverage` | Run the tests without covr, more quickly | No: PARTIAL |
 | `--no-retry` | Skip the re-run of failing test files, to see the raw failure | Yes |
-| `--out <folder>` | Put the run folder somewhere else (or set `CRAN_GATE_OUT`) | Yes |
+| `--out <folder>` | Put the run folders somewhere else (or set `QUALITY_GATE_OUT`) | Yes |
 | `--list` | Show each mode's checks and which ones this package skips | Nothing runs |
 | `--help` | Show every option and the exit codes | Nothing runs |
 | `--update-wordlist` | Add the unknown words to `inst/WORDLIST`, only after the package creator agrees to them | Yes |
@@ -75,16 +84,14 @@ browser, say) fails many tests with the same message, the line names it once as 
 
 ### The gate and CI
 
-`lint.yaml` and `check-no-suggests.yaml` run the gate itself; `off-cran-tests.yaml` runs testthat directly, and the
-other test workflows run R CMD check or covr. What each workflow runs and when, which gate mode checks the same thing
-locally (the evidence when CI can't run), which test files run where and the CI report comment on a pull request:
+The workflows in `.github/workflows/` call launchR's checks at a fixed launchR version; the lint and no-Suggests checks
+run this same gate. What each workflow runs and when, and which test files run where:
 [`.github/workflows/README.md`](../.github/workflows/README.md).
 
 ### Changing the gate
 
-`cran-gate.R` is a copy of [mascot's gate](https://github.com/insightsurge/mascot/tree/main/tools) and is not edited
-here. Its self-test lives in mascot too. A problem or a new check goes to mascot as an issue; the new version is copied
-here after it merges. `.lintr`, `air.toml` and `biome.json` are stagemap's own settings.
+The gate and the checks are maintained in launchR and never edited here: a problem or a new check goes to launchR as
+an issue, and reaches stagemap when the workflows move to the next launchR version (Dependabot proposes it).
+stagemap's own choices are the `Config/quality-gate/*` fields in `DESCRIPTION`, `.lintr`, `air.toml` and `biome.json`.
 
-Details: `Rscript tools/cran-gate.R --help`. Rules: the "Quality gate" section of `AGENTS.md` and
-`.claude/rules/ci.md`.
+Details: `gate --help`. Rules: the "Quality gate" section of `AGENTS.md` and `.claude/rules/ci.md`.
