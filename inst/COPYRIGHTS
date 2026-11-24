@@ -13,6 +13,9 @@ The stage-map engine, in inst/kit/: stage-map.js, stage-map.css, stage-map.json 
   Copyright (c) 2026 Lucide Icons and Contributors, ISC licence; some of the icons derive from Feather, Copyright (c)
   2013-present Cole Bemis, MIT licence. Both licences are in inst/kit/LICENSE-lucide.
 
+The widget binding, inst/htmlwidgets/stage_map.js:
+  Copyright (c) 2026 Harsh Verma. MIT licence: see LICENSE. Plain, unminified source, written for this package.
+
 The d3 library, inst/kit/d3.min.js (version 7.9.0, as published at https://d3js.org; the engine draws with it):
   Copyright 2010-2023 Mike Bostock. ISC licence: see inst/kit/LICENSE-d3.
 

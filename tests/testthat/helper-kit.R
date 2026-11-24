@@ -6,6 +6,14 @@ kit_relied_on <- list(
   commands = c("select", "highlight", "size", "history", "show", "hide", "disable", "enable", "state"),
   # What the engine announces, with the package's prefix.
   events = c("stagemap:select", "stagemap:size", "stagemap:hover", "stagemap:link"),
+  # The options the package sends or checks, by their names in the contract's `options`.
+  options = c("dismiss"),
+  # The fields of an event the page hands to R (`input$<id>_selected`, `input$<id>_hover`), as the contract names them.
+  # The reader passes every field the contract lists; these are the ones the tests and the help pages name.
+  event_fields = list(
+    select = c("kind", "id", "ids", "from", "label", "details", "about", "still", "by", "via", "at", "seq"),
+    hover = c("kind", "id")
+  ),
   # How the build is named: the global, the prefix of its attributes, tokens and events, the CSS class prefix and the
   # attribute on the element a map is drawn in.
   names = list(

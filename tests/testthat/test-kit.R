@@ -45,6 +45,18 @@ describe("the bundled stage-map engine", {
     expect_true(all(kit_relied_on$events %in% names(contract$event_data)))
   })
 
+  it("has the options the package sends, and the event fields it hands to R", {
+    contract <- kit_contract()
+    expect_true(all(kit_relied_on$options %in% names(contract$options$fields)))
+    for (event in names(kit_relied_on$event_fields)) {
+      listed <- names(contract$event_data[[paste0(kit_relied_on$names$prefix, ":", event)]])
+      expect_true(
+        all(kit_relied_on$event_fields[[event]] %in% listed),
+        info = paste(event, toString(setdiff(kit_relied_on$event_fields[[event]], listed)))
+      )
+    }
+  })
+
   it("names only files that are in the copy", {
     # Given the files the contract says a page loads
     contract <- kit_contract()
