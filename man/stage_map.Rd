@@ -74,8 +74,8 @@ or \code{TRUE} (the default) to allow them. The reader's own reduced-motion sett
 \item{cell_columns}{How many columns of cards a cell holds when a stage has several cards in one lane: a whole
 number from 1 to 6, or \code{"auto"} to let the map's width decide (up to 6). The default is \code{1}. Six is the most
 because six cards side by side are wider than a screen and would scroll. It is one number for the whole map, and a
-stage with several columns is wider than the others. Only the \code{"grid"} layout uses it, and a box under 500 pixels wide, which stacks stage by stage,
-ignores it.}
+stage with several columns is wider than the others. Only the \code{"grid"} layout uses it, and a box under 500
+pixels wide, which stacks stage by stage, ignores it.}
 
 \item{bundle_links}{\code{TRUE} draws the forward links of one card as a single trunk that splits next to the cards they
 reach, when three or more of them have the same kind and no label; other links are drawn as usual. \code{FALSE}, the
