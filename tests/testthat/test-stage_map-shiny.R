@@ -349,6 +349,45 @@ describe("stage_map_highlight() on a proxy", {
     )
   })
 
+  it("checks the kind of the links like the ends: text that is not blank, or a whole number; NA is no kind", {
+    p <- fake_proxy()
+    for (kind in list(
+      TRUE,
+      1.5,
+      "",
+      "  ",
+      I(list(c("a", "b"))),
+      Inf,
+      c("hand", "")
+    )) {
+      links <- data.frame(from = c("a", "b"), to = c("b", "c"))
+      links$kind <- if (length(kind) == 2L && is.character(kind)) kind else rep(kind, length.out = 2L)
+      expect_error(stage_map_highlight(p$proxy, c("a", "b", "c"), links = links), "links\\$kind")
+    }
+    expect_length(p$session$flush_callbacks, 0L)
+
+    links <- data.frame(from = c("a", "b"), to = c("b", "c"), kind = c(3e9, NA))
+    stage_map_highlight(p$proxy, c("a", "b", "c"), links = links)
+    expect_identical(
+      commands(p$session)[[1]]$data$links,
+      list(list(from = "a", to = "b", kind = "3000000000"), list(from = "b", to = "c", kind = NULL))
+    )
+  })
+
+  it("refuses empty and blank ids, and takes whole numbers of any size, in every verb", {
+    p <- fake_proxy()
+    expect_error(stage_map_select(p$proxy, ""), "ids")
+    expect_error(stage_map_highlight(p$proxy, c("a", "  ")), "ids")
+    expect_error(stage_map_show(p$proxy, " "), "ids")
+    expect_error(stage_map_hide(p$proxy, ""), "ids")
+    expect_error(stage_map_enable(p$proxy, "\t"), "ids")
+    expect_error(stage_map_disable(p$proxy, "", "why"), "ids")
+    expect_error(stage_map_highlight(p$proxy, c("a", "b"), links = data.frame(from = " ", to = "b")), "links\\$from")
+    expect_length(p$session$flush_callbacks, 0L)
+    stage_map_select(p$proxy, c(3e9, 1e12))
+    expect_identical(commands(p$session)[[1]]$data$ids, list("3000000000", "1000000000000"))
+  })
+
   it("takes factors in the ids and the ends of the links", {
     p <- fake_proxy()
     ids <- factor(c("a", "b"))

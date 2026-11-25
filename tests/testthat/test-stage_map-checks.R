@@ -165,3 +165,66 @@ describe("the checks for an id given twice", {
     expect_no_error(slim(cards = data.frame(id = "s", label = "A", stage = "s", lane = "l")))
   })
 })
+
+describe("the check for empty and blank ids", {
+  data_error <- function(code) expect_error(code, class = "stagemap_error_data")
+
+  it("refuses an empty or blank id in the cards, stages and lanes tables, naming the table and the row", {
+    error <- data_error(slim(cards = data.frame(id = c("a", ""), label = "A", stage = "s", lane = "l")))
+    expect_match(conditionMessage(error), "cards$id[2]", fixed = TRUE)
+    error <- data_error(slim(cards = data.frame(id = c("a", "  "), label = "A", stage = "s", lane = "l")))
+    expect_match(conditionMessage(error), "cards$id[2]", fixed = TRUE)
+    error <- data_error(slim(cards = data.frame(id = "a", label = "A", stage = "s", lane = ""), lanes = NULL))
+    expect_match(conditionMessage(error), "cards$lane[1]", fixed = TRUE)
+    error <- data_error(slim(cards = data.frame(id = "a", label = "A", stage = "", lane = "l"), stages = NULL))
+    expect_match(conditionMessage(error), "cards$stage[1]", fixed = TRUE)
+    error <- data_error(slim(stages = data.frame(id = c("s", " "), label = "S")))
+    expect_match(conditionMessage(error), "stages$id[2]", fixed = TRUE)
+    error <- data_error(slim(lanes = data.frame(id = c("l", ""), label = "L")))
+    expect_match(conditionMessage(error), "lanes$id[2]", fixed = TRUE)
+  })
+
+  it("refuses an empty or blank id in the links, kinds, zones, variants and steps tables", {
+    expect_match(
+      conditionMessage(data_error(add_links(small(), data.frame(from = "a", to = " ")))),
+      "links$to[1]",
+      fixed = TRUE
+    )
+    expect_match(
+      conditionMessage(data_error(add_links(small(), data.frame(from = "a", to = "b", kind = "")))),
+      "links$kind[1]",
+      fixed = TRUE
+    )
+    expect_match(
+      conditionMessage(data_error(add_links(
+        small(),
+        data.frame(from = "a", to = "b"),
+        kinds = data.frame(id = "", label = "K")
+      ))),
+      "kinds$id[1]",
+      fixed = TRUE
+    )
+    expect_match(
+      conditionMessage(data_error(add_zones(small(), data.frame(id = "", label = "Z")))),
+      "zones$id[1]",
+      fixed = TRUE
+    )
+    expect_match(
+      conditionMessage(data_error(add_variants(small(), data.frame(id = " ", label = "V")))),
+      "variants$id[1]",
+      fixed = TRUE
+    )
+    expect_match(
+      conditionMessage(data_error(add_steps(small(), data.frame(id = "", stage = "s", label = "Step")))),
+      "steps$id[1]",
+      fixed = TRUE
+    )
+  })
+
+  it("still takes a blank cell as missing where the column is optional, and whole numbers of any size as ids", {
+    expect_no_error(slim(cards = data.frame(id = "a", label = "A", stage = "s", lane = "l", zone = NA_character_)))
+    cards <- data.frame(id = c(3e9, 1e12), label = c("A", "B"), stage = "s", lane = "l")
+    map <- stage_map(cards) |> add_links(data.frame(from = 3e9, to = 1e12))
+    expect_identical(data_of(map)$links, list(list(from = "3000000000", to = "1000000000000")))
+  })
+})

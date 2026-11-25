@@ -6,7 +6,7 @@
 \alias{stagemap-package}
 \title{stagemap: Relation Maps for 'Shiny' and 'Quarto'}
 \description{
-Builds relation maps from cards placed by stage and lane and links that join them. Checks card identifiers, link endpoints and column values, lays the map out the same way on every run and writes it as an SVG image.
+Builds relation maps from cards placed by stage and lane and links that join them. Checks card identifiers, link endpoints and column values, lays the map out the same way on every run and draws it in the browser, in 'Shiny' apps and 'Quarto' documents.
 }
 \seealso{
 Useful links:
