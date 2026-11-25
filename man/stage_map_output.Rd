@@ -21,9 +21,9 @@ stage_map_proxy(
 \item{output_id}{The output's id, as one string. In a module, give \code{ns("map")} to \code{stage_map_output()}; the proxy
 takes the plain \code{"map"} or the namespaced id.}
 
-\item{width, height}{The output's CSS size as text (such as \code{"100\%"} or \code{"480px"}) or a number of pixels. The
-default height, \code{"auto"}, follows the picture's content; any other height makes the output a box that scrolls
-inside, so a map taller than the box does not spill over what follows.}
+\item{width, height}{The output's CSS size as text (such as \code{"100\%"} or \code{"480px"}) or a number of pixels; \code{NULL} is
+not allowed. The default height, \code{"auto"}, follows the picture's content; any other height makes the output a box
+that scrolls inside, so a map taller than the box does not spill over what follows.}
 
 \item{expr}{An expression that gives a \code{\link[=stage_map]{stage_map()}} widget, or \code{NULL} to show nothing. A promise of one works too.}
 
@@ -61,6 +61,8 @@ below keep the module's own names, so the server reads \code{input$map_selected}
 
 For an output with the id \code{map}, the server reads these inputs. A value that holds ids is a character vector, and
 no ids is \code{character(0)}: \code{req(input$map_selected)} waits until something is selected.
+Until the map has been drawn in the browser, every input is \code{NULL}; \code{input$map_pick} stays \code{NULL} until the reader
+picks or lets go of something, or new data changes the pick.
 \itemize{
 \item \code{input$map_selected}: the ids of the selected cards, the lead (the one whose details show) last. It changes when
 the selection changes, whether the reader, a verb or new data changed it, and it is \code{character(0)} while nothing

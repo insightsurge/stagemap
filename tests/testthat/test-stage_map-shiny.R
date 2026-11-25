@@ -53,6 +53,12 @@ describe("stage_map_output()", {
     expect_error(stage_map_output("map", TRUE, "auto"), "width")
     expect_error(stage_map_output("map", height = TRUE), "height")
   })
+
+  it("wants a width and a height, and refuses NULL for either", {
+    expect_error(stage_map_output("map", width = NULL), "width")
+    expect_error(stage_map_output("map", height = NULL), "height")
+    expect_error(stage_map_output("map", NULL, NULL), "width")
+  })
 })
 
 describe("render_stage_map()", {

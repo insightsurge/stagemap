@@ -78,6 +78,23 @@ describe("stage_map() arguments", {
     expect_null(data_of(slim(statuses = data.frame()))$statuses)
   })
 
+  it("takes a missing status label (NA, or no label column) as no word, and sends none to the engine", {
+    cards <- data.frame(id = "a", label = "A", stage = "s", lane = "l", status = c("blocked"))
+    # Given a status of the reader's own, and a built-in one restyled, with no label
+    for (statuses in list(
+      data.frame(id = "blocked", label = NA_character_),
+      data.frame(id = "blocked")
+    )) {
+      # When the map is built
+      widget <- expect_no_error(slim(cards = cards, statuses = statuses))
+      # Then the label is left for the engine to fill (the id for a status of your own)
+      expect_null(data_of(widget)$statuses[[1]][["label"]])
+    }
+    restyled <- slim(statuses = data.frame(id = "done", label = NA_character_, tone = "teal"))
+    expect_null(data_of(restyled)$statuses[[1]][["label"]])
+    expect_identical(data_of(restyled)$statuses[[1]][["tone"]], "teal")
+  })
+
   it("refuses a status row with no id column, or a tone the engine does not know, naming the fix", {
     error <- expect_error(slim(statuses = data.frame(label = "Blocked")), class = "stagemap_error_data")
     expect_match(error$problems[1], "`statuses` needs a column `id`.", fixed = TRUE)

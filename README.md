@@ -11,12 +11,14 @@ means something, such as built, reviewed, tested by or depends on. The same data
 node, find things with no link, check coverage, and see the impact of a change. Maps are meant for Shiny apps, Quarto
 documents, slides and dashboards, and package websites, and as a static image for PowerPoint, Word and PDF.
 
-**Status:** early development; `stagemap` is the working name. The package is an `htmlwidgets` widget that draws maps with a
-bundled JavaScript engine, with R functions to trace and check a map; it has no exported functions yet. It is not
-on CRAN. Scope and plans:
+**Status:** early development; `stagemap` is the working name. The package is an `htmlwidgets` widget that draws maps
+with a bundled JavaScript engine. `stage_map()` draws a map, and `add_links()`, `add_zones()`, `add_steps()` and
+`add_variants()` add to it. `stage_map_output()`, `render_stage_map()` and `stage_map_proxy()` put a map in a Shiny app,
+with six verbs to change it and inputs to read it. `sm_trace()`, `sm_orphans()` and `sm_missing()` answer questions
+about a map as data frames. Writing a static image is not built yet. The package is not on CRAN. Scope and plans:
 [`docs/scope.md`](https://github.com/insightsurge/stagemap/blob/main/docs/scope.md).
 
-The coverage badge counts the R code the tests run. The JavaScript engine that will draw the maps in the browser is
+The coverage badge counts the R code the tests run. The JavaScript engine that draws the maps in the browser is
 tested there and is not part of that figure.
 
 ## Installation

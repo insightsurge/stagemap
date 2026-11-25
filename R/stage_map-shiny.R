@@ -91,6 +91,8 @@ sm_send_each <- function(proxy, command, ids, extra = list(), call = rlang::call
 #' @section Inputs:
 #' For an output with the id `map`, the server reads these inputs. A value that holds ids is a character vector, and
 #' no ids is `character(0)`: `req(input$map_selected)` waits until something is selected.
+#' Until the map has been drawn in the browser, every input is `NULL`; `input$map_pick` stays `NULL` until the reader
+#' picks or lets go of something, or new data changes the pick.
 #'
 #' * `input$map_selected`: the ids of the selected cards, the lead (the one whose details show) last. It changes when
 #'   the selection changes, whether the reader, a verb or new data changed it, and it is `character(0)` while nothing
@@ -118,9 +120,9 @@ sm_send_each <- function(proxy, command, ids, extra = list(), call = rlang::call
 #'
 #' @param output_id The output's id, as one string. In a module, give `ns("map")` to `stage_map_output()`; the proxy
 #'   takes the plain `"map"` or the namespaced id.
-#' @param width,height The output's CSS size as text (such as `"100%"` or `"480px"`) or a number of pixels. The
-#'   default height, `"auto"`, follows the picture's content; any other height makes the output a box that scrolls
-#'   inside, so a map taller than the box does not spill over what follows.
+#' @param width,height The output's CSS size as text (such as `"100%"` or `"480px"`) or a number of pixels; `NULL` is
+#'   not allowed. The default height, `"auto"`, follows the picture's content; any other height makes the output a box
+#'   that scrolls inside, so a map taller than the box does not spill over what follows.
 #' @param expr An expression that gives a [stage_map()] widget, or `NULL` to show nothing. A promise of one works too.
 #' @param env The environment in which to evaluate `expr`.
 #' @param quoted Whether `expr` is already a quoted expression.
@@ -163,11 +165,11 @@ sm_send_each <- function(proxy, command, ids, extra = list(), call = rlang::call
 #' @export
 stage_map_output <- function(output_id, width = "100%", height = "auto") {
   checkmate::assert_string(output_id, min.chars = 1L)
-  assert_widget_args(width, height, NULL)
+  assert_widget_args(width, height, NULL, sizes_given = TRUE)
   rlang::check_installed("shiny")
   out <- htmlwidgets::shinyWidgetOutput(output_id, "stage_map", width, height, package = "stagemap")
   # A fixed height is a box: a map taller than it scrolls inside it and does not spill over what follows.
-  if (!is.null(height) && !identical(height, "auto")) {
+  if (!identical(height, "auto")) {
     out[[1]] <- htmltools::tagAppendAttributes(out[[1]], style = "overflow: auto;")
   }
   out

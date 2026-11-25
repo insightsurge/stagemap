@@ -49,6 +49,13 @@ describe("assert_widget_args()", {
     expect_silent(assert_widget_args("50%", 300, "map"))
   })
 
+  it("refuses NULL for a size when the sizes must be given, as an output's are", {
+    expect_silent(assert_widget_args("100%", "auto", NULL, sizes_given = TRUE))
+    expect_error(assert_widget_args(NULL, "auto", NULL, sizes_given = TRUE), "width")
+    expect_error(assert_widget_args("100%", NULL, NULL, sizes_given = TRUE), "height")
+    expect_error(assert_widget_args("100%", "auto", NULL, sizes_given = NA), "sizes_given")
+  })
+
   it("refuses a bad width, height or id with checkmate's own message", {
     expect_error(assert_widget_args(c(1, 2), NULL, NULL), "width")
     expect_error(assert_widget_args(NULL, TRUE, NULL), "height")
