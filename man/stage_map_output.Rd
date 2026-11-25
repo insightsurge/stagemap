@@ -69,19 +69,18 @@ pick reads the new selection.
 \item \code{input$map_hovered} \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}}: the id of the card under the pointer, or \code{character(0)}
 when there is none. A stage under the pointer is not reported.
 \item \code{input$map_pick}: the reader's last pick, as a list of \code{kind} (\code{"card"}, \code{"stage"} or \code{"all"} when the reader let
-go of everything), \code{id} (the lead card, or the stage), \code{ids} (the picked cards, the lead last, or the stage's id),
-\code{from} (the id that was picked before), \code{label}, \code{still} and \code{by} (\code{"reader"}, or \code{"data"} when new data changed
-the pick). A field with nothing to say is \code{NULL}, and \code{ids} is \code{character(0)}; \code{still} is \code{NULL}, or a list of
-\code{kind}, \code{id} and \code{ids} for the pick that stays when the reader lets go of the other kind (a card stays picked
-when the stage is let go). It changes when the reader picks or lets go, and when new data changes the pick, never
-for a verb. Fields may be added later and none will be removed. \code{ids} belongs with \code{kind}: for a stage pick it
-holds the stage's id, so read the selected cards from \code{input$map_selected}.
-\item \code{input$map_state}: what the map holds now, as a list of \code{selected} (the selected card ids, the lead last),
-\code{stage} (the chosen stage's id, or \code{character(0)}), \code{step} (the step the player shows, counting from 1; \code{0} at
-the start or without a player), \code{highlighted} (a list of \code{ids} and \code{links}, a data frame with the columns \code{from},
-\code{to} and \code{kind}, with no rows when none), \code{hidden} and \code{disabled} (card ids). It changes when any of them
-changes. \code{stage_map_highlight(proxy, state$highlighted$ids, links = state$highlighted$links)} puts back what the
-state holds.
+go of everything; more values may be added later), \code{id} (the lead card, or the stage), \code{ids} (the picked cards, the
+lead last, or the stage's id), \code{from} (the id that was picked before), \code{label}, \code{still} and \code{by} (\code{"reader"}, or
+\code{"data"} when new data changed the pick). A field with nothing to say is \code{NULL}, and \code{ids} is \code{character(0)};
+\code{still} is \code{NULL}, or a list of \code{kind}, \code{id} and \code{ids} for the pick that stays when the reader lets go of the other
+kind (a card stays picked when the stage is let go). It changes when the reader picks or lets go, and when new data
+changes the pick, never for a verb. Fields may be added later and none will be removed. \code{ids} belongs with \code{kind}:
+for a stage pick it holds the stage's id, so read the selected cards from \code{input$map_selected}.
+\item \code{input$map_state}: what the map holds now, as a list of \code{selected} (the selected card ids, the lead last), \code{stage}
+(the chosen stage's id, or \code{character(0)}), \code{step} (the step the player shows, counting from 1; \code{0} at the start or
+without a player), \code{highlighted} (a list of \code{ids} and \code{links}, a data frame with the columns \code{from}, \code{to} and
+\code{kind}, with no rows when none), \code{hidden} and \code{disabled} (card ids). It changes when any of them changes. Fields
+may be added later and none will be removed. \code{stage_map_highlight(proxy, state$highlighted$ids, links = state$highlighted$links)} puts back what the state holds.
 }
 
 Bookmarking in Shiny does not save the map's selection or what a verb changed. To restore them, save

@@ -81,7 +81,7 @@ reach, when three or more of them have the same kind and no label; other links a
 default, draws every link on its own. Only the
 \code{"grid"} layout uses it, and a box under 500 pixels wide ignores it.}
 
-\item{dismiss}{What a click outside the map does to the reader's pick (a chosen card, stage or step).
+\item{dismiss}{What a click outside the map does to the reader's pick (a chosen card or stage).
 \code{"no_outside"} keeps the pick, so a click on a Shiny button, a filter or a tab beside the map leaves it alone and a
 bookmark button can save it. \code{"any"} lets go of the pick on any click outside the map, as the engine does when
 given nothing. With either value the reader still lets go of a pick with Escape, a second click on it, or a click
@@ -126,7 +126,8 @@ Column names are the engine's field names. A column the engine has no field for 
 warning: it stays in the data the widget keeps in R, so a table that carries more columns than the map needs can be
 passed as it is. A name with no field inside an option, such as an entry of \code{statuses} that is not a built-in status,
 is dropped with a warning that names it. An \code{NA} in an optional column counts as left out. Ids are written as text,
-so \code{7} and \code{"7"} are the same id.
+so \code{7} and \code{"7"} are the same id; an id is text that is not blank, or a whole number of any size, and an empty or
+blank id is an error of class \code{stagemap_error_data} that names it.
 }
 \section{Columns}{
 

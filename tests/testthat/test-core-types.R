@@ -28,7 +28,33 @@ describe("the id type", {
   it("refuses a number that is not whole, and one that is not finite, naming the row", {
     problems <- convert_problems(list(rows = data.frame(id = c(1, 1.5, Inf))), types)
     expect_length(problems, 1L)
-    expect_match(problems, "`rows$id[2, 3]` must be an id (text, or a whole number), not \"1.5\".", fixed = TRUE)
+    expect_match(
+      problems,
+      "`rows$id[2, 3]` must be an id (text that is not blank, or a whole number), not \"1.5\".",
+      fixed = TRUE
+    )
+  })
+
+  it("refuses empty and blank text, naming the rows, and takes whole numbers of any size", {
+    problems <- convert_problems(list(rows = data.frame(id = c("a", "", "  ", "\t"))), types)
+    expect_length(problems, 1L)
+    expect_match(problems, "`rows$id[2, 3, 4]` must be an id (text that is not blank", fixed = TRUE)
+    expect_match(problems, "not \"\".", fixed = TRUE)
+    problems <- convert_problems(list(rows = data.frame(id = "a", refs = I(list(c("x", " "))))), types)
+    expect_match(problems, "must be ids", fixed = TRUE)
+    expect_match(convert_problems(list(rows = data.frame(id = factor(c("a", "")))), types), "rows$id[2]", fixed = TRUE)
+
+    rows <- data.frame(id = c(3e9, 1e12, 2^53))
+    expect_identical(convert_problems(list(rows = rows), types), character())
+    sent <- as_list(convert_json(list(rows = rows), types))
+    expect_identical(sent$rows[[1]]$id, "3000000000")
+    expect_identical(sent$rows[[2]]$id, "1000000000000")
+  })
+
+  it("leaves NA to the required check, not the blank check", {
+    problems <- convert_problems(list(rows = data.frame(id = c("a", NA))), types)
+    expect_match(problems, "is required but has NA", fixed = TRUE)
+    expect_false(any(grepl("not blank", problems, fixed = TRUE)))
   })
 
   it("refuses a logical column that holds values, and counts one of NA as left out", {
@@ -123,5 +149,45 @@ describe("the contract's own types", {
       convert_problems(list(free = list(a = 1)), list(free = normalise_field(list(type = "json")))),
       character()
     )
+  })
+})
+
+describe("the id check of an argument", {
+  it("takes text, a factor and whole numbers of any size, as one value or many", {
+    expect_true(check_id_values("a"))
+    expect_true(check_id_values(factor(c("a", "b"))))
+    expect_true(check_id_values(c(7L, 3e9, 1e12)))
+    expect_true(check_id_values(character()))
+    expect_true(check_id_values(1e12, len = 1L))
+    expect_no_error(assert_id_values(NULL, "x", null_ok = TRUE))
+    expect_identical(assert_id_values("a", "x", len = 1L), "a")
+  })
+
+  it("refuses NA, empty and blank text, fractions, other types and the wrong length, naming the argument", {
+    refused <- list(
+      NA_character_,
+      NA_real_,
+      c("a", NA),
+      "",
+      c("a", "   "),
+      1.5,
+      Inf,
+      TRUE,
+      list("a"),
+      NULL
+    )
+    for (value in refused) {
+      expect_false(isTRUE(check_id_values(value)), info = deparse(value))
+      expect_error(assert_id_values(value, "my_id"), "my_id")
+    }
+    expect_error(assert_id_values(c("a", "b"), "my_id", len = 1L), "length 1")
+    expect_error(assert_id_values(NULL, "my_id"), "my_id")
+    expect_error(assert_id_values("a", ""), "label")
+  })
+
+  it("names the function the user called when it is given the call", {
+    caller <- function() assert_id_values("", "my_id", call = rlang::current_env())
+    error <- expect_error(caller(), "my_id")
+    expect_identical(as.character(error$call[[1]]), "caller")
   })
 })

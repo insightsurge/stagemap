@@ -16,8 +16,8 @@ sm_trace(
 \arguments{
 \item{map}{A \code{\link[=stage_map]{stage_map()}} widget.}
 
-\item{ids}{Card ids to start from, as text (a factor counts as text) or whole numbers (never \code{NA}). \code{NULL} or a
-length-zero vector returns no rows.}
+\item{ids}{Card ids to start from, as text (a factor counts as text) or whole numbers (never \code{NA}, never blank).
+\code{NULL} or a length-zero vector returns no rows.}
 
 \item{...}{Must stay empty. It makes every argument after it a named argument, and a typo in an argument's name an
 error that names it.}
@@ -25,8 +25,8 @@ error that names it.}
 \item{direction}{Which way to follow links: \code{"downstream"} (the default, from \code{from} to \code{to}), \code{"upstream"} (from
 \code{to} to \code{from}), or \code{"both"}.}
 
-\item{kinds}{Link kind ids to follow, as text (a factor counts as text) or whole numbers (never \code{NA}). \code{NULL}, the
-default, follows every link, including links without a kind. \code{character(0)} follows no links.}
+\item{kinds}{Link kind ids to follow, as text (a factor counts as text) or whole numbers (never \code{NA}, never blank).
+\code{NULL}, the default, follows every link, including links without a kind. \code{character(0)} follows no links.}
 
 \item{max_distance}{Maximum number of links to follow: a whole number from \code{0}, or \code{Inf} (the default, no limit). \code{0}
 returns only the start cards.}
