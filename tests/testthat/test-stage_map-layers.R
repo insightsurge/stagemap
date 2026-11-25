@@ -347,7 +347,7 @@ describe("the data layers together", {
   })
 
   it("keep the options the map was built with, the highlight, the hidden panels and the size", {
-    map <- slim(highlight = list(ids = "a"), panels = FALSE, height = 300) |>
+    map <- stage_map_highlight(slim(panels = FALSE, height = 300), "a") |>
       add_links(data.frame(from = "a", to = "a")) |>
       add_steps(data.frame(id = "x", label = "X"), intro = "I")
     expect_identical(data_of(map)$options$highlight, list(ids = list("a")))

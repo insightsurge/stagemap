@@ -56,7 +56,7 @@ describe("stage_map() in a browser", {
   })
 
   it("fades every card but the highlighted ones and the links between them", {
-    map <- full_map(highlight = list(ids = c("a", "b")), element_id = "map")
+    map <- stage_map_highlight(full_map(element_id = "map"), c("a", "b"))
     page <- open_map(map)
     dimmed <- "[...document.querySelectorAll('#map .v-sm-node.v-sm-dim')].map(n => n.dataset.card).sort().join()"
     wait_for_page(page, sprintf("%s === 'c,d'", dimmed))

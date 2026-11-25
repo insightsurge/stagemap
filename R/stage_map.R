@@ -4,7 +4,8 @@
 #' `stage_map()` draws the cards, stages and lanes, with a legend, the details of the card under the pointer, a side
 #' panel for the chosen stage and the notes of the zones. It shows no title unless given one, and no step player unless
 #' it has steps. Add the rest with the pipe: links with [add_links()], zones with [add_zones()], steps to play through
-#' with [add_steps()] (which brings the player) and variants with [add_variants()].
+#' with [add_steps()] (which brings the player) and variants with [add_variants()]. Light chosen cards from the first
+#' draw with [stage_map_highlight()]; in a Shiny app, [stage_map_output()] shows the map.
 #'
 #' Each list in the picture is one data frame, one row per record, and ids join the lists the way a key joins two data
 #' frames: a card's `stage` and `lane` name a stage id and a lane id. R checks each join, and an id given twice in a
@@ -15,9 +16,9 @@
 #'
 #' Column names are the engine's field names. A column the engine has no field for is not sent to it and gives no
 #' warning: it stays in the data the widget keeps in R, so a table that carries more columns than the map needs can be
-#' passed as it is. A name with no field inside an option, such as an entry of `statuses` that is not a built-in status
-#' or a key in `highlight` that the engine does not know, is dropped with a warning that names it. An `NA` in an
-#' optional column counts as left out. Ids are written as text, so `7` and `"7"` are the same id.
+#' passed as it is. A name with no field inside an option, such as an entry of `statuses` that is not a built-in status,
+#' is dropped with a warning that names it. An `NA` in an optional column counts as left out. Ids are written as text,
+#' so `7` and `"7"` are the same id.
 #'
 #' @section Columns:
 #' Required columns are marked with an asterisk.
@@ -111,11 +112,6 @@
 #'   reach, when three or more of them have the same kind and no label; other links are drawn as usual. `FALSE`, the
 #'   default, draws every link on its own. Only the
 #'   `"grid"` layout uses it, and a box under 500 pixels wide ignores it.
-#' @param highlight Cards and links to keep clear from the first draw, with every other card and link faded: a named
-#'   list with `ids` (card ids, none of them `NA`) and, optionally, `links` (a data frame with the columns `from*`,
-#'   `to*` and `kind`, or a list of named lists; a data frame with no rows counts as none). With no `links`, every link
-#'   between two lit cards is lit; with `links`, exactly those, and a link with no `kind` lights every link of that
-#'   pair. A hidden card stays hidden. `NULL`, or an empty list, lights nothing special.
 #' @param dismiss What a click outside the map does to the reader's pick (a chosen card, stage or step).
 #'   `"no_outside"` keeps the pick, so a click on a Shiny button, a filter or a tab beside the map leaves it alone and a
 #'   bookmark button can save it. `"any"` lets go of the pick on any click outside the map, as the engine does when
@@ -168,7 +164,6 @@ stage_map <- function(
   legend = TRUE,
   cell_columns = 1,
   bundle_links = FALSE,
-  highlight = NULL,
   dismiss = "no_outside",
   player = NULL,
   panels = TRUE,
@@ -196,14 +191,12 @@ stage_map <- function(
     .var.name = "cell_columns (a whole number from 1 to 6, or \"auto\")"
   )
   checkmate::assert_flag(bundle_links)
-  checkmate::assert_list(highlight, names = "unique", null.ok = TRUE)
   assert_dismiss(dismiss)
   checkmate::assert_flag(player, null.ok = TRUE)
   checkmate::assert_flag(panels)
   assert_widget_args(width, height, element_id)
   check_dots(...)
   call <- rlang::current_env()
-  highlight <- normalise_highlight(highlight, call)
   statuses <- normalise_statuses(statuses)
   # A table left out is taken from the cards' own columns.
   stages <- stages %||% ids_from_cards(cards, "stage")
@@ -225,7 +218,6 @@ stage_map <- function(
     legend = legend,
     cell_columns = if (is.numeric(cell_columns)) as.integer(cell_columns) else cell_columns,
     bundle_links = bundle_links,
-    highlight = highlight,
     dismiss = dismiss,
     hosted = if (length(hosted) > 0L) hosted
   )
@@ -258,33 +250,6 @@ assert_id_option <- function(x, label = checkmate::vname(x)) {
     checkmate::check_int(x),
     .var.name = paste0(label, " (one id: text, or a whole number)")
   )
-}
-
-# The `highlight` argument as the option the engine reads, or NULL when it holds nothing to light: NULL items and an
-# empty `links` data frame count as left out, and an NA among the ids is refused (the converter takes an NA in an
-# optional field as left out, which would light nothing without saying so). `highlight` was checked as a list.
-normalise_highlight <- function(highlight, call) {
-  checkmate::assert_list(highlight, null.ok = TRUE)
-  checkmate::assert_environment(call)
-  if (is.null(highlight)) {
-    return(NULL)
-  }
-  highlight <- drop_nulls(highlight)
-  if (is.data.frame(highlight$links) && nrow(highlight$links) == 0L) {
-    highlight$links <- NULL
-  }
-  if (anyNA(highlight$ids)) {
-    sm_abort(
-      c(
-        "The data cannot be turned into what the stage-map engine reads.",
-        "x" = "`options$highlight$ids` must have no NA: give the ids of the cards to light."
-      ),
-      class = "stagemap_error_data",
-      problems = "`options$highlight$ids` must have no NA: give the ids of the cards to light.",
-      call = call
-    )
-  }
-  if (length(highlight) > 0L) highlight
 }
 
 # `statuses` as the code reads it: NULL for none (a named character vector of length zero counts as none, as does a

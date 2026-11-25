@@ -38,7 +38,7 @@ describe("stage_map() arguments", {
   it("does not take the layers' data, and says which arguments it takes", {
     error <- expect_error(slim(links = data.frame(from = "a", to = "a")), class = "stagemap_error_dots")
     expect_match(conditionMessage(error), "links", fixed = TRUE)
-    expect_match(conditionMessage(error), "highlight", fixed = TRUE)
+    expect_match(conditionMessage(error), "dismiss", fixed = TRUE)
   })
 
   it("takes the layout from the engine's list in its contract, not from a list of its own", {
@@ -181,13 +181,12 @@ describe("stage_map() and the columns the engine has no field for", {
         data.frame(id = "a", label = "A", stage = "s", lane = "l"),
         data.frame(id = "s", label = "S"),
         data.frame(id = "l", label = "L"),
-        highlight = list(ids = "a", lnks = data.frame(from = "a", to = "a"))
+        statuses = c(done = "Pass", bogus = "x")
       ),
       class = "stagemap_warning_unused_columns"
     )
-    expect_identical(warning$dropped, list("options$highlight" = "lnks"))
+    expect_identical(warning$dropped, list("options$statuses" = "bogus"))
     expect_identical(warning$call[[1]], quote(stage_map))
-    expect_warning(slim(statuses = c(done = "Pass", bogus = "x")), "bogus")
   })
 })
 
@@ -370,72 +369,6 @@ describe("stage_map() mapping", {
     expect_false(slim(player = FALSE)$stagemap$keep$player)
     expect_null(slim()$stagemap$keep$player)
     expect_false(grepl("player", unclass(slim(player = FALSE)$x$data), fixed = TRUE))
-  })
-})
-
-describe("stage_map() highlight", {
-  it("sends the ids and the links to the engine's highlight option, with ids as text and links as rows", {
-    widget <- slim(
-      cards = data.frame(id = 1:2, label = c("A", "B"), stage = "s", lane = "l"),
-      highlight = list(ids = c(1, 2), links = data.frame(from = 1, to = 2, kind = "k"))
-    )
-    expect_identical(
-      data_of(widget)$options$highlight,
-      list(ids = list("1", "2"), links = list(list(from = "1", to = "2", kind = "k")))
-    )
-  })
-
-  it("takes ids alone, or links as a list of named lists", {
-    expect_identical(data_of(slim(highlight = list(ids = "a")))$options$highlight, list(ids = list("a")))
-    widget <- slim(highlight = list(ids = "a", links = list(list(from = "a", to = "a"))))
-    expect_identical(data_of(widget)$options$highlight$links, list(list(from = "a", to = "a")))
-  })
-
-  it("sends nothing for NULL or an empty list, and carries no highlight by default", {
-    expect_null(data_of(slim())$options$highlight)
-    expect_null(data_of(slim(highlight = NULL))$options$highlight)
-    expect_null(data_of(slim(highlight = list()))$options$highlight)
-  })
-
-  it("refuses what is not a named list", {
-    expect_error(slim(highlight = "a"), "highlight")
-    expect_error(slim(highlight = list("a")), "highlight")
-  })
-
-  it("names the path of a wrong value inside it", {
-    error <- expect_error(slim(highlight = list(ids = 1.5)), class = "stagemap_error_data")
-    expect_match(error$problems[1], "`options$highlight$ids[1]`", fixed = TRUE)
-    error <- expect_error(slim(highlight = list(links = data.frame(from = "a"))), class = "stagemap_error_data")
-    expect_match(error$problems[1], "`options$highlight$links` needs a column `to`.", fixed = TRUE)
-  })
-
-  it("takes an empty links data frame as none", {
-    widget <- slim(highlight = list(ids = "a", links = data.frame(from = character(), to = character())))
-    expect_identical(data_of(widget)$options$highlight, list(ids = list("a")))
-    expect_identical(data_of(slim(highlight = list(ids = "a", links = data.frame())))$options$highlight$ids, list("a"))
-  })
-
-  it("refuses an NA among the ids, naming the path", {
-    error <- expect_error(slim(highlight = list(ids = c("a", NA))), class = "stagemap_error_data")
-    expect_match(error$problems[1], "`options$highlight$ids`", fixed = TRUE)
-    expect_error(slim(highlight = list(ids = NA_character_)), class = "stagemap_error_data")
-  })
-
-  it("sends no highlight for a list that holds only NULL", {
-    expect_null(data_of(slim(highlight = list(ids = NULL)))$options$highlight)
-    expect_null(data_of(slim(highlight = list(ids = NULL, links = NULL)))$options$highlight)
-    expect_null(data_of(slim(highlight = list(links = data.frame())))$options$highlight)
-  })
-
-  it("refuses a link given as a list with a name twice, as a data frame with a column twice is", {
-    links <- list(list(from = "a", to = "a", from = "b"))
-    error <- expect_error(slim(highlight = list(ids = "a", links = links)), class = "stagemap_error_data")
-    expect_match(error$problems[1], "`options$highlight$links[1]` has the name `from` more than once.", fixed = TRUE)
-  })
-
-  it("keeps it when a layer is added", {
-    widget <- add_links(slim(highlight = list(ids = "a")), data.frame(from = "a", to = "a"))
-    expect_identical(data_of(widget)$options$highlight, list(ids = list("a")))
   })
 })
 

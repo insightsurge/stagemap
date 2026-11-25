@@ -31,7 +31,7 @@ describe("stage_map() arguments", {
         data.frame(id = "a", label = "A", stage = "s", lane = "l"),
         data.frame(id = "s", label = "S"),
         data.frame(id = "l", label = "L"),
-        highligth = list(ids = "a")
+        dismis = "any"
       ),
       error = TRUE
     )

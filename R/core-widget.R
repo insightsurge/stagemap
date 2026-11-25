@@ -1,5 +1,5 @@
-# The widget factory and the Shiny output and render helpers. Callers: the stage map's function (sm_widget()) and the
-# Shiny pair (sm_output_tag(), sm_render_widget()). The engine's names (the visual, the global, the prefix) come from
+# The widget factory and the check the render function applies. Callers: the stage map's function (sm_widget()) and
+# render_stage_map() (sm_checked_widget()). The engine's names (the visual, the global, the prefix) come from
 # the contract through sm_spec(); the widget carries them to the page.
 
 # How many problems a data error lists before it counts the rest.
@@ -76,26 +76,16 @@ sm_widget <- function(
   widget
 }
 
-# The Shiny output for the widget: the markup the render function fills.
-sm_output_tag <- function(output_id, width = "100%", height = "auto") {
-  checkmate::assert_string(output_id, min.chars = 1L)
-  assert_widget_args(width, height, NULL)
-  rlang::check_installed("shiny")
-  out <- htmlwidgets::shinyWidgetOutput(output_id, "stage_map", width, height, package = "stagemap")
-  # A fixed height is a box: a map taller than it scrolls inside it and does not spill over what follows.
-  if (!is.null(height) && !identical(height, "auto")) {
-    out[[1]] <- htmltools::tagAppendAttributes(out[[1]], style = "overflow: auto;")
-  }
-  out
-}
-
 # Passes NULL on (the output then shows nothing, as for any htmlwidget) and refuses anything but this package's
-# widget. In a Shiny session it stamps the render with its number, which the page writes as data-stagemap-stamp so that
-# tests can wait for their own render, and it asks the engine to follow the colours of the page (look mode "host"),
-# unless the widget has a look of its own.
+# widget. A promise (a render that runs in the background) is checked when it resolves. In a Shiny session it stamps
+# the render with its number, which the page writes as data-stagemap-stamp so that tests can wait for their own render,
+# and it asks the engine to follow the colours of the page (look mode "host"), unless the widget has a look of its own.
 sm_checked_widget <- function(widget) {
   if (is.null(widget)) {
     return(NULL)
+  }
+  if (rlang::is_installed("promises") && promises::is.promising(widget)) {
+    return(promises::then(promises::as.promise(widget), sm_checked_widget))
   }
   if (!inherits(widget, "stagemap_widget")) {
     sm_abort(
@@ -115,12 +105,4 @@ sm_checked_widget <- function(widget) {
     widget$x$look <- widget$x$look %||% list(mode = "host")
   }
   widget
-}
-
-# The render function's shared body. `expr` is the quoted expression the exported function took (substitute() must
-# run there).
-sm_render_widget <- function(expr, env) {
-  checkmate::assert_environment(env)
-  checked <- as.call(list(sm_checked_widget, expr))
-  htmlwidgets::shinyRenderWidget(checked, sm_output_tag, env, quoted = TRUE)
 }

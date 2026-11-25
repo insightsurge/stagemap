@@ -18,7 +18,6 @@ stage_map(
   legend = TRUE,
   cell_columns = 1,
   bundle_links = FALSE,
-  highlight = NULL,
   dismiss = "no_outside",
   player = NULL,
   panels = TRUE,
@@ -82,12 +81,6 @@ reach, when three or more of them have the same kind and no label; other links a
 default, draws every link on its own. Only the
 \code{"grid"} layout uses it, and a box under 500 pixels wide ignores it.}
 
-\item{highlight}{Cards and links to keep clear from the first draw, with every other card and link faded: a named
-list with \code{ids} (card ids, none of them \code{NA}) and, optionally, \code{links} (a data frame with the columns \verb{from*},
-\verb{to*} and \code{kind}, or a list of named lists; a data frame with no rows counts as none). With no \code{links}, every link
-between two lit cards is lit; with \code{links}, exactly those, and a link with no \code{kind} lights every link of that
-pair. A hidden card stays hidden. \code{NULL}, or an empty list, lights nothing special.}
-
 \item{dismiss}{What a click outside the map does to the reader's pick (a chosen card, stage or step).
 \code{"no_outside"} keeps the pick, so a click on a Shiny button, a filter or a tab beside the map leaves it alone and a
 bookmark button can save it. \code{"any"} lets go of the pick on any click outside the map, as the engine does when
@@ -118,7 +111,8 @@ A stage map shows pieces of work (cards) placed in stages (columns) and lanes (r
 \code{stage_map()} draws the cards, stages and lanes, with a legend, the details of the card under the pointer, a side
 panel for the chosen stage and the notes of the zones. It shows no title unless given one, and no step player unless
 it has steps. Add the rest with the pipe: links with \code{\link[=add_links]{add_links()}}, zones with \code{\link[=add_zones]{add_zones()}}, steps to play through
-with \code{\link[=add_steps]{add_steps()}} (which brings the player) and variants with \code{\link[=add_variants]{add_variants()}}.
+with \code{\link[=add_steps]{add_steps()}} (which brings the player) and variants with \code{\link[=add_variants]{add_variants()}}. Light chosen cards from the first
+draw with \code{\link[=stage_map_highlight]{stage_map_highlight()}}; in a Shiny app, \code{\link[=stage_map_output]{stage_map_output()}} shows the map.
 }
 \details{
 Each list in the picture is one data frame, one row per record, and ids join the lists the way a key joins two data
@@ -130,9 +124,9 @@ the engine to show the problem inside the widget.
 
 Column names are the engine's field names. A column the engine has no field for is not sent to it and gives no
 warning: it stays in the data the widget keeps in R, so a table that carries more columns than the map needs can be
-passed as it is. A name with no field inside an option, such as an entry of \code{statuses} that is not a built-in status
-or a key in \code{highlight} that the engine does not know, is dropped with a warning that names it. An \code{NA} in an
-optional column counts as left out. Ids are written as text, so \code{7} and \code{"7"} are the same id.
+passed as it is. A name with no field inside an option, such as an entry of \code{statuses} that is not a built-in status,
+is dropped with a warning that names it. An \code{NA} in an optional column counts as left out. Ids are written as text,
+so \code{7} and \code{"7"} are the same id.
 }
 \section{Columns}{
 

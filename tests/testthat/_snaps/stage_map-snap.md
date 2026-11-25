@@ -26,12 +26,11 @@
 
     Code
       stage_map(data.frame(id = "a", label = "A", stage = "s", lane = "l"),
-      data.frame(id = "s", label = "S"), data.frame(id = "l", label = "L"),
-      highligth = list(ids = "a"))
+      data.frame(id = "s", label = "S"), data.frame(id = "l", label = "L"), dismis = "any")
     Condition
       Error in `stage_map()`:
-      ! Arguments after `...` must be named, and these are not arguments of this function: `highligth`.
-      i Valid arguments: `cards`, `stages`, `lanes`, `title`, `layout`, `target`, `variant`, `statuses`, `motion`, `legend`, `cell_columns`, `bundle_links`, `highlight`, `dismiss`, `player`, `panels`, `width`, `height`, and `element_id`.
+      ! Arguments after `...` must be named, and these are not arguments of this function: `dismis`.
+      i Valid arguments: `cards`, `stages`, `lanes`, `title`, `layout`, `target`, `variant`, `statuses`, `motion`, `legend`, `cell_columns`, `bundle_links`, `dismiss`, `player`, `panels`, `width`, `height`, and `element_id`.
 
 # add_steps() changes / names the step and the card the data lacks, and the fix
 

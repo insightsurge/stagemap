@@ -60,3 +60,7 @@ reference:
       - sm_trace
       - sm_orphans
       - sm_missing
+  - title: Stage maps in Shiny
+    contents:
+      - stage_map_output
+      - stage_map_select

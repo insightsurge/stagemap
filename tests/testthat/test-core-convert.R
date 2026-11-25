@@ -125,6 +125,13 @@ describe("convert_problems()", {
     expect_identical(convert_problems(data, made_up), "`rows$parts[2]` needs a column `k`.")
   })
 
+  it("checks a list of named lists as rows, and names a name given twice in one of them", {
+    data <- list(rows = list(list(id = "a"), list(id = "b", id = "c"), list(n = TRUE)))
+    problems <- convert_problems(data, made_up)
+    expect_identical(problems, c("`rows[2]` has the name `id` more than once.", "`rows[3]$id` is required."))
+    expect_identical(convert_problems(list(rows = list(list(id = "a"), list(id = "b"))), made_up), character())
+  })
+
   it("checks words: text only, from the allowed values, and any number of them", {
     data <- list(rows = rows())
     data$rows$tags <- list(c("x", "y"), "z")
