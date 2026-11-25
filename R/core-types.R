@@ -20,6 +20,53 @@ as_text <- function(x) {
   as.character(x)
 }
 
+# The one rule for an id, in a table and in an argument: text that is not blank, or a whole number of any size (the
+# check on a number is not capped at the largest integer, as checkmate's integerish checks are). A factor is its text.
+# `id_bad()` says which non-missing values of a column are not ids; `check_id_values()` and `assert_id_values()` judge
+# an argument.
+id_bad <- function(x) {
+  if (is.numeric(x)) {
+    return(!is.finite(x) | x != round(x))
+  }
+  grepl("^[[:space:]]*$", as.character(x))
+}
+
+# `TRUE` when `x` is a vector of ids, none missing (`len` is the length it must have, `NULL` for any, zero included);
+# else why not, in checkmate's wording.
+check_id_values <- function(x, len = NULL) {
+  if (is.factor(x)) {
+    x <- as.character(x)
+  }
+  if (!is.character(x) && !is.numeric(x)) {
+    return(sprintf("Must be text or whole numbers, not '%s'", class(x)[[1]]))
+  }
+  if (!is.null(len) && length(x) != len) {
+    return(sprintf("Must have length %d, but has length %d", len, length(x)))
+  }
+  if (anyNA(x)) {
+    return(sprintf("Contains missing values (element %d)", which(is.na(x))[[1]]))
+  }
+  bad <- which(id_bad(x))
+  if (length(bad) > 0L) {
+    return(sprintf("Element %d is not an id: an id is text that is not blank, or a whole number", bad[[1]]))
+  }
+  TRUE
+}
+
+# Stops, with checkmate's own error, unless `x` is ids (see check_id_values()); `null_ok` lets `NULL` pass. `label`
+# names the argument; `call`, when given, is the function the user called, named in the error in place of this helper.
+assert_id_values <- function(x, label, len = NULL, null_ok = FALSE, call = NULL) {
+  checkmate::assert_string(label, min.chars = 1L)
+  checkmate::assert_count(len, null.ok = TRUE)
+  checkmate::assert_flag(null_ok)
+  checkmate::assert_environment(call, null.ok = TRUE)
+  found <- if (null_ok && is.null(x)) TRUE else check_id_values(x, len)
+  if (is.null(call)) {
+    return(checkmate::makeAssertion(x, found, label, NULL))
+  }
+  with_caller_call(checkmate::makeAssertion(x, found, label, NULL), call)
+}
+
 date_pattern <- "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
 
 # The field types that hold a vector, always written as a JSON array, even with one item.
@@ -32,12 +79,12 @@ type_rules <- list(
     want = function(spec) "text (a character vector, a factor or numbers)",
     to = function(x) as_text(x)
   ),
-  # A reference to a row (a card, a stage, a kind): text. A number is accepted too, when it is whole, and written as
-  # text, so that 7 and "7" are the same id and a join on it holds.
+  # A reference to a row (a card, a stage, a kind): text that is not blank. A number is accepted too, when it is whole,
+  # and written as text, so that 7 and "7" are the same id and a join on it holds.
   id = list(
     ok = function(x, spec) is.character(x) || is.factor(x) || is.numeric(x),
-    bad = function(x, spec) if (is.numeric(x)) !is.finite(x) | x != round(x) else rep(FALSE, length(x)),
-    want = function(spec) "an id (text, or a whole number)",
+    bad = function(x, spec) id_bad(x),
+    want = function(spec) "an id (text that is not blank, or a whole number)",
     to = function(x) as_text(x)
   ),
   # Text the engine reads as inline or block Markdown: a string, never a number.
@@ -97,8 +144,8 @@ type_rules <- list(
   # Ids, always a JSON array. An id is text or a whole number, written as text.
   ids = list(
     ok = function(x, spec) is.character(x) || is.factor(x) || is.numeric(x),
-    bad = function(x, spec) if (is.numeric(x)) !is.finite(x) | x != round(x) else rep(FALSE, length(x)),
-    want = function(spec) "ids (text, or whole numbers)",
+    bad = function(x, spec) id_bad(x),
+    want = function(spec) "ids (text that is not blank, or whole numbers)",
     to = function(x) as_text(x)
   )
 )

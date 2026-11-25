@@ -2,7 +2,8 @@
 # proxy object, the queue of commands, the readers of what the page reports) is in shiny.R.
 
 # The ids of a verb as text, without repeats, in the order given. `NULL` and a vector of length zero are `character(0)`:
-# the empty choice. Ids are text or whole numbers and never `NA`, and are compared as text (7 and "7" are one id).
+# the empty choice. Ids are text that is not blank or whole numbers, never `NA`, and are compared as text (7 and "7" are
+# one id).
 sm_ids <- function(ids, arg = "ids", unique = TRUE) {
   checkmate::assert_string(arg, min.chars = 1L)
   checkmate::assert_flag(unique)
@@ -10,16 +11,7 @@ sm_ids <- function(ids, arg = "ids", unique = TRUE) {
     return(character())
   }
   # A factor is its labels, as it is in the cards' table.
-  if (is.factor(ids)) {
-    ids <- as.character(ids)
-  }
-  # Whole numbers of any size: checkmate's integerish check stops at the largest integer, and stage_map() does not.
-  whole <- is.numeric(ids) && all(is.finite(ids)) && all(ids == round(ids))
-  checkmate::assert(
-    checkmate::check_character(ids, any.missing = FALSE, min.chars = 1L),
-    checkmate::check_true(whole),
-    .var.name = paste0(arg, " (ids: text or whole numbers, none missing)")
-  )
+  assert_id_values(ids, arg)
   text <- as_text(ids)
   if (unique) base::unique(text) else text
 }
@@ -101,19 +93,19 @@ sm_send_each <- function(proxy, command, ids, extra = list(), call = rlang::call
 #' * `input$map_hovered` `r lifecycle::badge("experimental")`: the id of the card under the pointer, or `character(0)`
 #'   when there is none. A stage under the pointer is not reported.
 #' * `input$map_pick`: the reader's last pick, as a list of `kind` (`"card"`, `"stage"` or `"all"` when the reader let
-#'   go of everything), `id` (the lead card, or the stage), `ids` (the picked cards, the lead last, or the stage's id),
-#'   `from` (the id that was picked before), `label`, `still` and `by` (`"reader"`, or `"data"` when new data changed
-#'   the pick). A field with nothing to say is `NULL`, and `ids` is `character(0)`; `still` is `NULL`, or a list of
-#'   `kind`, `id` and `ids` for the pick that stays when the reader lets go of the other kind (a card stays picked
-#'   when the stage is let go). It changes when the reader picks or lets go, and when new data changes the pick, never
-#'   for a verb. Fields may be added later and none will be removed. `ids` belongs with `kind`: for a stage pick it
-#'   holds the stage's id, so read the selected cards from `input$map_selected`.
-#' * `input$map_state`: what the map holds now, as a list of `selected` (the selected card ids, the lead last),
-#'   `stage` (the chosen stage's id, or `character(0)`), `step` (the step the player shows, counting from 1; `0` at
-#'   the start or without a player), `highlighted` (a list of `ids` and `links`, a data frame with the columns `from`,
-#'   `to` and `kind`, with no rows when none), `hidden` and `disabled` (card ids). It changes when any of them
-#'   changes. `stage_map_highlight(proxy, state$highlighted$ids, links = state$highlighted$links)` puts back what the
-#'   state holds.
+#'   go of everything; more values may be added later), `id` (the lead card, or the stage), `ids` (the picked cards, the
+#'   lead last, or the stage's id), `from` (the id that was picked before), `label`, `still` and `by` (`"reader"`, or
+#'   `"data"` when new data changed the pick). A field with nothing to say is `NULL`, and `ids` is `character(0)`;
+#'   `still` is `NULL`, or a list of `kind`, `id` and `ids` for the pick that stays when the reader lets go of the other
+#'   kind (a card stays picked when the stage is let go). It changes when the reader picks or lets go, and when new data
+#'   changes the pick, never for a verb. Fields may be added later and none will be removed. `ids` belongs with `kind`:
+#'   for a stage pick it holds the stage's id, so read the selected cards from `input$map_selected`.
+#' * `input$map_state`: what the map holds now, as a list of `selected` (the selected card ids, the lead last), `stage`
+#'   (the chosen stage's id, or `character(0)`), `step` (the step the player shows, counting from 1; `0` at the start or
+#'   without a player), `highlighted` (a list of `ids` and `links`, a data frame with the columns `from`, `to` and
+#'   `kind`, with no rows when none), `hidden` and `disabled` (card ids). It changes when any of them changes. Fields
+#'   may be added later and none will be removed. `stage_map_highlight(proxy, state$highlighted$ids, links =
+#'   state$highlighted$links)` puts back what the state holds.
 #'
 #' Bookmarking in Shiny does not save the map's selection or what a verb changed. To restore them, save
 #' `input$map_selected` yourself and give it to [stage_map_select()] when the app is restored.
@@ -219,19 +211,19 @@ stage_map_proxy <- function(
 #' against the map, replaces what an earlier call lit, and returns the widget. The other five need a map that is
 #' drawn, so a widget is an error of class `stagemap_error_widget`.
 #'
-#' Ids are text or whole numbers and are compared as text, so `7` and `"7"` are one id. `ids` has no default, so a
-#' forgotten argument is an error and never a silent clear. `NULL` and a vector of length zero mean no ids:
-#' `stage_map_select()` and `stage_map_highlight()` let go, and the other four do nothing. A card the map does not
-#' have is not an error for a proxy, which does not know the map: the page writes a warning to the browser's
-#' console and changes nothing. `stage_map_show()`, `stage_map_hide()`, `stage_map_enable()` and `stage_map_disable()`
-#' send one command for each id.
+#' Ids are text that is not blank, or whole numbers, and are compared as text, so `7` and `"7"` are one id. `ids` has no
+#' default, so a forgotten argument is an error and never a silent clear. `NULL` and a vector of length zero mean no
+#' ids: `stage_map_select()` and `stage_map_highlight()` let go, and the other four do nothing. A card the map does not
+#' have is not an error for a proxy, which does not know the map: the page writes a warning to the browser's console and
+#' changes nothing. `stage_map_show()`, `stage_map_hide()`, `stage_map_enable()` and `stage_map_disable()` send one
+#' command for each id.
 #'
 #' `r lifecycle::badge("experimental")` `stage_map_show()`, `stage_map_hide()`, `stage_map_enable()` and
 #' `stage_map_disable()` may change.
 #'
 #' @param map A proxy made by [stage_map_proxy()]. `stage_map_highlight()` also takes a [stage_map()] widget.
-#' @param ids The ids of the cards, as text or whole numbers with none missing; `NULL` or a vector of length zero for
-#'   none. It has no default.
+#' @param ids The ids of the cards, as text that is not blank or whole numbers, with none missing; `NULL` or a vector of
+#'   length zero for none. It has no default.
 #' @param ... Must stay empty. It makes every argument after it a named argument.
 #' @param links A data frame with the columns `from` and `to` (card ids) and, if wanted, `kind`, or `NULL`. It lights
 #'   exactly those links instead of every link between two lit cards; a link with no `kind` lights every link of that
@@ -376,9 +368,11 @@ sm_highlight_links <- function(links, ids, call) {
   sm_ids(links$from, "links$from")
   sm_ids(links$to, "links$to")
   out <- data.frame(from = as_text(links$from), to = as_text(links$to))
-  kind <- if (!is.null(links$kind)) as_text(links$kind)
+  # A link may have no kind (NA, as the state reports it); the kinds it has are ids like the ends.
+  kind <- links$kind
   if (!is.null(kind) && !all(is.na(kind))) {
-    out$kind <- kind
+    assert_id_values(kind[!is.na(kind)], "links$kind")
+    out$kind <- as_text(kind)
   }
   outside <- setdiff(c(out$from, out$to), ids)
   if (length(outside) > 0L) {

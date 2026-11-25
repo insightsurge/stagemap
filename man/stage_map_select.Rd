@@ -24,8 +24,8 @@ stage_map_disable(map, ids, reason)
 \arguments{
 \item{map}{A proxy made by \code{\link[=stage_map_proxy]{stage_map_proxy()}}. \code{stage_map_highlight()} also takes a \code{\link[=stage_map]{stage_map()}} widget.}
 
-\item{ids}{The ids of the cards, as text or whole numbers with none missing; \code{NULL} or a vector of length zero for
-none. It has no default.}
+\item{ids}{The ids of the cards, as text that is not blank or whole numbers, with none missing; \code{NULL} or a vector of
+length zero for none. It has no default.}
 
 \item{...}{Must stay empty. It makes every argument after it a named argument.}
 
@@ -61,12 +61,12 @@ out, the reader cannot select it, and the map shows the \code{reason}.
 against the map, replaces what an earlier call lit, and returns the widget. The other five need a map that is
 drawn, so a widget is an error of class \code{stagemap_error_widget}.
 
-Ids are text or whole numbers and are compared as text, so \code{7} and \code{"7"} are one id. \code{ids} has no default, so a
-forgotten argument is an error and never a silent clear. \code{NULL} and a vector of length zero mean no ids:
-\code{stage_map_select()} and \code{stage_map_highlight()} let go, and the other four do nothing. A card the map does not
-have is not an error for a proxy, which does not know the map: the page writes a warning to the browser's
-console and changes nothing. \code{stage_map_show()}, \code{stage_map_hide()}, \code{stage_map_enable()} and \code{stage_map_disable()}
-send one command for each id.
+Ids are text that is not blank, or whole numbers, and are compared as text, so \code{7} and \code{"7"} are one id. \code{ids} has no
+default, so a forgotten argument is an error and never a silent clear. \code{NULL} and a vector of length zero mean no
+ids: \code{stage_map_select()} and \code{stage_map_highlight()} let go, and the other four do nothing. A card the map does not
+have is not an error for a proxy, which does not know the map: the page writes a warning to the browser's console and
+changes nothing. \code{stage_map_show()}, \code{stage_map_hide()}, \code{stage_map_enable()} and \code{stage_map_disable()} send one
+command for each id.
 
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}} \code{stage_map_show()}, \code{stage_map_hide()}, \code{stage_map_enable()} and
 \code{stage_map_disable()} may change.

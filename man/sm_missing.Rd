@@ -9,18 +9,18 @@ sm_missing(map, stage, linked_to, ..., kinds = NULL)
 \arguments{
 \item{map}{A \code{\link[=stage_map]{stage_map()}} widget.}
 
-\item{stage}{Stage id to inspect, as text (a factor counts as text) or a whole number (never \code{NA}). A stage with no
-cards, from the map's \code{stages} table or the levels of a factor, is accepted and gives zero rows.}
+\item{stage}{Stage id to inspect, as text (a factor counts as text) or a whole number (never \code{NA}, never blank). A
+stage with no cards, from the map's \code{stages} table or the levels of a factor, is accepted and gives zero rows.}
 
-\item{linked_to}{Stage id to check links against, as text (a factor counts as text) or a whole number (never \code{NA}).
-May equal \code{stage}. A stage with no cards is accepted: every card in \code{stage} is then listed, and when \code{stage} has
-no cards either, the result has zero rows.}
+\item{linked_to}{Stage id to check links against, as text (a factor counts as text) or a whole number (never \code{NA},
+never blank). May equal \code{stage}. A stage with no cards is accepted: every card in \code{stage} is then listed, and when
+\code{stage} has no cards either, the result has zero rows.}
 
 \item{...}{Must stay empty. It makes every argument after it a named argument, and a typo in an argument's name an
 error that names it.}
 
-\item{kinds}{Link kind ids to count, as text (a factor counts as text) or whole numbers (never \code{NA}). \code{NULL}, the
-default, counts links of any kind. \code{character(0)} counts no links.}
+\item{kinds}{Link kind ids to count, as text (a factor counts as text) or whole numbers (never \code{NA}, never blank).
+\code{NULL}, the default, counts links of any kind. \code{character(0)} counts no links.}
 }
 \value{
 A plain data frame with row names \code{1} to \code{n} and character columns \code{id}, \code{label}, \code{stage} and \code{lane}. With

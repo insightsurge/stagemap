@@ -18,7 +18,8 @@
 #' warning: it stays in the data the widget keeps in R, so a table that carries more columns than the map needs can be
 #' passed as it is. A name with no field inside an option, such as an entry of `statuses` that is not a built-in status,
 #' is dropped with a warning that names it. An `NA` in an optional column counts as left out. Ids are written as text,
-#' so `7` and `"7"` are the same id.
+#' so `7` and `"7"` are the same id; an id is text that is not blank, or a whole number of any size, and an empty or
+#' blank id is an error of class `stagemap_error_data` that names it.
 #'
 #' @section Columns:
 #' Required columns are marked with an asterisk.
@@ -113,7 +114,7 @@
 #'   reach, when three or more of them have the same kind and no label; other links are drawn as usual. `FALSE`, the
 #'   default, draws every link on its own. Only the
 #'   `"grid"` layout uses it, and a box under 500 pixels wide ignores it.
-#' @param dismiss What a click outside the map does to the reader's pick (a chosen card, stage or step).
+#' @param dismiss What a click outside the map does to the reader's pick (a chosen card or stage).
 #'   `"no_outside"` keeps the pick, so a click on a Shiny button, a filter or a tab beside the map leaves it alone and a
 #'   bookmark button can save it. `"any"` lets go of the pick on any click outside the map, as the engine does when
 #'   given nothing. With either value the reader still lets go of a pick with Escape, a second click on it, or a click
@@ -177,8 +178,8 @@ stage_map <- function(
   checkmate::assert_data_frame(lanes, null.ok = TRUE)
   checkmate::assert_string(title, min.chars = 1L, null.ok = TRUE)
   checkmate::assert_choice(layout, sm_spec()$fields$options$fields$layout$values)
-  assert_id_option(target)
-  assert_id_option(variant)
+  assert_id_values(target, "target", len = 1L, null_ok = TRUE)
+  assert_id_values(variant, "variant", len = 1L, null_ok = TRUE)
   checkmate::assert(
     checkmate::check_character(statuses, any.missing = FALSE, names = "unique", null.ok = TRUE),
     checkmate::check_data_frame(statuses),
@@ -241,16 +242,6 @@ stage_map <- function(
   stage_map_check_statuses(drop_nulls(data), call)
   stage_map_check_data(drop_nulls(data), call)
   widget
-}
-
-# A whole number or a non-empty string, as the engine's `id` and `scalar` types take an id: 7 and "7" are the same id.
-# `null.ok` because NULL leaves the option out.
-assert_id_option <- function(x, label = checkmate::vname(x)) {
-  checkmate::assert(
-    checkmate::check_string(x, min.chars = 1L, null.ok = TRUE),
-    checkmate::check_int(x),
-    .var.name = paste0(label, " (one id: text, or a whole number)")
-  )
 }
 
 # `statuses` as the code reads it: NULL for none (a named character vector of length zero counts as none, as does a

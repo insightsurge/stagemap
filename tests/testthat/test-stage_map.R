@@ -27,6 +27,15 @@ describe("stage_map() arguments", {
     expect_error(slim(target = TRUE), "target")
   })
 
+  it("refuses target and variant that are blank text, and takes whole numbers of any size", {
+    expect_error(slim(target = "   "), "target")
+    expect_error(slim(variant = "\t"), "variant")
+    expect_error(slim(target = 1.5e-3), "target")
+    big <- slim(cards = data.frame(id = 3e9, label = "A", stage = "s", lane = "l"), target = 3e9, variant = 1e12)
+    expect_identical(data_of(big)$options$target, "3000000000")
+    expect_identical(data_of(big)$options$variant, "1000000000000")
+  })
+
   it("takes target and variant given as whole numbers, and sends them as text like any id", {
     map <- slim(cards = data.frame(id = 7, label = "A", stage = "s", lane = "l"), target = 7, variant = 100000L)
     options <- data_of(map)$options

@@ -588,3 +588,98 @@ describe("trace result types", {
     expect_type(empty_trace$kind, "character")
   })
 })
+
+describe("the id rule of the trace functions", {
+  big_map <- function() {
+    stage_map(
+      cards = data.frame(
+        id = c(3e9, 1e12, 7),
+        label = c("A", "B", "C"),
+        stage = c(3e9, 3e9, 1e12),
+        lane = "l"
+      ),
+      stages = data.frame(id = c(3e9, 1e12), label = c("S1", "S2"))
+    ) |>
+      add_links(
+        data.frame(from = c(3e9, 1e12), to = c(1e12, 7), kind = c(1e12, 1e12)),
+        kinds = data.frame(id = 1e12, label = "Big")
+      )
+  }
+
+  it("takes whole numbers beyond the largest integer as card, stage and kind ids, as stage_map() does", {
+    map <- big_map()
+    traced <- sm_trace(map, 3e9, kinds = 1e12)
+    expect_identical(traced$id, c("3000000000", "1000000000000", "7"))
+    expect_identical(traced$kind, c(NA, "1000000000000", "1000000000000"))
+    expect_identical(sm_trace(map, "3000000000", max_distance = 1)$id, c("3000000000", "1000000000000"))
+    expect_identical(sm_missing(map, 3e9, 1e12)$id, "3000000000")
+    expect_identical(sm_missing(map, 3e9, 1e12, kinds = 1e12)$id, "3000000000")
+  })
+
+  it("refuses an empty or blank id in ids, kinds, stage and linked_to, naming the argument", {
+    map <- trace_map()
+    expect_error(sm_trace(map, ""), "ids")
+    expect_error(sm_trace(map, c("R1", "  ")), "ids")
+    expect_error(sm_trace(map, "R1", kinds = ""), "kinds")
+    expect_error(sm_missing(map, "", "Test"), "stage")
+    expect_error(sm_missing(map, "Requirement", " "), "linked_to")
+    expect_error(sm_missing(map, "Requirement", "Test", kinds = "\t"), "kinds")
+    expect_error(sm_trace(map, 1.5), "ids")
+    expect_error(sm_trace(map, NA_character_), "ids")
+    expect_error(sm_missing(map, c("Requirement", "Test"), "Test"), "stage")
+  })
+
+  it("names the function the user called in these errors", {
+    error <- expect_error(sm_trace(trace_map(), ""), "ids")
+    expect_identical(error$call[[1]], quote(sm_trace))
+    error <- expect_error(sm_missing(trace_map(), "", "Test"), "stage")
+    expect_identical(error$call[[1]], quote(sm_missing))
+  })
+})
+
+describe("sm_trace() on special maps", {
+  cards <- data.frame(
+    id = c("a", "b", "c"),
+    label = c("A", "B", "C"),
+    stage = c("s", "s", "t"),
+    lane = "l"
+  )
+
+  it("returns a card with a link to itself once, at distance 0, and does not loop", {
+    map <- stage_map(cards[1, ]) |> add_links(data.frame(from = "a", to = "a"))
+    for (direction in c("downstream", "upstream", "both")) {
+      traced <- sm_trace(map, "a", direction = direction)
+      expect_identical(traced$id, "a")
+      expect_identical(traced$direction, "start")
+      expect_identical(traced$distance, 0L)
+    }
+  })
+
+  it("follows past a card with a self-link", {
+    map <- stage_map(cards) |>
+      add_links(data.frame(from = c("a", "a", "b"), to = c("a", "b", "c")))
+    traced <- sm_trace(map, "a")
+    expect_identical(traced$id, c("a", "b", "c"))
+    expect_identical(traced$distance, 0:2)
+    expect_identical(traced$through, c(NA, "a", "b"))
+  })
+
+  it("counts hidden cards and their links", {
+    hidden <- cards
+    hidden$hidden <- c(FALSE, TRUE, FALSE)
+    map <- stage_map(hidden) |> add_links(data.frame(from = c("a", "b"), to = c("b", "c")))
+    expect_identical(sm_trace(map, "a")$id, c("a", "b", "c"))
+    expect_identical(sm_missing(map, "t", "s")$id, character())
+    expect_identical(sm_orphans(map)$id, character())
+  })
+
+  it("counts links that belong to a variant and cards that belong to variants", {
+    varied <- cards
+    varied$variants <- c("v1", "v2", "v1,v2")
+    map <- stage_map(varied) |>
+      add_variants(data.frame(id = c("v1", "v2"), label = c("One", "Two"))) |>
+      add_links(data.frame(from = c("a", "b"), to = c("b", "c"), variants = c("v1", "v2")))
+    expect_identical(sm_trace(map, "a")$id, c("a", "b", "c"))
+    expect_identical(sm_trace(map, "c", direction = "upstream")$id, c("c", "b", "a"))
+  })
+})
