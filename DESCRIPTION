@@ -3,10 +3,11 @@ Title: Relation Maps for 'Shiny' and 'Quarto'
 Version: 0.0.0.9000
 Authors@R: 
     person("Harsh", "Verma", email = "analyticswithharsh@gmail.com", role = c("aut", "cre", "cph"))
-Description: Builds relation maps from cards placed by stage and lane and
-    links that join them. Checks card identifiers, link endpoints and column
-    values, lays the map out the same way on every run and draws it in the
-    browser, in 'Shiny' apps and 'Quarto' documents.
+Description: Draws maps of cards placed by stage and lane and joined by typed
+    links, as an interactive widget, in 'Shiny' apps and in 'Quarto' documents.
+    Checks card identifiers, link endpoints and column values, and lays the map
+    out the same way on every run. Functions trace links from a card and list
+    cards with no link, or with no link to a given stage.
 License: MIT + file LICENSE
 Copyright: inst/COPYRIGHTS
 URL: https://insightsurge.github.io/stagemap/, https://github.com/insightsurge/stagemap
@@ -23,12 +24,15 @@ Imports:
 Suggests: 
     chromote,
     covr,
+    knitr,
     lifecycle,
     promises,
+    rmarkdown,
     shiny,
     shinytest2 (>= 0.5.0),
     testthat (>= 3.1.7),
     withr
+VignetteBuilder: knitr
 Config/quality-gate/coverage: 70
 Config/quality-gate/extra-dirs: tools
 Config/launchR/checklists: Set up, Next release

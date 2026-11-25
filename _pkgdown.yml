@@ -40,8 +40,12 @@ home:
       href: SECURITY.html
 
 navbar:
+  components:
+    intro:
+      text: Get started
+      href: articles/stagemap.html
   structure:
-    left: [reference, news]
+    left: [intro, reference, news]
     right: [search, github, lightswitch]
 
 reference:

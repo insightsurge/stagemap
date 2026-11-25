@@ -537,6 +537,37 @@ describe("the demo app", {
     )
   })
 
+  it("acts on the card picked on the map when the list is empty, and asks for cards when there are none", {
+    app <- demo()
+    # Given no card in the list and none picked, when Hide is pressed, then the note asks for cards
+    click_now(app, "#hide")
+    app$wait_for_js("document.getElementById('trace_note').textContent.includes('Choose cards first')")
+    expect_match(readout(app, "state"), "hidden\\s+: chr\\(0\\)")
+    # Given a card picked on the map, when Hide is pressed, then that card is hidden and the note goes
+    click_card(app, "frame", "shed")
+    app$wait_for_js("document.getElementById('pick').textContent.includes('frame')")
+    click_now(app, "#hide")
+    app$wait_for_js("document.getElementById('state').textContent.match(/hidden.*frame/s) !== null")
+    expect_false(grepl("Choose cards first", readout(app, "trace_note"), fixed = TRUE))
+  })
+
+  it("asks for a reason when Disable is pressed with the reason blank", {
+    app <- demo()
+    app$run_js("Shiny.setInputValue('ids', ['paint'])")
+    app$set_inputs(reason = "", wait_ = FALSE)
+    click_now(app, "#disable")
+    app$wait_for_js("document.getElementById('trace_note').textContent.includes('Give a reason first')")
+    expect_match(readout(app, "state"), "disabled\\s+: chr\\(0\\)")
+  })
+
+  it("puts the map before the controls on a narrow screen", {
+    app <- demo()
+    app$set_window_size(width = 390, height = 800)
+    expect_true(app$get_js(
+      "document.getElementById('shed').getBoundingClientRect().top < document.querySelector('form.well').getBoundingClientRect().top"
+    ))
+  })
+
   it("has a working control for each verb, and shows the pick, the hover and the state", {
     app <- demo()
     app$run_js("Shiny.setInputValue('ids', ['paint', 'inspect'])")
