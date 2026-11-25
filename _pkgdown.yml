@@ -55,6 +55,11 @@ reference:
       - add_zones
       - add_steps
       - add_variants
+  - title: Ask a map
+    contents:
+      - sm_trace
+      - sm_orphans
+      - sm_missing
   - title: Stage maps in Shiny
     contents:
       - stage_map_output
