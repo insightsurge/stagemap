@@ -21,9 +21,9 @@ stage_map_proxy(
 \item{output_id}{The output's id, as one string. In a module, give \code{ns("map")} to \code{stage_map_output()}; the proxy
 takes the plain \code{"map"} or the namespaced id.}
 
-\item{width, height}{The output's CSS size as text (such as \code{"100\%"} or \code{"480px"}) or a number of pixels. The
-default height, \code{"auto"}, follows the picture's content; any other height makes the output a box that scrolls
-inside, so a map taller than the box does not spill over what follows.}
+\item{width, height}{The output's CSS size as text (such as \code{"100\%"} or \code{"480px"}) or a number of pixels; \code{NULL} is
+not allowed. The default height, \code{"auto"}, follows the picture's content; any other height makes the output a box
+that scrolls inside, so a map taller than the box does not spill over what follows.}
 
 \item{expr}{An expression that gives a \code{\link[=stage_map]{stage_map()}} widget, or \code{NULL} to show nothing. A promise of one works too.}
 
@@ -52,8 +52,12 @@ through, so the map changes without being drawn again.
 \details{
 The map is drawn again whenever the expression of \code{render_stage_map()} gives a new map, in place. The reader's pick
 stays while its card is still in the new map, and is let go when the card is gone: \code{input$map_pick} then reports it
-with \code{by = "data"}. A map in a tab that is not shown yet is drawn when the tab is
-shown, and one inside \code{\link[shiny:renderUI]{shiny::renderUI()}}, \code{\link[shiny:insertUI]{shiny::insertUI()}}, a module or a modal works as it does anywhere else.
+with \code{by = "data"}. What a verb set stays too: a card hidden, shown, disabled or enabled keeps that over what the new
+map says, for as long as the card is in it, and is forgotten once the card is gone (a card that comes back has the
+new map's own state). Lit cards from \code{\link[=stage_map_highlight]{stage_map_highlight()}} stay lit, but only the cards and links that the new map
+has are lit; the ones left out are lit again if they come back. A map in a tab that is not shown yet is drawn when
+the tab is shown, and one inside \code{\link[shiny:renderUI]{shiny::renderUI()}}, \code{\link[shiny:insertUI]{shiny::insertUI()}}, a module or a modal works as it does
+anywhere else.
 In a module, give the output \code{ns("map")} and the proxy \code{"map"} (the plain or the namespaced id both work); the inputs
 below keep the module's own names, so the server reads \code{input$map_selected}.
 }
@@ -61,6 +65,8 @@ below keep the module's own names, so the server reads \code{input$map_selected}
 
 For an output with the id \code{map}, the server reads these inputs. A value that holds ids is a character vector, and
 no ids is \code{character(0)}: \code{req(input$map_selected)} waits until something is selected.
+Until the map has been drawn in the browser, every input is \code{NULL}; \code{input$map_pick} stays \code{NULL} until the reader
+picks or lets go of something, or new data changes the pick.
 \itemize{
 \item \code{input$map_selected}: the ids of the selected cards, the lead (the one whose details show) last. It changes when
 the selection changes, whether the reader, a verb or new data changed it, and it is \code{character(0)} while nothing

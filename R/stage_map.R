@@ -100,7 +100,8 @@
 #'   vector giving your word for a built-in status, such as `c(done = "Pass")`, or a data frame with the columns `id*`,
 #'   `label`, `tone` and `icon`, one row per status. A data frame row with a built-in id restyles that status, and any
 #'   other id adds a status. `NULL`, a named character vector of length zero or a data frame with no rows uses the
-#'   engine's default words; a status you leave out keeps its default. A label that is blank is an error.
+#'   engine's default words; a status you leave out keeps its default. A label that is blank is an error. A missing
+#'   label (`NA`, or no `label` column) leaves the built-in word, or shows the id for a status of your own.
 #' @param motion `FALSE` to move between steps without travelling dots and without the card gliding to its new stage,
 #'   or `TRUE` (the default) to allow them. The reader's own reduced-motion setting is always respected.
 #' @param legend `FALSE` hides the legend; `TRUE`, the default, shows it.

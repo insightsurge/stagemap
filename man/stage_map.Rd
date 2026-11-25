@@ -63,7 +63,8 @@ whole number. It must be a card of the map. \code{NULL} for none.}
 vector giving your word for a built-in status, such as \code{c(done = "Pass")}, or a data frame with the columns \verb{id*},
 \code{label}, \code{tone} and \code{icon}, one row per status. A data frame row with a built-in id restyles that status, and any
 other id adds a status. \code{NULL}, a named character vector of length zero or a data frame with no rows uses the
-engine's default words; a status you leave out keeps its default. A label that is blank is an error.}
+engine's default words; a status you leave out keeps its default. A label that is blank is an error. A missing
+label (\code{NA}, or no \code{label} column) leaves the built-in word, or shows the id for a status of your own.}
 
 \item{motion}{\code{FALSE} to move between steps without travelling dots and without the card gliding to its new stage,
 or \code{TRUE} (the default) to allow them. The reader's own reduced-motion setting is always respected.}

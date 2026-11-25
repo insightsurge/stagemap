@@ -105,15 +105,17 @@ assert_dismiss <- function(dismiss) {
   checkmate::assert_choice(dismiss, sm_spec()$fields$options$fields$dismiss$values)
 }
 
-# Checks the arguments every widget function ends with: the two sizes and the HTML id.
-assert_widget_args <- function(width, height, element_id) {
+# Checks the arguments every widget function ends with: the two sizes and the HTML id. A size is CSS text or a number
+# of pixels; `NULL` is left to the widget's own sizing unless `sizes_given` says the sizes must be given (an output).
+assert_widget_args <- function(width, height, element_id, sizes_given = FALSE) {
+  checkmate::assert_flag(sizes_given)
   checkmate::assert(
-    checkmate::check_string(width, min.chars = 1L, null.ok = TRUE),
+    checkmate::check_string(width, min.chars = 1L, null.ok = !sizes_given),
     checkmate::check_number(width, lower = 0, finite = TRUE),
     .var.name = "width"
   )
   checkmate::assert(
-    checkmate::check_string(height, min.chars = 1L, null.ok = TRUE),
+    checkmate::check_string(height, min.chars = 1L, null.ok = !sizes_given),
     checkmate::check_number(height, lower = 0, finite = TRUE),
     .var.name = "height"
   )

@@ -71,14 +71,7 @@ build_map <- function(layout) {
 }
 
 # --- Trace questions: sm_trace(), sm_orphans() and sm_missing() -----------------------------------------------------
-# FOLLOW-UP (issue #71): these three functions are built in another branch. When they are in the package, the buttons
-# below light their answers with stage_map_highlight(). Until then the buttons say so and do nothing.
-trace_ready <- all(vapply(
-  c("sm_trace", "sm_orphans", "sm_missing"),
-  function(name) exists(name, envir = asNamespace("stagemap"), inherits = FALSE),
-  logical(1)
-))
-trace_function <- function(name) get(name, envir = asNamespace("stagemap"))
+# The buttons below light the answers of sm_trace(), sm_orphans() and sm_missing() with stage_map_highlight().
 stage_choices <- setNames(stages$id, stages$label)
 
 # --- The page -------------------------------------------------------------------------------------------------------
@@ -106,9 +99,6 @@ ui <- fluidPage(
       actionButton("enable", "Enable"),
       actionButton("disable", "Disable"),
       h4("Trace"),
-      if (!trace_ready) {
-        p(em("sm_trace(), sm_orphans() and sm_missing() are not in this build yet; these buttons wait for them."))
-      },
       selectInput("direction", "Direction", c("downstream", "upstream", "both")),
       actionButton("trace", "Trace from the chosen cards"),
       actionButton("orphans", "Cards with no link"),
@@ -155,8 +145,8 @@ server <- function(input, output, session) {
     stage_map_disable(proxy, input$ids, input$reason)
   })
 
-  # The trace buttons: a place to wire in the answers once #71 is merged.
-  note <- reactiveVal(if (trace_ready) "" else "Not available yet.")
+  # The trace buttons.
+  note <- reactiveVal("")
   show_trace <- function(ids, what) {
     stage_map_highlight(proxy, ids)
     note(sprintf("%s: %s", what, if (length(ids) > 0L) paste(ids, collapse = ", ") else "none"))
@@ -166,23 +156,22 @@ server <- function(input, output, session) {
     tryCatch(code, error = function(e) note(paste("Could not answer:", conditionMessage(e))))
   }
   observeEvent(input$trace, {
-    req(trace_ready, input$ids)
+    req(input$ids)
     show_errors({
-      reached <- trace_function("sm_trace")(build_map(input$layout), input$ids, direction = input$direction)
+      reached <- sm_trace(build_map(input$layout), input$ids, direction = input$direction)
       show_trace(reached$id, "Reached")
     })
   })
   observeEvent(input$orphans, {
-    req(trace_ready)
     show_errors({
-      loose <- trace_function("sm_orphans")(build_map(input$layout))
+      loose <- sm_orphans(build_map(input$layout))
       show_trace(loose$id, "No link")
     })
   })
   observeEvent(input$missing, {
-    req(trace_ready, input$missing_stage, input$missing_linked)
+    req(input$missing_stage, input$missing_linked)
     show_errors({
-      gaps <- trace_function("sm_missing")(
+      gaps <- sm_missing(
         build_map(input$layout),
         input$missing_stage,
         linked_to = input$missing_linked
