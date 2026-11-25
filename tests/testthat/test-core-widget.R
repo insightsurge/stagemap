@@ -77,36 +77,6 @@ describe("sm_widget()", {
   })
 })
 
-describe("sm_output_tag()", {
-  it("makes the markup a render function fills, with the widget's class and id", {
-    skip_if_not_installed("shiny")
-    html <- as.character(sm_output_tag("map", "100%", "auto"))
-    expect_match(html, "id=\"map\"", fixed = TRUE)
-    expect_match(html, "stage_map", fixed = TRUE)
-    expect_match(html, "html-widget-output", fixed = TRUE)
-    expect_no_match(html, "overflow: auto", fixed = TRUE)
-  })
-
-  it("takes full width and the height of its content when called with the id alone", {
-    skip_if_not_installed("shiny")
-    html <- as.character(sm_output_tag("map"))
-    expect_match(html, "width:100%", fixed = TRUE)
-    expect_match(html, "height:auto", fixed = TRUE)
-    expect_no_match(html, "overflow: auto", fixed = TRUE)
-  })
-
-  it("makes a fixed height a box that scrolls inside", {
-    skip_if_not_installed("shiny")
-    expect_match(as.character(sm_output_tag("map", "100%", "300px")), "overflow: auto", fixed = TRUE)
-  })
-
-  it("checks its arguments", {
-    skip_if_not_installed("shiny")
-    expect_error(sm_output_tag(1, "100%", "auto"), "output_id")
-    expect_error(sm_output_tag("map", TRUE, "auto"), "width")
-  })
-})
-
 describe("sm_checked_widget()", {
   it("passes NULL through, so an output can show nothing", {
     skip_if_not_installed("shiny")
@@ -123,70 +93,5 @@ describe("sm_checked_widget()", {
     skip_if_not_installed("shiny")
     widget <- sm_widget(map_data())
     expect_identical(sm_checked_widget(widget), widget)
-  })
-})
-
-describe("sm_render_widget()", {
-  it("makes a render function that takes a quoted expression", {
-    skip_if_not_installed("shiny")
-    render <- sm_render_widget(quote(sm_widget(map_data())), environment())
-    expect_s3_class(render, "shiny.render.function")
-  })
-
-  it("lets an output show nothing for NULL", {
-    skip_if_not_installed("shiny")
-    shiny::testServer(
-      function(input, output, session) {
-        output$map <- sm_render_widget(quote(NULL), environment())
-      },
-      {
-        expect_no_error(output$map)
-      }
-    )
-  })
-
-  it("counts renders in the session and writes the number into the widget", {
-    skip_if_not_installed("shiny")
-    shiny::testServer(
-      function(input, output, session) {
-        again <- shiny::reactiveVal(0)
-        output$map <- sm_render_widget(
-          quote({
-            again()
-            sm_widget(map_data())
-          }),
-          environment()
-        )
-      },
-      {
-        stamp <- function() jsonlite::fromJSON(output$map, simplifyVector = FALSE)$x$stamp
-        expect_identical(stamp(), 1L)
-        again(1)
-        session$flushReact()
-        expect_identical(stamp(), 2L)
-      }
-    )
-  })
-
-  it("asks the engine to follow the colours of the page in Shiny, unless the widget has a look of its own", {
-    skip_if_not_installed("shiny")
-    shiny::testServer(
-      function(input, output, session) {
-        output$plain <- sm_render_widget(quote(sm_widget(map_data())), environment())
-        output$dark <- sm_render_widget(
-          quote({
-            widget <- sm_widget(map_data())
-            widget$x$look <- list(mode = "dark")
-            widget
-          }),
-          environment()
-        )
-      },
-      {
-        look <- function(id) jsonlite::fromJSON(output[[id]], simplifyVector = FALSE)$x$look
-        expect_identical(look("plain"), list(mode = "host"))
-        expect_identical(look("dark"), list(mode = "dark"))
-      }
-    )
   })
 })

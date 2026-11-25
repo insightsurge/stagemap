@@ -55,3 +55,7 @@ reference:
       - add_zones
       - add_steps
       - add_variants
+  - title: Stage maps in Shiny
+    contents:
+      - stage_map_output
+      - stage_map_select

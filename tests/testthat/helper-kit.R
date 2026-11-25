@@ -22,13 +22,15 @@ kit_relied_on <- list(
     "dismiss",
     "hosted"
   ),
-  # The fields of an event the page hands to R (`input$<id>_selected`, `input$<id>_hover`), as the contract names them.
-  # The reader passes every field the contract lists; these are the ones the tests and the help pages name.
+  # The fields of an event the page hands to R, as the contract names them: the seven of `input$<id>_pick`, the three
+  # that the browser tests check are empty on a lone map (`via`, `at` and `seq`), and the two of a hover that
+  # `input$<id>_hovered` reads.
   event_fields = list(
-    select = c("kind", "id", "ids", "from", "label", "details", "about", "still", "by", "via", "at", "seq"),
+    select = c("kind", "id", "ids", "from", "label", "still", "by", "via", "at", "seq"),
     hover = c("kind", "id")
   ),
-  # The fields of the state that hold ids: the contract says "lists of ids" in the words of the `state` command.
+  # The fields of the state that hold ids, and the others R reads (`selected_ids`, `stage`, `step`, `highlighted`,
+  # `hidden`, `disabled`): the contract says "lists of ids" in the words of the `state` command.
   state_id_lists = c("selected_ids", "hidden", "disabled", "highlighted"),
   # How the build is named: the global, the prefix of its attributes, tokens and events, the CSS class prefix and the
   # attribute on the element a map is drawn in.
