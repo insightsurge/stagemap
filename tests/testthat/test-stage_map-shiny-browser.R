@@ -352,6 +352,34 @@ describe("the map in a Shiny app: verbs change the page and the state", {
     expect_identical(ids(seen_by_server(app)$selected), "c")
   })
 
+  it("keeps what verbs set across a new map for the cards still there, and lets go of the rest", {
+    app <- open_app("stage-map-verbs")
+    # Given a card hidden, a card disabled, three cards lit with a link between two, and one card selected
+    press(app, "hide_b")
+    press(app, "disable_c")
+    press(app, "light")
+    click_card(app, "a")
+    wait_for_server(app, "d.state.hidden.length === 1 && d.state.disabled.length === 1 && d.state.selected[0] === 'a'")
+    # When a new map comes without card b
+    click_now(app, "#redraw")
+    wait_for_server(app, "d.state.hidden.length === 0 && d.state.highlighted.ids.length === 2")
+    d <- seen_by_server(app)
+    # Then the disabled card, the lit cards that are still there and the selection stay; the hidden card is gone with
+    # the lit link that had it at an end
+    expect_identical(ids(d$state$disabled), "c")
+    expect_identical(ids(d$state$highlighted$ids), c("a", "c"))
+    expect_identical(d$state$highlighted$links, list())
+    expect_identical(ids(d$state$selected), "a")
+    # And when card b comes back, it is not hidden any more, and it is lit again with its link
+    click_now(app, "#redraw")
+    wait_for_server(app, "d.state.highlighted.ids.length === 3")
+    d <- seen_by_server(app)
+    expect_identical(ids(d$state$hidden), NULL)
+    expect_identical(ids(d$state$disabled), "c")
+    expect_identical(ids(d$state$highlighted$ids), c("a", "b", "c"))
+    expect_identical(d$state$highlighted$links, list(list(from = "a", to = "b", kind = "hand")))
+  })
+
   it("takes the output's size by position, and writes no warning to the console", {
     app <- open_app("stage-map-verbs")
     expect_match(app$get_js("document.getElementById('map').getAttribute('style')"), "height: 480px", fixed = TRUE)

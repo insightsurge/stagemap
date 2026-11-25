@@ -75,8 +75,12 @@ sm_send_each <- function(proxy, command, ids, extra = list(), call = rlang::call
 #'
 #' The map is drawn again whenever the expression of `render_stage_map()` gives a new map, in place. The reader's pick
 #' stays while its card is still in the new map, and is let go when the card is gone: `input$map_pick` then reports it
-#' with `by = "data"`. A map in a tab that is not shown yet is drawn when the tab is
-#' shown, and one inside [shiny::renderUI()], [shiny::insertUI()], a module or a modal works as it does anywhere else.
+#' with `by = "data"`. What a verb set stays too: a card hidden, shown, disabled or enabled keeps that over what the new
+#' map says, for as long as the card is in it, and is forgotten once the card is gone (a card that comes back has the
+#' new map's own state). Lit cards from [stage_map_highlight()] stay lit, but only the cards and links that the new map
+#' has are lit; the ones left out are lit again if they come back. A map in a tab that is not shown yet is drawn when
+#' the tab is shown, and one inside [shiny::renderUI()], [shiny::insertUI()], a module or a modal works as it does
+#' anywhere else.
 #' In a module, give the output `ns("map")` and the proxy `"map"` (the plain or the namespaced id both work); the inputs
 #' below keep the module's own names, so the server reads `input$map_selected`.
 #'
