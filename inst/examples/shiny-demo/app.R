@@ -77,6 +77,13 @@ stage_choices <- setNames(stages$id, stages$label)
 # --- The page -------------------------------------------------------------------------------------------------------
 
 ui <- fluidPage(
+  # Put the map above the controls on narrow screens.
+  tags$head(tags$style(HTML(
+    "@media (max-width: 767.98px) {
+      .container-fluid > .row { display: flex; flex-direction: column; }
+      .container-fluid > .row > [role='main'] { order: -1; }
+    }"
+  ))),
   titlePanel("stagemap: the shed demo"),
   sidebarLayout(
     sidebarPanel(
@@ -84,7 +91,12 @@ ui <- fluidPage(
       h4("Draw"),
       selectInput("layout", "Layout", c("grid", "levels", "dates")),
       h4("Choose cards"),
-      selectInput("ids", "Cards for the buttons", setNames(cards$id, cards$label), multiple = TRUE),
+      selectInput(
+        "ids",
+        "Cards for the buttons (empty: the card picked on the map)",
+        setNames(cards$id, cards$label),
+        multiple = TRUE
+      ),
       h4("Verbs"),
       actionButton("select", "Select"),
       actionButton("highlight", "Highlight"),
@@ -130,23 +142,43 @@ ui <- fluidPage(
 server <- function(input, output, session) {
   output$shed <- render_stage_map(build_map(input$layout))
   proxy <- stage_map_proxy("shed", session)
+  note <- reactiveVal("")
+  choose_note <- "Choose cards first: pick a card on the map or in the list above."
 
-  observeEvent(input$select, stage_map_select(proxy, input$ids))
-  observeEvent(input$highlight, stage_map_highlight(proxy, input$ids))
+  # Run an action on the cards in the list or, when the list is empty, the cards picked on the map. With neither, the
+  # note asks for cards.
+  with_chosen_ids <- function(action) {
+    ids <- if (length(input$ids) > 0L) input$ids else input$shed_selected
+    if (length(ids) == 0L) {
+      note(choose_note)
+      return(invisible(NULL))
+    }
+    if (identical(note(), choose_note)) {
+      note("")
+    }
+    action(ids)
+  }
+
+  observeEvent(input$select, with_chosen_ids(function(ids) stage_map_select(proxy, ids)))
+  observeEvent(input$highlight, with_chosen_ids(function(ids) stage_map_highlight(proxy, ids)))
   observeEvent(input$clear, {
     stage_map_select(proxy, NULL)
     stage_map_highlight(proxy, NULL)
   })
-  observeEvent(input$show, stage_map_show(proxy, input$ids))
-  observeEvent(input$hide, stage_map_hide(proxy, input$ids))
-  observeEvent(input$enable, stage_map_enable(proxy, input$ids))
+  observeEvent(input$show, with_chosen_ids(function(ids) stage_map_show(proxy, ids)))
+  observeEvent(input$hide, with_chosen_ids(function(ids) stage_map_hide(proxy, ids)))
+  observeEvent(input$enable, with_chosen_ids(function(ids) stage_map_enable(proxy, ids)))
   observeEvent(input$disable, {
-    req(nzchar(trimws(input$reason)))
-    stage_map_disable(proxy, input$ids, input$reason)
+    with_chosen_ids(function(ids) {
+      if (!nzchar(trimws(input$reason))) {
+        note("Give a reason first.")
+        return(invisible(NULL))
+      }
+      stage_map_disable(proxy, ids, input$reason)
+    })
   })
 
   # The trace buttons.
-  note <- reactiveVal("")
   show_trace <- function(ids, what) {
     stage_map_highlight(proxy, ids)
     note(sprintf("%s: %s", what, if (length(ids) > 0L) paste(ids, collapse = ", ") else "none"))
@@ -156,10 +188,11 @@ server <- function(input, output, session) {
     tryCatch(code, error = function(e) note(paste("Could not answer:", conditionMessage(e))))
   }
   observeEvent(input$trace, {
-    req(input$ids)
-    show_errors({
-      reached <- sm_trace(build_map(input$layout), input$ids, direction = input$direction)
-      show_trace(reached$id, "Reached")
+    with_chosen_ids(function(ids) {
+      show_errors({
+        reached <- sm_trace(build_map(input$layout), ids, direction = input$direction)
+        show_trace(reached$id, "Reached")
+      })
     })
   })
   observeEvent(input$orphans, {
