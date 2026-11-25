@@ -291,6 +291,8 @@ describe("the map in a Shiny app: verbs change the page and the state", {
 
   it("counts the step from 1, with 0 at the start", {
     app <- open_app("stage-map-verbs")
+    # The server's first report can land a moment after the cards draw
+    wait_for_server(app, "d.state && d.state.step !== undefined")
     expect_identical(seen_by_server(app)$state$step, list(0L))
     app$run_js("document.querySelector('#map [data-k=\"step-1\"]').click()")
     wait_for_server(app, "d.state.step[0] === 2")
