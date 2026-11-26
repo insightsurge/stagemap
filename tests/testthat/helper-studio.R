@@ -129,6 +129,40 @@ studio_sent <- function(app) {
   app$get_js("JSON.stringify(window.__sms.sent)") |> jsonlite::fromJSON(simplifyVector = FALSE)
 }
 
+# Records, in window.__sms.posted, every value the page hands to Shiny for the studio's event input, at the moment it
+# does so (record_studio_events() records when an event is made, this when it leaves for the server).
+record_studio_posts <- function(app) {
+  checkmate::assert_r6(app, "AppDriver")
+  app$run_js(
+    "window.__sms = window.__sms || {}; window.__sms.posted = [];
+     const set = Shiny.setInputValue;
+     Shiny.setInputValue = function (name, value, options) {
+       if (/event$/.test(name)) window.__sms.posted.push({ seq: value.seq, type: value.type, init: Shiny.shinyapp.config !== null });
+       return set.call(Shiny, name, value, options);
+     };"
+  )
+  invisible(app)
+}
+
+# Closes the page's websocket as a network drop does, and waits until Shiny says it is disconnected.
+drop_studio_connection <- function(app) {
+  checkmate::assert_r6(app, "AppDriver")
+  app$run_js(
+    "window.__sms = window.__sms || {}; window.__sms.dropped = false;
+     $(document).one('shiny:disconnected', () => { window.__sms.dropped = true; });
+     Shiny.shinyapp.$socket.close();"
+  )
+  app$wait_for_js("window.__sms.dropped === true")
+  invisible(app)
+}
+
+# Opens a new websocket, which is a new session of the app, as Shiny's own reconnect does.
+reconnect_studio <- function(app) {
+  checkmate::assert_r6(app, "AppDriver")
+  app$run_js("Shiny.shinyapp.reconnect();")
+  invisible(app)
+}
+
 # Holds what the server answers: each message is kept in window.__sms.held and not drawn until
 # release_studio_messages() delivers them, in order, through the page's own seam.
 hold_studio_messages <- function(app) {
@@ -142,12 +176,16 @@ hold_studio_messages <- function(app) {
   invisible(app)
 }
 
-release_studio_messages <- function(app) {
+# Lets the held messages through, in order, or with `reverse = TRUE` last to first (answers that arrive out of order).
+release_studio_messages <- function(app, reverse = FALSE) {
   checkmate::assert_r6(app, "AppDriver")
+  checkmate::assert_flag(reverse)
   app$run_js(sprintf(
     "{ const r = %s; r.removeEventListener('stagemap-studio:message', window.__sms.holder);
-       for (const m of window.__sms.held.splice(0)) r.dispatchEvent(new CustomEvent('stagemap-studio:deliver', { detail: m })); }",
-    studio_root_js
+       const held = window.__sms.held.splice(0); if (%s) held.reverse();
+       for (const m of held) r.dispatchEvent(new CustomEvent('stagemap-studio:deliver', { detail: m })); }",
+    studio_root_js,
+    tolower(reverse)
   ))
   invisible(app)
 }
@@ -161,7 +199,9 @@ studio_wait_held <- function(app, seq) {
 }
 
 # Replaces the clipboard API in the page with recorders: what Copy writes lands in window.__sms.copied as
-# `{path, text}`. `item` keeps ClipboardItem with a write() that reads the item's promised text; `text` gives a
+# `{path, text}`, and window.__sms.begun counts the ClipboardItem writes that have been started, whether or not their
+# text has come yet (it is raised in the call itself, so a test reads it in the click's own JavaScript to show the write
+# starts inside the click). `item` keeps ClipboardItem with a write() that reads the item's promised text; `text` gives a
 # writeText() that records (FALSE: one that refuses); `exec` gives a copy command that records the selected text of the
 # text area (FALSE: one that fails).
 stub_studio_clipboard <- function(app, item = TRUE, text = TRUE, exec = TRUE) {
@@ -170,12 +210,12 @@ stub_studio_clipboard <- function(app, item = TRUE, text = TRUE, exec = TRUE) {
   checkmate::assert_flag(text)
   checkmate::assert_flag(exec)
   app$run_js(sprintf(
-    "window.__sms = window.__sms || {}; window.__sms.copied = [];
+    "window.__sms = window.__sms || {}; window.__sms.copied = []; window.__sms.begun = 0;
      const item = %s, text = %s, exec = %s;
      const record = (path, value) => window.__sms.copied.push({ path, text: value });
      if (!item) delete window.ClipboardItem;
      Object.defineProperty(navigator, 'clipboard', { configurable: true, value: {
-       write: async (items) => { const blob = await items[0].getType('text/plain'); record('item', await blob.text()); },
+       write: async (items) => { window.__sms.begun += 1; const blob = await items[0].getType('text/plain'); record('item', await blob.text()); },
        writeText: async (value) => { if (!text) throw new DOMException('refused', 'NotAllowedError'); record('text', value); }
      } });
      document.execCommand = (command) => {

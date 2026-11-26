@@ -28,8 +28,8 @@ One test file per R file (`R/trace.R` is tested in `tests/testthat/test-trace.R`
   (`skip_unless_extended()`), `helper-chrome.R` (`skip_without_chrome()` and the shared Chromes), `helper-page.R`
   (drawing a widget on a page in that Chrome), `helper-stage_map.R` (the stage map's made-up data), `helper-kit.R`
   (the names the package relies on in the bundled engine, and where to find its files) and `helper-studio.R` (starting
-  the studio's test app, waiting on its page, holding its answers and standing in for the clipboard). A helper used by
-  one file only stays at the top of that file.
+  the studio's test app, waiting on its page, holding its answers, dropping and reopening its connection and standing
+  in for the clipboard). A helper used by one file only stays at the top of that file.
 - **Layout check.** `test-helper-layout.R` keeps each file to its kind: it fails a browser or extended file that
   doesn't start with its skip, a `skip_on_cran()` or a browser call in a plain file (also written as `pkg::fn()` or
   `pkg::Class$new()`), an `expect_snapshot*()` outside a `-snap.R` file, and a snapshot file with a test that doesn't

@@ -8,6 +8,29 @@ skip_without_chrome()
 
 title_js <- function(text) studio_type_js(".sms-title", text)
 
+# Types `text` as the title and leaves the field, so the text goes out at once; returns the seq of that send.
+title_sent <- function(app, text) {
+  app$get_js(sprintf(
+    "(() => { %s; document.querySelector('.sms-title').blur(); return Number(%s.dataset.smsSent); })()",
+    title_js(text),
+    studio_root_js
+  ))
+}
+
+# The contrast ratio between two colours of the toast (its border and its background, or its mark and its background),
+# as the browser computes them, in the theme the page has.
+toast_contrast_js <- "(() => {
+  const rgb = (c) => c.match(/[\\d.]+/g).slice(0, 3).map(Number);
+  const lum = (c) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+    return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
+  const ratio = (a, b) => { const [x, y] = [lum(rgb(a)), lum(rgb(b))].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+  const box = document.querySelector('.sms-toast');
+  box.dataset.smsTone = 'problem'; box.dataset.smsOn = '';
+  const s = getComputedStyle(box);
+  return { edge: ratio(s.borderLeftColor, s.backgroundColor),
+           mark: ratio(getComputedStyle(box.querySelector('.sms-toast-mark')).color, s.backgroundColor) };
+})()"
+
 describe("the studio page", {
   it("opens, draws the map and the server's first message, and is not busy", {
     app <- studio_driver()
@@ -75,6 +98,9 @@ describe("typing a title", {
     app$wait_for_js("document.querySelector('.sms-title').value === 'A small piece of work'")
     expect_match(app$get_js("document.querySelector('.sms-toast-text').textContent"), "cannot be blank")
     expect_identical(app$get_js("document.querySelector('.sms-toast').dataset.smsTone"), "problem")
+    # The tone is not the colour alone: the word and a mark show beside the text
+    expect_identical(app$get_js("document.querySelector('.sms-toast-tone').textContent"), "Problem")
+    expect_identical(app$get_js("getComputedStyle(document.querySelector('.sms-toast-mark')).display"), "inline-grid")
     expect_identical(app$get_js(sprintf("%s.dataset.smsRev", studio_root_js)), "0")
     expect_studio_clean(app)
   })
@@ -112,8 +138,12 @@ describe("Copy", {
     expect_identical(studio_wait_copy(app), "item")
     copied <- studio_copied(app)
     expect_length(copied, 1L)
-    expect_match(copied[[1]]$text, "Typed then copied", fixed = TRUE)
     studio_wait_step(app)
+    # and it is the whole code the server drew for that title, not the title field's text or an older code
+    shown <- app$get_js("document.querySelector('.sms-code').textContent")
+    expect_identical(copied[[1]]$text, shown)
+    expect_match(shown, "Typed then copied", fixed = TRUE)
+    expect_false(identical(copied[[1]]$text, "Typed then copied"))
     expect_studio_clean(app)
   })
 
@@ -123,13 +153,16 @@ describe("Copy", {
     stub_studio_clipboard(app)
     hold_studio_messages(app)
     # When a title is typed and Copy clicked at once, and the server's answers are held
-    sent <- app$get_js(paste(
+    # (the count of clipboard writes begun is read in the same call, as the click returns)
+    started <- app$get_js(paste(
       title_js("Held answer"),
       studio_copy_js,
-      sprintf("Number(%s.dataset.smsSent)", studio_root_js)
+      "({ begun: window.__sms.begun, sent: Number(document.querySelector('.sms').dataset.smsSent) })"
     ))
+    sent <- started$sent
     studio_wait_held(app, sent)
-    # Then Copy is still busy and nothing has been copied
+    # Then the write began inside the click, with the text still to come, and Copy is busy with nothing copied yet
+    expect_identical(started$begun, 1L)
     expect_identical(app$get_js("document.querySelector('[data-sms-copy]').getAttribute('aria-busy')"), "true")
     expect_identical(app$get_js("document.querySelector('[data-sms-copy]').getAttribute('aria-disabled')"), "true")
     expect_length(studio_copied(app), 0L)
@@ -137,7 +170,10 @@ describe("Copy", {
     release_studio_messages(app)
     # Then the copy has the new title and Copy is no longer busy
     expect_identical(studio_wait_copy(app), "item")
-    expect_match(studio_copied(app)[[1]]$text, "Held answer", fixed = TRUE)
+    studio_wait_step(app)
+    shown <- app$get_js("document.querySelector('.sms-code').textContent")
+    expect_identical(studio_copied(app)[[1]]$text, shown)
+    expect_match(shown, "Held answer", fixed = TRUE)
     expect_null(app$get_js("document.querySelector('[data-sms-copy]').getAttribute('aria-busy')"))
     studio_wait_step(app)
     expect_studio_clean(app)
@@ -248,21 +284,28 @@ describe("the rooms", {
       state()[c("hidden", "inert", "expanded", "tray")],
       list(hidden = TRUE, inert = TRUE, expanded = "false", tray = TRUE)
     )
-    # Its button opens it
+    # Its button opens it, and focus goes to the room's heading, ahead of its first control
     studio_open_code(app)
     expect_identical(
       state()[c("hidden", "inert", "expanded", "tray")],
       list(hidden = FALSE, inert = FALSE, expanded = "true", tray = FALSE)
     )
+    expect_identical(app$get_js("document.activeElement.id"), "studio-room-code-title")
     # Its Close button closes it and puts focus on the room's button
     click_now(app, "[data-sms-close='code']")
     expect_identical(state(), list(hidden = TRUE, inert = TRUE, expanded = "false", tray = TRUE, focus = TRUE))
-    # Escape closes it from inside the room
+    # Escape closes it from inside the room, and focus goes back to the button
     studio_open_code(app)
     app$run_js("document.querySelector('[data-sms-copy]').focus()")
     studio_press(app, "Escape", key_code = 27L)
     app$wait_for_js(sprintf("%s.hidden === true", room))
     expect_identical(state(), list(hidden = TRUE, inert = TRUE, expanded = "false", tray = TRUE, focus = TRUE))
+    # Escape with focus in the title field closes it too, and leaves focus in the field
+    studio_open_code(app)
+    app$run_js("document.querySelector('.sms-title').focus()")
+    studio_press(app, "Escape", key_code = 27L)
+    app$wait_for_js(sprintf("%s.hidden === true", room))
+    expect_identical(app$get_js("document.activeElement.className"), "sms-title")
     expect_studio_clean(app)
   })
 })
@@ -294,6 +337,104 @@ describe("the theme and motion", {
     durations <- app$get_js("getComputedStyle(document.querySelector('.sms-tray')).transitionDuration")
     expect_true(all(trimws(strsplit(durations, ",")[[1]]) == "0s"))
     expect_studio_clean(app)
+  })
+})
+
+describe("answers that arrive late", {
+  it("cannot undo a newer answer: the one for the older event arrives after the one for the newer", {
+    # Given two titles sent one after the other, with the server's answers held
+    app <- studio_driver()
+    hold_studio_messages(app)
+    first <- title_sent(app, "Older title")
+    studio_wait_held(app, first)
+    second <- title_sent(app, "Newer title")
+    studio_wait_held(app, second)
+    # When the answers are let through, the newer one first
+    release_studio_messages(app, reverse = TRUE)
+    studio_wait_step(app)
+    # Then the page shows the newer answer, and its count and ack did not go down
+    expect_identical(app$get_js(sprintf("%s.dataset.smsN", studio_root_js)), "3")
+    expect_identical(app$get_js(sprintf("%s.dataset.smsAck", studio_root_js)), as.character(second))
+    expect_match(app$get_js("document.querySelector('.sms-code').textContent"), "Newer title", fixed = TRUE)
+    expect_false(grepl("Older title", app$get_js("document.querySelector('.sms-code').textContent"), fixed = TRUE))
+    expect_identical(app$get_js("document.querySelector('.sms-map-name').textContent"), "Newer title")
+    expect_studio_clean(app)
+  })
+})
+
+describe("a reconnect", {
+  it("sends ready first and, after Shiny has set up the session, what was done while the connection was down", {
+    # Given a page that notes when Shiny connects, when its session is set up and what it posts
+    app <- studio_driver()
+    studio_open_code(app)
+    stub_studio_clipboard(app)
+    app$run_js(
+      "window.__sms = window.__sms || {}; window.__sms.log = [];
+       $(document).on('shiny:connected', () => window.__sms.log.push('connected'));
+       $(document).on('shiny:sessioninitialized', () => window.__sms.log.push('initialized'));
+       const set = Shiny.setInputValue;
+       Shiny.setInputValue = function (name, value, options) {
+         if (/event$/.test(name)) window.__sms.log.push(`post ${value.type} ${value.seq}`);
+         return set.call(Shiny, name, value, options);
+       };"
+    )
+    drop_studio_connection(app)
+    # When a title is typed, Copy clicked and Done clicked while it is down, and the page then reconnects
+    app$run_js(paste(title_js("Typed while down"), studio_copy_js, studio_click_js(".sms-done")))
+    expect_identical(app$get_js("window.__sms.log.length"), 0L)
+    reconnect_studio(app)
+    app$wait_for_js(sprintf(
+      "%s.dataset.smsClosed !== undefined && document.getElementById('done').textContent !== ''",
+      studio_root_js
+    ))
+    # Then nothing was posted before the session was set up, and ready went first, ahead of what was typed
+    log <- unlist(app$get_js("window.__sms.log"))
+    expect_identical(log[1:2], c("connected", "initialized"))
+    posts <- log[-(1:2)]
+    expect_match(posts, "^post (ready|option|done) [0-9]+$")
+    expect_identical(sub("^post ([a-z]+) .*$", "\\1", posts), c("ready", "option", "done"))
+    seqs <- as.integer(sub("^post [a-z]+ ([0-9]+)$", "\\1", posts))
+    expect_true(all(diff(seqs) > 0L))
+    # and the new session applied it all in order: Done returned the typed title, and Copy has the code for it
+    done <- jsonlite::fromJSON(app$get_js("document.getElementById('done').textContent"))
+    expect_identical(done$title, "Typed while down")
+    expect_identical(studio_wait_copy(app), "item")
+    shown <- app$get_js("document.querySelector('.sms-code').textContent")
+    expect_identical(studio_copied(app)[[1]]$text, shown)
+    expect_match(shown, "Typed while down", fixed = TRUE)
+    studio_wait_step(app)
+    expect_studio_clean(app, closed = TRUE)
+  })
+})
+
+describe("the focus ring and the toast", {
+  it("keep a visible outline in forced-colors mode", {
+    app <- studio_driver()
+    studio_emulate(app, "forced-colors", "active")
+    studio_press(app, "Tab", code = "Tab", key_code = 9L)
+    for (selector in c(".sms-skip", ".sms-title", "[data-sms-room='code']", ".sms-theme", ".sms-done")) {
+      app$run_js(sprintf("document.querySelector(%s).focus()", jsonlite::toJSON(selector, auto_unbox = TRUE)))
+      state <- app$get_js(
+        "(() => { const a = document.activeElement, s = getComputedStyle(a);
+           return { visible: a.matches(':focus-visible'), style: s.outlineStyle, width: s.outlineWidth }; })()"
+      )
+      expect_true(state$visible, info = selector)
+      expect_false(state$style == "none", info = selector)
+      expect_false(state$width == "0px", info = selector)
+    }
+    expect_studio_clean(app)
+  })
+
+  it("draw a problem's edge and mark with 3:1 against the toast, in light and in dark", {
+    app <- studio_driver()
+    light <- app$get_js(toast_contrast_js)
+    click_now(app, ".sms-theme")
+    app$wait_for_js(sprintf("%s.dataset.theme === 'dark'", studio_root_js))
+    dark <- app$get_js(toast_contrast_js)
+    expect_gte(light$edge, 3)
+    expect_gte(light$mark, 3)
+    expect_gte(dark$edge, 3)
+    expect_gte(dark$mark, 3)
   })
 })
 
