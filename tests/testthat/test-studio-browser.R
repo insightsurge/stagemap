@@ -202,6 +202,32 @@ describe("Done", {
   })
 })
 
+describe("Done with the server's answers held", {
+  it("stays busy and does not close the page until its own answer is drawn", {
+    app <- studio_driver()
+    hold_studio_messages(app)
+    # When a title is typed and Done clicked at once, and the server's answers are held
+    sent <- app$get_js(paste(
+      title_js("Held Done"),
+      studio_click_js(".sms-done"),
+      sprintf("Number(%s.dataset.smsSent)", studio_root_js)
+    ))
+    studio_wait_held(app, sent)
+    # Then Done is busy and the page is not closed, while R already has the map with the typed title
+    expect_identical(app$get_js("document.querySelector('.sms-done').getAttribute('aria-busy')"), "true")
+    expect_identical(app$get_js("document.querySelector('.sms-done').getAttribute('aria-disabled')"), "true")
+    expect_null(app$get_js(sprintf("%s.dataset.smsClosed", studio_root_js)))
+    app$wait_for_js("document.getElementById('done').textContent !== ''")
+    expect_identical(jsonlite::fromJSON(app$get_js("document.getElementById('done').textContent"))$title, "Held Done")
+    # When the answers are let through, the page shows the closed state and Done is no longer busy
+    release_studio_messages(app)
+    app$wait_for_js(sprintf("%s.dataset.smsClosed !== undefined", studio_root_js))
+    expect_null(app$get_js("document.querySelector('.sms-done').getAttribute('aria-busy')"))
+    studio_wait_step(app)
+    expect_studio_clean(app, closed = TRUE)
+  })
+})
+
 describe("the rooms", {
   it("open and close by their button and by Escape, give focus back to the button, and are inert when closed", {
     app <- studio_driver()
