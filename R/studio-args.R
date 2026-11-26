@@ -77,12 +77,21 @@ studio_args_table <- function() {
   out
 }
 
-studio_args <- studio_args_table()
+args_cache <- new.env(parent = emptyenv())
+
+# The coverage table of stage_map() arguments and contract columns, built lazily on first use.
+studio_args <- function() {
+  if (is.null(args_cache$table)) {
+    args_cache$table <- studio_args_table()
+  }
+  args_cache$table
+}
 
 # The placement of `name` under `what` ("arg", "cards", "stages", "lanes", "links"), or NULL if absent.
 studio_arg_where <- function(what, name) {
   checkmate::assert_string(what, min.chars = 1L)
   checkmate::assert_string(name, min.chars = 1L)
-  hit <- studio_args$where[studio_args$what == what & studio_args$name == name]
+  args <- studio_args()
+  hit <- args$where[args$what == what & args$name == name]
   if (length(hit) == 0L) NULL else hit[[1L]]
 }

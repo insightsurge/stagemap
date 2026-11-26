@@ -567,25 +567,28 @@ studio_resolve_fix <- function(doc, data) {
   )
 }
 
-# Registry of document-changing events.
-studio_events <- list(
-  edit = list(check = studio_check_edit, resolve = studio_resolve_edit),
-  option = list(check = studio_check_option, resolve = studio_resolve_option),
-  add = list(check = studio_check_add, resolve = studio_resolve_add),
-  remove = list(check = studio_check_remove, resolve = studio_resolve_remove),
-  move = list(check = studio_check_move, resolve = studio_resolve_move),
-  link_add = list(check = studio_check_link_add, resolve = studio_resolve_link_add),
-  link_reverse = list(check = studio_check_link_reverse, resolve = studio_resolve_link_reverse),
-  fix = list(check = studio_check_fix, resolve = studio_resolve_fix)
-)
+# Registry of document-changing events, built at call time so instrumented handlers are resolved.
+studio_events <- function() {
+  list(
+    edit = list(check = studio_check_edit, resolve = studio_resolve_edit),
+    option = list(check = studio_check_option, resolve = studio_resolve_option),
+    add = list(check = studio_check_add, resolve = studio_resolve_add),
+    remove = list(check = studio_check_remove, resolve = studio_resolve_remove),
+    move = list(check = studio_check_move, resolve = studio_resolve_move),
+    link_add = list(check = studio_check_link_add, resolve = studio_resolve_link_add),
+    link_reverse = list(check = studio_check_link_reverse, resolve = studio_resolve_link_reverse),
+    fix = list(check = studio_check_fix, resolve = studio_resolve_fix)
+  )
+}
 
 # Validates and resolves one document-changing event `event` (`list(type, data, ...)`).
 studio_resolve <- function(doc, event) {
   studio_assert_doc(doc)
   checkmate::assert_list(event, names = "unique")
-  checkmate::assert_choice(event$type, names(studio_events))
+  events <- studio_events()
+  checkmate::assert_choice(event$type, names(events))
   checkmate::assert_list(event$data)
-  spec <- studio_events[[event$type]]
+  spec <- events[[event$type]]
   spec$check(event$data)
   spec$resolve(doc, event$data)
 }

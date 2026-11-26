@@ -285,7 +285,7 @@ studio_step <- function(state, event) {
       return(opened)
     }
     state <- opened
-  } else if (checked$type %in% names(studio_events)) {
+  } else if (checked$type %in% names(studio_events())) {
     change <- tryCatch(
       studio_resolve(state$doc, checked),
       error = function(e) list(refused = cli::ansi_strip(conditionMessage(e)))
