@@ -53,6 +53,8 @@ Other stage map:
 \code{\link[=add_links]{add_links()}},
 \code{\link[=add_steps]{add_steps()}},
 \code{\link[=add_zones]{add_zones()}},
-\code{\link[=stage_map]{stage_map()}}
+\code{\link[=stage_map]{stage_map()}},
+\code{\link[=stage_map_code]{stage_map_code()}},
+\code{\link[=stage_map_tables]{stage_map_tables()}}
 }
 \concept{stage map}
