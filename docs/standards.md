@@ -312,13 +312,14 @@ use plain words in help pages:
 - **"Do X, then Y at once."** Every action in a Shiny app or view the package ships (Copy, Download, Build, Check, a
   busy button) gets one browser test that makes a change and fires the action without waiting for the server in
   between, then checks that the action used the change. A test that waits after each step lets the server catch up,
-  so it passes with the bugs of section 3, "Shiny apps", still in place. How: `tests/README.md`.
+  so it passes with the bugs of section 3, "Shiny apps", still in place. How: `tests/testthat/README.md`.
 - Chrome skips respect CRAN's request; app cleanup avoids leftover processes. See the
   [Shiny test rules](https://github.com/insightsurge/stagemap/blob/main/.claude/rules/tests.md).
 - **The tests CRAN skips have files of their own** (`-browser.R`, `-snap.R`, `-extended.R`;
-  [tests/README.md](https://github.com/insightsurge/stagemap/blob/main/tests/README.md)). Browser and extended files
-  start with their skip, so CRAN skips the whole file before any of its code runs: in mascot, whose layout this follows,
-  a skip inside each test came after the test had built its fixtures and cost about an eighth of the test time on CRAN.
+  [tests/testthat/README.md](https://github.com/insightsurge/stagemap/blob/main/tests/testthat/README.md)).
+  Browser and extended files start with their skip, so CRAN skips the whole file before any of its code runs: in
+  mascot, whose layout this follows, a skip inside each test came after the test had built its fixtures and cost
+  about an eighth of the test time on CRAN.
   Snapshot files keep the skip in each `expect_snapshot()`, because a snapshot file skipped as a whole reports no
   snapshots and testthat deletes their saved files.
 - **CRAN runs what it must, not everything.** CRAN asks for examples, vignettes and tests to take under 10 minutes

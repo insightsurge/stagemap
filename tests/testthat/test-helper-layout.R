@@ -1,5 +1,5 @@
-# The test files keep to their kinds (tests/README.md): browser tests only in -browser.R files, which start with their
-# skip; snapshot tests only in -snap.R files, which hold nothing else and have no file-level skip.
+# The test files keep to their kinds (tests/testthat/README.md): browser tests only in -browser.R files, which start
+# with their skip; snapshot tests only in -snap.R files, which hold nothing else and have no file-level skip.
 describe("the test file layout", {
   files <- function(pattern) list.files(test_path(), pattern = pattern, full.names = TRUE)
   first_call <- function(file) {

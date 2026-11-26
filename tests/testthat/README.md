@@ -1,7 +1,8 @@
 # tests/
 
 How the tests are organised, and where each kind runs. The rules (what to test, BDD style, skips, coverage) are in
-`.claude/rules/tests.md`; what each CI workflow runs is in [`.github/workflows/README.md`](../.github/workflows/README.md).
+`.claude/rules/tests.md`; what each CI workflow runs is in
+[`.github/workflows/README.md`](../../.github/workflows/README.md).
 
 ## In brief
 

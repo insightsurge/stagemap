@@ -21,3 +21,5 @@
 * In the Shiny demo app, the action and trace buttons use the cards picked on the map when the list is empty, or show a "Choose cards first" note when both are empty. On a narrow screen, the map appears before the controls (#79).
 * The README and a "Get started" article say why the package exists and show a first map with the trace functions, using a made-up traceability example (#79).
 * `stage_map_studio()`, experimental, opens a map in a 'Shiny' app with its title above it and its R code in a room along the bottom; **Copy** copies the code for the latest change, also when it is clicked before the server has answered, and **Done** returns the map with the title set in the studio. `run = FALSE` returns the app (#88).
+* `stage_map_tables()` gives back the tables a map was built from, as a named list of data frames with every column (#87).
+* `stage_map_code()` writes the R code that builds a map again: the tables as `data.frame()` calls, then the pipeline, with only the arguments that differ from their defaults (#87).
