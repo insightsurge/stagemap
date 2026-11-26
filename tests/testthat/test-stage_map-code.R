@@ -144,6 +144,38 @@ describe("stage_map_code()", {
     expect_code_rebuilds(map, exact = FALSE)
   })
 
+  it("rebuilds tables with columns named like the arguments of data.frame()", {
+    for (name in c("row.names", "check.rows", "check.names", "fix.empty.names", "stringsAsFactors")) {
+      cards <- data.frame(id = c("a", "b"), label = "A", stage = "s", lane = "l", extra = c("x", "y"))
+      names(cards)[5] <- name
+      code <- expect_code_rebuilds(stage_map(cards))
+      expect_match(paste(code, collapse = "\n"), "stats::setNames(", fixed = TRUE)
+    }
+    # The check.names column beside one that needs backticks.
+    cards <- data.frame(id = "a", label = "A", stage = "s", lane = "l", flag = TRUE, extra = 1)
+    names(cards)[5:6] <- c("check.names", "my col")
+    expect_code_rebuilds(stage_map(cards))
+  })
+
+  it("rebuilds I(), date-time, difftime and list columns, keeping a long I() column to 80 characters", {
+    cards <- data.frame(id = c("a", "b"), label = c("A", "B"), stage = "s", lane = "l")
+    cards$note <- I(c(strrep("word ", 12), strrep("other ", 12)))
+    cards$when <- as.POSIXct(c(1.5e9 + 1 / 3, 1.6e9), origin = "1970-01-01", tz = "UTC")
+    cards$took <- as.difftime(c(1.5, 2), units = "hours")
+    cards$about <- I(list(list(third = 1 / 3), NULL))
+    cards$dated <- structure(as.Date(c("2026-01-01", "2026-01-02")), class = c("day", "Date"))
+    code <- expect_code_rebuilds(stage_map(cards))
+    expect_true(all(nchar(code) <= 80L))
+    expect_identical(stage_map_tables(run_code(code))$cards$about[[1]]$third, 1 / 3)
+  })
+
+  it("rebuilds a factor with NA as a level", {
+    cards <- data.frame(id = c("a", "b"), label = "A", stage = "s", lane = "l")
+    cards$group <- factor(c("x", NA), levels = c("x", NA), exclude = NULL)
+    code <- expect_code_rebuilds(stage_map(cards))
+    expect_match(paste(code, collapse = "\n"), "exclude = NULL", fixed = TRUE)
+  })
+
   it("prints the lines and returns the code invisibly", {
     code <- stage_map_code(slim())
     expect_output(out <- withVisible(print(code)), "library(stagemap)", fixed = TRUE)
@@ -177,11 +209,6 @@ describe("code_map()", {
     )
     code <- paste(code_map(parts), collapse = "\n")
     expect_no_match(code, "kinds|changes|intro|highlight")
-  })
-
-  it("refuses a table with the studio's .studio_uid column", {
-    parts <- list(tables = list(cards = data.frame(id = "a", .studio_uid = "u1")), args = list())
-    expect_error(code_map(parts), "studio_uid")
   })
 
   it("checks its arguments", {

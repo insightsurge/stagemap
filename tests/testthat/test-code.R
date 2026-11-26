@@ -86,10 +86,22 @@ describe("code_vector()", {
     expect_identical(code_flat(code_vector(as.Date(c("2026-01-02", NA)))), "as.Date(c(\"2026-01-02\", NA))")
   })
 
-  it("falls back to deparse() for any other class", {
+  it("writes another class as its values and attributes inside structure(), and I() inside I()", {
     x <- as.POSIXct("2026-01-02 03:04:05", tz = "UTC")
+    expect_identical(
+      code_flat(code_vector(x)),
+      "structure(1767323045, class = c(\"POSIXct\", \"POSIXt\"), tzone = \"UTC\")"
+    )
     expect_identical(eval(parse(text = code_flat(code_vector(x)))), x)
-    expect_identical(code_flat(code_vector(as.raw(1))), "as.raw(0x01)")
+    named <- structure(c(a = 1), class = "thing")
+    expect_identical(eval(parse(text = code_flat(code_vector(named)))), named)
+    expect_identical(code_flat(code_vector(I(c("a", "b")))), "I(c(\"a\", \"b\"))")
+  })
+
+  it("writes raw and complex vectors", {
+    expect_identical(code_flat(code_vector(as.raw(c(1, 255)))), "as.raw(c(1L, 255L))")
+    z <- complex(real = c(1, 0.5), imaginary = c(-2, 0))
+    expect_identical(eval(parse(text = code_flat(code_vector(z)))), z)
   })
 
   it("checks its arguments", {
@@ -98,14 +110,15 @@ describe("code_vector()", {
 })
 
 describe("code_value()", {
-  it("writes NULL, a data frame or a vector", {
+  it("writes NULL, a data frame, a list or a vector", {
     expect_identical(code_flat(code_value(NULL)), "NULL")
+    expect_identical(code_flat(code_value(list(a = 1, NULL))), "list(a = 1, NULL)")
     expect_identical(code_flat(code_value(data.frame(a = 1))), "data.frame(a = 1)")
     expect_identical(code_flat(code_value(2L)), "2L")
   })
 
   it("checks its arguments", {
-    expect_error(code_value(list(1)), "x")
+    expect_error(code_value(sum), "x")
   })
 })
 
@@ -127,6 +140,17 @@ describe("code_frame()", {
     )
   })
 
+  it("writes a table with a column named like an argument of data.frame() inside stats::setNames()", {
+    x <- data.frame(a = c(1, 2), b = "x")
+    names(x) <- c("stringsAsFactors", "my col")
+    text <- code_flat(code_frame(x))
+    expect_identical(
+      text,
+      "stats::setNames(data.frame(x1 = c(1, 2), x2 = \"x\"), c(\"stringsAsFactors\", \"my col\"))"
+    )
+    expect_identical(eval(parse(text = text)), x)
+  })
+
   it("keeps a name R cannot read bare, with check.names = FALSE", {
     x <- data.frame(`my col` = 1:2, b = "x", check.names = FALSE)
     text <- code_flat(code_frame(x))
@@ -134,10 +158,12 @@ describe("code_frame()", {
     expect_identical(eval(parse(text = text)), x)
   })
 
-  it("writes a list column inside I(), and a table with no rows", {
+  it("writes a list column item by item inside I(list()), and a table with no rows", {
     x <- data.frame(id = c("a", "b"))
-    x$about <- list(1, "two")
-    back <- eval(parse(text = code_flat(code_frame(x))))
+    x$about <- list(1 / 3, "two")
+    text <- code_flat(code_frame(x))
+    expect_identical(text, "data.frame(id = c(\"a\", \"b\"), about = I(list(0.3333333333333333, \"two\")))")
+    back <- eval(parse(text = text))
     expect_identical(unclass(back$about), x$about)
     expect_identical(code_flat(code_frame(data.frame(id = character()))), "data.frame(id = character())")
   })
@@ -151,6 +177,12 @@ describe("code_lines()", {
   it("keeps a call on one line when it fits, with its prefix and suffix", {
     node <- code_call("f", list(code_atom("1"), b = code_atom("2")))
     expect_identical(code_lines(node, 2L, prefix = "x <- ", suffix = " |>"), "  x <- f(1, b = 2) |>")
+  })
+
+  it("keeps a line of exactly 80 characters, and cuts one of 81", {
+    at <- function(width) code_call("f", list(code_atom(strrep("a", width - 6L)), code_atom("1")))
+    expect_identical(nchar(code_lines(at(80L))), 80L)
+    expect_length(code_lines(at(81L)), 4L)
   })
 
   it("puts one argument on each line when a call does not fit in 80 characters", {

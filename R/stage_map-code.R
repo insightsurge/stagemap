@@ -1,22 +1,28 @@
-# The code that builds a map again: code_map() writes it from a map's parts (map_parts(), or the studio's document),
-# with the builders of R/code.R. Callers: stage_map_code() and the studio's code room.
+# The code that builds a map again: code_map() writes it from a map's parts (as map_parts() gives them), with the
+# builders of R/code.R. Caller: stage_map_code().
 
 #' The R code that builds a stage map
 #'
 #' Writes the R code that builds a [stage_map()] widget again: the tables as `data.frame()` calls, then the pipeline of
 #' [stage_map()] and the `add_*()` functions. Run the code and you get a map that sends the same data to the engine,
-#' and that [sm_trace()], [sm_orphans()] and [sm_missing()] answer in the same way. Save it with [writeLines()].
+#' and that [sm_trace()], [sm_orphans()] and [sm_missing()] answer in the same way.
 #'
-#' The code starts with `library(stagemap)`. A table whose `data.frame()` call would not let the call that takes it fit
-#' on one line is written first, as a variable named after its argument; the others are written in place. Lines keep
-#' to 80 characters. Only arguments that differ from their defaults are written, and `stages` and `lanes` are left out
-#' when they are what [stage_map()] takes from the cards. A column that holds only `NA` is left out, as the map reads
-#' it as left out. Columns that are not text, numbers, `TRUE` and `FALSE`, factors or dates are written by
-#' [deparse()].
+#' The code starts with `library(stagemap)`. A table that would not let the call that takes it fit on one line is
+#' written first, as a variable named after its argument; the others are written in place. Lines keep to 80
+#' characters, except where a single string or number is longer, as it is never cut. Only arguments that differ from
+#' their defaults are written, and `stages` and `lanes` are left out when they are what [stage_map()] takes from the
+#' cards. A column that holds only `NA` is not written: the map reads it as left out, so it is the one column
+#' [stage_map_tables()] of the rebuilt map lacks. Text, numbers, `TRUE` and `FALSE`, factors and dates are written as
+#' you would type them; a column of another class is written as its values inside `structure()`, with its attributes.
+#'
+#' The text is UTF-8, with every letter as it is. To save it so that it reads back the same in any locale, write the
+#' bytes as they are and read the file as UTF-8, as the example does: `writeLines(code, path, useBytes = TRUE)`, then
+#' `source(path, encoding = "UTF-8")`.
 #'
 #' @inheritParams stage_map_tables
 #' @returns A character vector of class `stagemap_code`, one line of code per element; it prints as the code. A `map`
-#'   that is not a [stage_map()] widget is an error of class `stagemap_error_widget`.
+#'   that is not a [stage_map()] widget, or a map whose `hosted` option no argument of [stage_map()] gives, is an error
+#'   of class `stagemap_error_widget`.
 #' @family stage map
 #' @examples
 #' map <- stage_map(
@@ -26,9 +32,11 @@
 #'   add_links(data.frame(from = "a", to = "b"))
 #' code <- stage_map_code(map)
 #' code
-#' # Save it as a script.
+#' # Save it as a script, and run it to get the map back.
 #' path <- tempfile(fileext = ".R")
-#' writeLines(code, path)
+#' writeLines(code, path, useBytes = TRUE)
+#' again <- source(path, encoding = "UTF-8")$value
+#' class(again)
 #' unlink(path)
 #' @export
 stage_map_code <- function(map) {
@@ -49,11 +57,10 @@ print.stagemap_code <- function(x, ...) {
 }
 
 # The code of a map, as lines: `library(stagemap)`, a blank line, the tables written as variables (if any) and a blank
-# line, then the pipeline. `parts` is `list(tables, args)` as map_parts() gives it; the parts need not build a map (the
-# studio shows the code of a map with a problem), so nothing here checks the data. A table is written in place when
-# the call that takes it still fits on one line with it; otherwise the longest table in place becomes a variable
-# (named as its argument), until the call fits or has no table in place. So a table whose `data.frame()` needs more
-# than one line is always a variable. A table may not hold the studio's `.studio_uid` column.
+# line, then the pipeline. `parts` is `list(tables, args)` as map_parts() gives it; nothing here checks the data, so
+# parts that do not build a map still give their code. A table is written in place when the call that takes it still
+# fits on one line with it; otherwise the longest table in place becomes a variable (named as its argument), until the
+# call fits or has no table in place. So a table whose `data.frame()` needs more than one line is always a variable.
 code_map <- function(parts) {
   checkmate::assert_list(parts, names = "unique")
   checkmate::assert_list(parts$tables, types = "data.frame", names = "unique")
@@ -62,8 +69,6 @@ code_map <- function(parts) {
   args <- parts$args
   # stage_map() needs cards: parts without them are written with an empty table.
   tables$cards <- tables$cards %||% data.frame()
-  with_uid <- names(tables)[vapply(tables, function(table) ".studio_uid" %in% names(table), logical(1))]
-  checkmate::assert_character(with_uid, len = 0L, .var.name = "tables with a .studio_uid column")
   calls <- code_map_calls(tables, args)
   # Which tables are variables: the call's line with its suffix, at its indent, must fit.
   variables <- character()

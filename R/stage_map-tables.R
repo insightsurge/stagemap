@@ -1,5 +1,5 @@
 # The one reader of a map: map_parts() gives back the tables a stage_map() widget was built from and the arguments
-# that build it again. Callers: stage_map_tables(), stage_map_code() and the studio.
+# that build it again. Callers: stage_map_tables() and stage_map_code().
 
 # The tables a map can hold, in the order they are given back.
 map_table_names <- c("cards", "stages", "lanes", "statuses", "links", "kinds", "zones", "steps", "changes", "variants")
@@ -17,8 +17,8 @@ map_table_names <- c("cards", "stages", "lanes", "statuses", "links", "kinds", "
 #' again.
 #'
 #' @param map A [stage_map()] widget, with any layers added.
-#' @returns A named list of data frames. A `map` that is not a [stage_map()] widget is an error of class
-#'   `stagemap_error_widget`.
+#' @returns A named list of data frames. A `map` that is not a [stage_map()] widget, or a map whose `hosted` option no
+#'   argument of [stage_map()] gives, is an error of class `stagemap_error_widget`.
 #' @family stage map
 #' @examples
 #' map <- stage_map(

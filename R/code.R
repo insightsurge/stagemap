@@ -3,7 +3,7 @@
 # arguments, each a node, named or not). code_lines() lays a node out in lines of at most `code_width` characters: a
 # call on one line when it fits, else one argument per line; a vector that does not fit wraps at its commas. The
 # writers of values (code_string(), code_number(), code_vector(), code_frame()) never ask the locale: deparse() and
-# encodeString() write strings in a way that depends on it.
+# encodeString() write strings in a way that depends on it, so neither is used.
 
 # The width a line of code keeps to.
 code_width <- 80L
@@ -125,23 +125,46 @@ code_typed_na <- function(x) {
   }
 }
 
+# The arguments of data.frame() that a column of the same name would be taken for.
+code_frame_args <- c("row.names", "check.rows", "check.names", "fix.empty.names", "stringsAsFactors")
+
 # An atomic vector as a node: one value bare, more (or names) in `c()`. Character, double, integer and logical vectors
-# are written value by value, a factor as `factor(c(...), levels = c(...))`, a Date as `as.Date(c(...))`; any other
-# class falls back to deparse() of the whole vector.
+# are written value by value, a factor as `factor(c(...), levels = c(...))` (with `exclude = NULL` when NA is a level),
+# a Date as `as.Date(c(...))`, an `I()` vector inside `I()`, a raw vector by `as.raw()` and a complex one by
+# `complex()`. A vector of any other class is written as its values inside `structure()`, with its attributes written
+# the same way, so no value goes through deparse(), whose text depends on the locale.
 code_vector <- function(x) {
   checkmate::assert_atomic(x)
+  if (inherits(x, "AsIs")) {
+    inner <- x
+    class(inner) <- setdiff(class(x), "AsIs")
+    return(code_call("I", list(code_vector(inner))))
+  }
   if (is.factor(x)) {
     args <- list(code_vector(as.character(x)), levels = code_vector(levels(x)))
+    if (anyNA(levels(x))) {
+      args$exclude <- code_atom("NULL")
+    }
     if (is.ordered(x)) {
       args$ordered <- code_atom("TRUE")
     }
     return(code_call("factor", args))
   }
-  if (inherits(x, "Date") && identical(class(x), "Date")) {
+  if (identical(class(x), "Date")) {
     return(code_call("as.Date", list(code_vector(format(x)))))
   }
-  if (is.object(x) || !(is.character(x) || is.numeric(x) || is.logical(x))) {
-    return(code_atom(paste(deparse(x, width.cutoff = 500L), collapse = "")))
+  if (is.object(x)) {
+    extra <- attributes(x)
+    extra$names <- NULL
+    values <- x
+    attributes(values) <- if (!is.null(names(x))) list(names = names(x))
+    return(code_call("structure", c(list(code_vector(values)), lapply(extra, code_value))))
+  }
+  if (is.raw(x)) {
+    return(code_call("as.raw", list(code_vector(as.integer(x)))))
+  }
+  if (is.complex(x)) {
+    return(code_call("complex", list(real = code_vector(Re(x)), imaginary = code_vector(Im(x)))))
   }
   if (length(x) == 0L) {
     return(code_atom(paste0(if (is.double(x)) "numeric" else typeof(x), "()")))
@@ -163,14 +186,23 @@ code_vector <- function(x) {
   code_call("c", args)
 }
 
-# Any argument value as a node: NULL, a data frame, or an atomic vector.
+# Any value as a node: NULL, a data frame, an atomic vector, or a list (written item by item in `list()`).
 code_value <- function(x) {
-  checkmate::assert(checkmate::check_data_frame(x), checkmate::check_atomic(x))
+  checkmate::assert(
+    checkmate::check_data_frame(x),
+    checkmate::check_list(x, null.ok = TRUE),
+    checkmate::check_atomic(x)
+  )
   if (is.null(x)) {
     return(code_atom("NULL"))
   }
   if (is.data.frame(x)) {
     return(code_frame(x))
+  }
+  if (is.list(x)) {
+    args <- lapply(x, code_value)
+    names(args) <- names(x) %||% rep("", length(x))
+    return(code_call("list", args))
   }
   code_vector(x)
 }
@@ -178,7 +210,9 @@ code_value <- function(x) {
 # A data frame as a `data.frame()` node. A column that holds only NA is left out (in a table with rows). A column
 # with one value in every row is written once when another column gives the number of rows. Columns keep their order;
 # a name R cannot read bare gets backticks and the call gets `check.names = FALSE`, so the name comes back as it was.
-# A list column is written by deparse() inside `I()`, so data.frame() keeps it one column.
+# A column named like an argument of data.frame() would be taken for that argument, so a table with one is written
+# with plain names (`x1`, `x2`, ...) inside `stats::setNames()`, which gives the real names back. A list column is
+# written item by item inside `I(list(...))`, so data.frame() keeps it one column.
 code_frame <- function(x) {
   checkmate::assert_data_frame(x)
   columns <- as.list(x)
@@ -197,11 +231,16 @@ code_frame <- function(x) {
   args <- lapply(seq_along(columns), function(i) {
     column <- columns[[i]]
     if (is.list(column)) {
-      text <- paste(deparse(column, width.cutoff = 500L), collapse = "")
-      return(code_atom(if (inherits(column, "AsIs")) text else paste0("I(", text, ")")))
+      items <- column
+      class(items) <- setdiff(class(column), "AsIs")
+      return(code_call("I", list(code_value(unclass(items)))))
     }
     code_vector(if (constant[[i]]) column[1L] else column)
   })
+  if (any(names(columns) %in% code_frame_args)) {
+    names(args) <- paste0("x", seq_along(args))
+    return(code_call("stats::setNames", list(code_call("data.frame", args), code_vector(names(columns)))))
+  }
   names(args) <- names(columns)
   if (any(code_name(names(columns)) != names(columns))) {
     args$check.names <- code_atom("FALSE")

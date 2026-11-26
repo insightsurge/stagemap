@@ -11,20 +11,26 @@ stage_map_code(map)
 }
 \value{
 A character vector of class \code{stagemap_code}, one line of code per element; it prints as the code. A \code{map}
-that is not a \code{\link[=stage_map]{stage_map()}} widget is an error of class \code{stagemap_error_widget}.
+that is not a \code{\link[=stage_map]{stage_map()}} widget, or a map whose \code{hosted} option no argument of \code{\link[=stage_map]{stage_map()}} gives, is an error
+of class \code{stagemap_error_widget}.
 }
 \description{
 Writes the R code that builds a \code{\link[=stage_map]{stage_map()}} widget again: the tables as \code{data.frame()} calls, then the pipeline of
 \code{\link[=stage_map]{stage_map()}} and the \verb{add_*()} functions. Run the code and you get a map that sends the same data to the engine,
-and that \code{\link[=sm_trace]{sm_trace()}}, \code{\link[=sm_orphans]{sm_orphans()}} and \code{\link[=sm_missing]{sm_missing()}} answer in the same way. Save it with \code{\link[=writeLines]{writeLines()}}.
+and that \code{\link[=sm_trace]{sm_trace()}}, \code{\link[=sm_orphans]{sm_orphans()}} and \code{\link[=sm_missing]{sm_missing()}} answer in the same way.
 }
 \details{
-The code starts with \code{library(stagemap)}. A table whose \code{data.frame()} call would not let the call that takes it fit
-on one line is written first, as a variable named after its argument; the others are written in place. Lines keep
-to 80 characters. Only arguments that differ from their defaults are written, and \code{stages} and \code{lanes} are left out
-when they are what \code{\link[=stage_map]{stage_map()}} takes from the cards. A column that holds only \code{NA} is left out, as the map reads
-it as left out. Columns that are not text, numbers, \code{TRUE} and \code{FALSE}, factors or dates are written by
-\code{\link[=deparse]{deparse()}}.
+The code starts with \code{library(stagemap)}. A table that would not let the call that takes it fit on one line is
+written first, as a variable named after its argument; the others are written in place. Lines keep to 80
+characters, except where a single string or number is longer, as it is never cut. Only arguments that differ from
+their defaults are written, and \code{stages} and \code{lanes} are left out when they are what \code{\link[=stage_map]{stage_map()}} takes from the
+cards. A column that holds only \code{NA} is not written: the map reads it as left out, so it is the one column
+\code{\link[=stage_map_tables]{stage_map_tables()}} of the rebuilt map lacks. Text, numbers, \code{TRUE} and \code{FALSE}, factors and dates are written as
+you would type them; a column of another class is written as its values inside \code{structure()}, with its attributes.
+
+The text is UTF-8, with every letter as it is. To save it so that it reads back the same in any locale, write the
+bytes as they are and read the file as UTF-8, as the example does: \code{writeLines(code, path, useBytes = TRUE)}, then
+\code{source(path, encoding = "UTF-8")}.
 }
 \examples{
 map <- stage_map(
@@ -34,9 +40,11 @@ map <- stage_map(
   add_links(data.frame(from = "a", to = "b"))
 code <- stage_map_code(map)
 code
-# Save it as a script.
+# Save it as a script, and run it to get the map back.
 path <- tempfile(fileext = ".R")
-writeLines(code, path)
+writeLines(code, path, useBytes = TRUE)
+again <- source(path, encoding = "UTF-8")$value
+class(again)
 unlink(path)
 }
 \seealso{

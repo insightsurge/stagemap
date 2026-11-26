@@ -10,8 +10,8 @@ stage_map_tables(map)
 \item{map}{A \code{\link[=stage_map]{stage_map()}} widget, with any layers added.}
 }
 \value{
-A named list of data frames. A \code{map} that is not a \code{\link[=stage_map]{stage_map()}} widget is an error of class
-\code{stagemap_error_widget}.
+A named list of data frames. A \code{map} that is not a \code{\link[=stage_map]{stage_map()}} widget, or a map whose \code{hosted} option no
+argument of \code{\link[=stage_map]{stage_map()}} gives, is an error of class \code{stagemap_error_widget}.
 }
 \description{
 Gives back the data frames a \code{\link[=stage_map]{stage_map()}} widget holds, as they were given to \code{\link[=stage_map]{stage_map()}} and the \verb{add_*()}

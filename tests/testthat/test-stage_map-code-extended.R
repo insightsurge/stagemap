@@ -47,6 +47,8 @@ describe("stage_map_code() on many maps", {
 
   it("writes the same code in a C locale as in a UTF-8 one", {
     map <- stage_map(data.frame(id = "a", label = "caf\u00e9 \u00fcber", stage = "s", lane = "l"))
+    utf8_locale <- withr::with_locale(c(LC_CTYPE = "en_US.UTF-8"), isTRUE(l10n_info()[["UTF-8"]]))
+    skip_if_not(utf8_locale, "the en_US.UTF-8 locale is not available")
     utf8 <- withr::with_locale(c(LC_CTYPE = "en_US.UTF-8"), unclass(stage_map_code(map)))
     plain <- withr::with_locale(c(LC_CTYPE = "C"), unclass(stage_map_code(map)))
     expect_identical(charToRaw(paste(plain, collapse = "\n")), charToRaw(paste(utf8, collapse = "\n")))
@@ -85,5 +87,30 @@ describe("stage_map_code() on many maps", {
     map <- stage_map(cards)
     code <- expect_code_rebuilds(map, exact = FALSE)
     expect_identical(names(stage_map_tables(run_code(code))$cards), setdiff(names(cards), "sub"))
+  })
+
+  it("rebuilds I() and list columns with letters beyond ASCII, in a C locale", {
+    # The strings are made first: a string written with a Unicode escape in a C locale is not marked as UTF-8.
+    cards <- data.frame(id = c("a", "b"), label = "A", stage = "s", lane = "l")
+    cards$note <- I(c("caf\u00e9", "\u4e2d"))
+    cards$about <- I(list(list(who = "Ren\u00e9e"), "\u00fcber"))
+    withr::local_locale(c(LC_CTYPE = "C"))
+    expect_code_rebuilds(stage_map(cards))
+  })
+
+  it("rebuilds the map from a file saved and read back as UTF-8, in a C locale", {
+    # The strings are made first: a string written with a Unicode escape in a C locale is not marked as UTF-8.
+    labels <- c("caf\u00e9", "\u4e2d\u6587")
+    withr::local_locale(c(LC_CTYPE = "C"))
+    map <- stage_map(data.frame(id = c("a", "b"), label = labels, stage = "s", lane = "l"))
+    path <- file.path(withr::local_tempdir(), "map.R")
+    writeLines(stage_map_code(map), path, useBytes = TRUE)
+    parsed <- parse(file = path, keep.source = FALSE, encoding = "UTF-8")
+    env <- new.env(parent = asNamespace("stagemap"))
+    for (expr in parsed[-1]) {
+      again <- eval(expr, env)
+    }
+    expect_identical(again$x$data, map$x$data)
+    expect_identical(stage_map_tables(again)$cards$label, labels)
   })
 })

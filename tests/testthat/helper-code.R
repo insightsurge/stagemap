@@ -25,10 +25,23 @@ run_code <- function(code) {
   out
 }
 
-# Expects the code of `map` to build a map with the same data for the engine, the same size and id, and the same
-# answers from sm_orphans() and sm_trace() (from the first card, both ways). `exact = TRUE` compares the JSON text with
-# identical(); `exact = FALSE` compares it without nulls and with sorted names, for a map with a column of only NA (sent
-# as null, and left out of the code) or one built with its layers in another order than the code writes them.
+# The tables of `map` without the columns that hold only NA (in a table with rows), which the code does not write.
+tables_written <- function(map) {
+  lapply(stage_map_tables(map), function(table) {
+    if (nrow(table) == 0L) {
+      return(table)
+    }
+    empty <- vapply(table, function(column) is.atomic(column) && all(is.na(column)), logical(1))
+    table[!empty]
+  })
+}
+
+# Expects the code of `map` to build a map with the same tables (stage_map_tables(), with classes and attributes), the
+# same data for the engine, the same size and id, and the same answers from sm_orphans() and sm_trace() (from the
+# first card, both ways). `exact = TRUE` compares the JSON text and the tables with identical(); `exact = FALSE`
+# compares the JSON without nulls and with sorted names, and the tables without their columns of only NA, for a map
+# with such a column (sent as null, and left out of the code) or one built with its layers in another order than the
+# code writes them.
 expect_code_rebuilds <- function(map, exact = TRUE) {
   code <- stage_map_code(map)
   testthat::expect_s3_class(code, "stagemap_code")
@@ -36,8 +49,10 @@ expect_code_rebuilds <- function(map, exact = TRUE) {
   testthat::expect_s3_class(rebuilt, "stagemap_widget")
   if (exact) {
     testthat::expect_identical(rebuilt$x$data, map$x$data)
+    testthat::expect_identical(stage_map_tables(rebuilt), stage_map_tables(map))
   } else {
     testthat::expect_identical(sorted_names(canonical(data_of(rebuilt))), sorted_names(canonical(data_of(map))))
+    testthat::expect_identical(stage_map_tables(rebuilt), tables_written(map))
   }
   testthat::expect_identical(rebuilt$width, map$width)
   testthat::expect_identical(rebuilt$height, map$height)
