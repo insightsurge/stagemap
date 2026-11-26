@@ -1,5 +1,5 @@
 # The app the studio's browser tests drive: the studio module on its own page, with the map named by the environment
-# variable STAGEMAP_STUDIO_FIXTURE ("small", the default, or "none" for the studio's own map of one card) and Copy's wait
+# variable STAGEMAP_STUDIO_FIXTURE ("small", the default, or "none" for the built-in example map) and Copy's wait
 # from STAGEMAP_STUDIO_COPY_WAIT_MS. Its `on_done` keeps the map it was given and shows its title and class as JSON in
 # a text output beside the studio, so a test can read what Done returned.
 library(shiny)

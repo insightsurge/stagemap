@@ -3,7 +3,7 @@
 # leaves after the outputs of the same flush. No observer, reactive or handler is made inside another, so a session
 # always has the same number of them.
 
-# The server of the studio module `id`, opened on `map` (NULL for a map of one card). The page's events reach it in the
+# The server of the studio module `id`, opened on `map` (NULL for the built-in example map). Events reach it in the
 # order they were sent, `ready` first, so the `ack` of an answer is the last event the server has applied. `on_done` is
 # called with the map once Done has been answered on the page. `options` are the page's settings (studio_options());
 # the server checks them and the page reads them from the boot JSON.

@@ -71,6 +71,69 @@ describe("studio_build() with statuses table and highlight", {
     map_no_zones <- stage_map(data.frame(id = "a", label = "A", stage = "s", lane = "l", zone = "z1"))
     expect_identical(nrow(studio_faults(studio_doc(map_parts(map_no_zones)))), 0L)
   })
+
+  it("locates the exact uid, value and fault set when non-first rows are broken", {
+    map <- full_map(title = "A map") |>
+      add_variants(data.frame(id = c("v1", "v2"), label = c("V1", "V2")))
+    base <- studio_doc(map_parts(map))
+    base <- studio_doc_apply(
+      base,
+      list(list(op = "set", table = "cards", uid = "u3", field = "variants", value = "v1, v2"))
+    )
+
+    cases <- list(
+      list(
+        name = "card 3 blank id",
+        ops = list(list(op = "set", table = "cards", uid = "u3", field = "id", value = "")),
+        expected_ids = c("cards:u3:id:blank", "links:u12:from:join", "links:u11:to:join"),
+        target_id = "cards:u3:id:blank",
+        target_uid = "u3",
+        target_value = NA_character_
+      ),
+      list(
+        name = "stage 2 blank label",
+        ops = list(list(op = "set", table = "stages", uid = "u6", field = "label", value = "")),
+        expected_ids = "stages:u6:label:blank",
+        target_id = "stages:u6:label:blank",
+        target_uid = "u6",
+        target_value = NA_character_
+      ),
+      list(
+        name = "lane 2 duplicate id",
+        ops = list(list(op = "set", table = "lanes", uid = "u9", field = "id", value = "docs")),
+        expected_ids = c("lanes:u8:id:duplicate", "lanes:u9:id:duplicate", "cards:u3:lane:join", "cards:u4:lane:join"),
+        target_id = "lanes:u9:id:duplicate",
+        target_uid = "u9",
+        target_value = "docs"
+      ),
+      list(
+        name = "link 2 bad to",
+        ops = list(list(op = "set", table = "links", uid = "u11", field = "to", value = "zz")),
+        expected_ids = "links:u11:to:join",
+        target_id = "links:u11:to:join",
+        target_uid = "u11",
+        target_value = "zz"
+      ),
+      list(
+        name = "card 3 split variants join",
+        ops = list(list(op = "set", table = "cards", uid = "u3", field = "variants", value = "v1, v_bad")),
+        expected_ids = "cards:u3:variants:join",
+        target_id = "cards:u3:variants:join",
+        target_uid = "u3",
+        target_value = "v_bad"
+      )
+    )
+
+    for (case in cases) {
+      doc <- studio_doc_apply(base, case$ops)
+      faults <- studio_faults(doc)
+      expect_setequal(faults$id, case$expected_ids)
+      expect_identical(nrow(faults), length(case$expected_ids), info = case$name)
+      hit <- faults[faults$id == case$target_id, , drop = FALSE]
+      expect_identical(hit$uid, case$target_uid, info = case$name)
+      expect_identical(hit$value, case$target_value, info = case$name)
+    }
+  })
 })
 
 describe("studio_faults() and studio_fixes()", {

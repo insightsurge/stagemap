@@ -194,6 +194,24 @@ describe("studio_doc_apply()", {
     expect_s3_class(doc_d$tables$stages$date, "Date")
   })
 
+  it("preserves non-syntactic column names like 'owner name' when inserting rows", {
+    cards <- data.frame(id = "a", label = "A", stage = "s", lane = "l", check.names = FALSE, stringsAsFactors = FALSE)
+    cards[["owner name"]] <- "Ana"
+    map <- stage_map(cards, data.frame(id = "s", label = "S"), data.frame(id = "l", label = "L"))
+    doc <- studio_doc(map_parts(map))
+    doc2 <- studio_doc_apply(
+      doc,
+      list(
+        list(op = "insert", table = "cards", row = list(id = "b", label = "B", stage = "s", lane = "l"), after = NULL),
+        list(op = "insert", table = "links", row = list(from = "a", to = "b", "link note" = "n1"), after = NULL)
+      )
+    )
+    expect_true("owner name" %in% names(doc2$tables$cards))
+    expect_identical(doc2$tables$cards[["owner name"]], c("Ana", NA_character_))
+    expect_true("link note" %in% names(doc2$tables$links))
+    expect_identical(doc2$tables$links[["link note"]], "n1")
+  })
+
   it("applies delete, move and arg", {
     doc <- studio_doc(map_parts(small))
     doc <- studio_doc_apply(

@@ -31,6 +31,14 @@ studio_facts <- function(map) {
   )
 }
 
+# Projects `journal` entries to the fields the page receives (`n`, `verb`, `text`, `state`, `target`).
+studio_view_journal <- function(journal) {
+  checkmate::assert_list(journal)
+  lapply(journal, function(entry) {
+    entry[c("n", "verb", "text", "state", "target")]
+  })
+}
+
 # The code section. A stand-in that the code room's generated code replaces: one line, a call that holds the title, so
 # that Copy can be shown to copy what the server has.
 studio_view_code <- function(title) {

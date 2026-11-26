@@ -15,6 +15,7 @@ describe("studio_state_new()", {
     expect_identical(state[c("rev", "ack", "closed")], list(rev = 0L, ack = 0L, closed = FALSE))
     expect_true(state$check$ok)
     expect_identical(state$good$rev, 0L)
+    expect_identical(state$good$serial, 1L)
     expect_null(state$tour)
     expect_null(state$notice)
   })
@@ -26,6 +27,7 @@ describe("studio_state_new()", {
     expect_false(state$check$ok)
     expect_identical(nrow(state$check$faults), 1L)
     expect_identical(state$good$rev, -1L)
+    expect_identical(state$good$serial, 1L)
     expect_identical(state$tour$done[[1L]], TRUE)
   })
 
@@ -44,40 +46,71 @@ describe("studio_step()", {
 
   it("handles open with confirmation when changes exist, and loads example, blank or given", {
     s <- studio_state_new(small)
-    s <- studio_step(s, ev("open", list(template = "blank", confirm = FALSE), seq = 1L))$state
+    s$ask <- list(question = "orphans")
+    s <- studio_step(s, ev("seen", list(what = "code"), seq = 1L))$state
+    s <- studio_step(s, ev("open", list(template = "blank", confirm = FALSE), seq = 2L))$state
     expect_identical(s$template, "blank")
     expect_identical(s$rev, 1L)
+    expect_identical(s$good$serial, 2L)
+    expect_false(s$start_open)
+    expect_null(s$ask)
+    expect_identical(s$seen, character())
     expect_identical(nrow(s$doc$tables$cards), 1L)
 
+    # Edit and undo after open returns to blank base
+    s <- studio_step(s, ev("option", list(name = "title", value = "Edited"), seq = 3L))$state
+    s_undone <- studio_step(s, ev("undo", seq = 4L))$state
+    expect_identical(s_undone$doc, s_undone$base)
+    expect_identical(s_undone$doc, studio_doc(map_parts(studio_template("blank")$map)))
+
     # Make a change so opening again needs confirm = TRUE
-    s <- studio_step(s, ev("option", list(name = "title", value = "Edited"), seq = 2L))$state
-    refused <- studio_step(s, ev("open", list(template = "example", confirm = FALSE), seq = 3L))
+    s <- studio_step(s, ev("option", list(name = "title", value = "Edited 2"), seq = 5L))$state
+    refused <- studio_step(s, ev("open", list(template = "example", confirm = FALSE), seq = 6L))
     expect_match(refused$state$notice$text, "lose your changes")
     expect_identical(refused$state$confirm_open, "example")
     expect_identical(refused$state$template, "blank")
 
-    confirmed <- studio_step(refused$state, ev("open", list(template = "example", confirm = TRUE), seq = 4L))
+    # Opening broken example from a valid map bumps good$serial even when good$rev <= rev
+    before_serial <- refused$state$good$serial
+    confirmed <- studio_step(refused$state, ev("open", list(template = "example", confirm = TRUE), seq = 7L))
     expect_identical(confirmed$state$template, "example")
     expect_null(confirmed$state$confirm_open)
     expect_length(confirmed$state$journal, 0L)
+    expect_identical(confirmed$state$good$serial, before_serial + 1L)
+    expect_lt(confirmed$state$good$rev, confirmed$state$rev)
+    expect_identical(studio_step(confirmed$state, ev("done", seq = 8L))$state$notice$room, "check")
 
-    back <- studio_step(confirmed$state, ev("open", list(template = "given", confirm = FALSE), seq = 5L))$state
+    # Mark tour steps and seen, switch to blank, then reopen example: seen and tour progress reset
+    ex <- confirmed$state
+    ex <- studio_step(ex, ev("seen", list(what = "code"), seq = 9L))$state
+    uid_round <- studio_uid_of(ex$doc, "cards", "round_dose")
+    ex <- studio_step(
+      ex,
+      ev("edit", list(table = "cards", uid = uid_round, field = "status", value = "done"), seq = 10L)
+    )$state
+    expect_true(all(ex$tour$done[c(1L, 2L, 4L)]))
+    bl <- studio_step(ex, ev("open", list(template = "blank", confirm = TRUE), seq = 11L))$state
+    reopened <- studio_step(bl, ev("open", list(template = "example", confirm = FALSE), seq = 12L))$state
+    expect_identical(reopened$seen, character())
+    expect_identical(reopened$tour$done, c(TRUE, FALSE, FALSE, FALSE, FALSE, FALSE))
+
+    back <- studio_step(reopened, ev("open", list(template = "given", confirm = FALSE), seq = 13L))$state
     expect_identical(back$template, "given")
     expect_identical(back$doc$args$title, "A map")
 
     # Unknown template, invalid confirm and missing given map are refused
     expect_match(
-      studio_step(back, ev("open", list(template = "other", confirm = FALSE), seq = 6L))$state$notice$text,
+      studio_step(back, ev("open", list(template = "other", confirm = FALSE), seq = 14L))$state$notice$text,
       "Unknown"
     )
     expect_match(
-      studio_step(back, ev("open", list(template = "blank", confirm = "yes"), seq = 7L))$state$notice$text,
+      studio_step(back, ev("open", list(template = "blank", confirm = "yes"), seq = 15L))$state$notice$text,
       "Invalid"
     )
     expect_match(
       studio_step(
         studio_state_new(),
-        ev("open", list(template = "given", confirm = FALSE), seq = 8L)
+        ev("open", list(template = "given", confirm = FALSE), seq = 16L)
       )$state$notice$text,
       "No map"
     )
@@ -136,15 +169,24 @@ describe("studio_step()", {
     expect_identical(bad$state$notice$tone, "problem")
   })
 
-  it("handles target and server-made picked without echoing select for picked", {
+  it("refuses page-sent picked events and handles server picks through studio_pick()", {
     s <- studio_state_new(small)
-    pk <- studio_step(s, list(type = "picked", data = list(kind = "card", id = "b")))
+    bad_p1 <- studio_step(s, list(seq = 1L, type = "picked", data = list(kind = 1:3, id = "b"), rev = 0L))
+    expect_identical(bad_p1$state$ack, 1L)
+    expect_match(bad_p1$state$notice$text, "not an event the studio knows")
+    bad_p2 <- studio_step(s, list(type = "picked", data = "bad"))
+    expect_match(bad_p2$state$notice$text, "has no seq, rev")
+
+    pk <- studio_pick(s, "card", "b")
     expect_identical(pk$state$target, list(kind = "card", uid = "u2"))
     expect_length(pk$effects, 0L)
 
-    pk_clear <- studio_step(pk$state, list(type = "picked", data = list(kind = "all", id = NULL)))
+    pk_clear <- studio_pick(pk$state, "all", NULL)
     expect_identical(pk_clear$state$target, list(kind = "none", uid = NULL))
     expect_length(pk_clear$effects, 0L)
+
+    expect_error(studio_pick(s, c("card", "stage"), "b"), "kind")
+    expect_error(studio_pick(s, "card", c("a", "b")), "id")
 
     tg <- studio_step(pk$state, ev("target", list(kind = "none", uid = NULL), seq = 1L))
     expect_identical(tg$state$target, list(kind = "none", uid = NULL))
@@ -155,6 +197,42 @@ describe("studio_step()", {
     bad_k <- studio_step(s, ev("target", list(kind = "zone", uid = "u1"), seq = 1L))
     expect_match(bad_k$state$notice$text, "Unknown")
     expect_identical(studio_select_effect(s, s$target, s$doc, "picked"), list())
+  })
+
+  it("rebuilds check and good$serial on fix and undo, and blocks Done after undo", {
+    s <- studio_state_new()
+    s1 <- studio_step(s, ev("option", list(name = "title", value = "Edited"), seq = 1L))$state
+    expect_identical(s1$rev, 1L)
+    expect_identical(s1$good$serial, 1L)
+
+    fault_id <- s1$check$faults$id[[1L]]
+    s2 <- studio_step(s1, ev("fix", list(fault = fault_id, fix = "use"), seq = 2L))$state
+    expect_identical(s2$rev, 2L)
+    expect_true(s2$check$ok)
+    expect_identical(nrow(s2$check$faults), 0L)
+    expect_identical(s2$good$rev, 2L)
+    expect_identical(s2$good$serial, 2L)
+
+    s3 <- studio_step(s2, ev("undo", seq = 3L))$state
+    expect_identical(s3$rev, 3L)
+    expect_false(s3$check$ok)
+    expect_identical(nrow(s3$check$faults), 1L)
+    expect_lt(s3$good$rev, s3$rev)
+    expect_identical(s3$good$serial, 2L)
+    expect_identical(s3$notice$text, "Undone: Use card \"calc_dose\"")
+    expect_identical(studio_step(s3, ev("done", seq = 4L))$state$notice$room, "check")
+  })
+
+  it("adds a card to a map with a non-syntactic column name, undoes and replays", {
+    cards <- data.frame(id = "a", label = "A", stage = "s", lane = "l", check.names = FALSE, stringsAsFactors = FALSE)
+    cards[["owner name"]] <- "Ana"
+    map <- stage_map(cards, data.frame(id = "s", label = "S"), data.frame(id = "l", label = "L"))
+    s <- studio_state_new(map)
+    s1 <- studio_step(s, ev("add", list(table = "cards"), seq = 1L))$state
+    expect_identical(s1$doc$tables$cards[["owner name"]], c("Ana", NA_character_))
+    s2 <- studio_step(s1, ev("undo", seq = 2L))$state
+    expect_identical(s2$doc, s2$base)
+    expect_identical(studio_journal_replay(s2$base, s2$journal), s2$doc)
   })
 
   it("marks stale ask and emits highlight clear when rev moves", {
@@ -196,7 +274,7 @@ describe("studio_step()", {
     # Once closed, events other than ready are refused
     late <- studio_step(done$state, ev("option", list(name = "title", value = "Late"), seq = 4L))
     expect_match(late$state$notice$text, "gone back to R")
-    late_pk <- studio_step(done$state, list(type = "picked", data = list(kind = "card", id = "a")))
+    late_pk <- studio_pick(done$state, "card", "a")
     expect_match(late_pk$state$notice$text, "gone back to R")
     expect_identical(studio_step(done$state, ev("ready", seq = 5L))$state$ack, 5L)
   })
@@ -270,6 +348,8 @@ describe("replay and row key stability across 40 mixed events", {
     run("edit", list(table = "cards", uid = u_calc, field = "id", value = "calc_dose_4"))
     run("move", list(table = "stages", uid = u_req, by = -1L))
     run("edit", list(table = "cards", uid = u_log, field = "label", value = "Log calls"))
+    run("undo")
+    run("edit", list(table = "cards", uid = u_log, field = "label", value = "Log calls 2"))
     run("option", list(name = "legend", value = TRUE))
     run("option", list(name = "cell_columns", value = "auto"))
     run("edit", list(table = "cards", uid = u_round, field = "status", value = "running"))

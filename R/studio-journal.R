@@ -41,11 +41,11 @@ studio_journal_add <- function(journal, change) {
       if (!is.null(last$join) && !is.null(change$join)) {
         old_targets <- vapply(last$ops, studio_op_target, "")
         new_targets <- vapply(change$ops, studio_op_target, "")
-        both_na <- length(change$join$new_val) == 1L &&
-          length(last$join$first_val) == 1L &&
-          is.na(change$join$new_val) &&
-          is.na(last$join$first_val)
-        back <- identical(change$join$new_val, last$join$first_val) || both_na
+        a <- change$join$new_val
+        b <- last$join$first_val
+        same_num <- is.numeric(a) && is.numeric(b) && length(a) == 1L && length(b) == 1L && isTRUE(a == b)
+        both_na <- length(a) == 1L && length(b) == 1L && is.na(a) && is.na(b)
+        back <- identical(a, b) || same_num || both_na
         if (back && all(old_targets %in% new_targets)) {
           return(journal[-last_idx])
         }

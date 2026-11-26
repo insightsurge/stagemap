@@ -18,7 +18,7 @@ describe("studio_resolve() for edit", {
     ch <- resolve(doc, "edit", list(table = "cards", uid = "u1", field = "status", value = "running"))
     expect_identical(ch$key, "edit:cards:u1:status")
     expect_identical(ch$verb, "Edit")
-    expect_match(ch$text, "card a status: done > running")
+    expect_identical(ch$text, "card a status: done > running")
     doc2 <- studio_doc_apply(doc, ch$ops)
     expect_identical(studio_row(doc2, "cards", "u1")$status, "running")
 
@@ -100,6 +100,37 @@ describe("studio_resolve() for edit", {
     expect_identical(studio_fmt_val(""), "(blank)")
   })
 
+  it("updates args$highlight ids and links when a highlighted card is renamed or removed", {
+    map <- full_map(title = "A map") |>
+      stage_map_highlight(
+        c("a", "b", "c", "d"),
+        links = data.frame(from = c("a", "c"), to = c("b", "d"))
+      )
+    doc <- studio_doc(map_parts(map))
+
+    ch_ren <- resolve(doc, "edit", list(table = "cards", uid = "u2", field = "id", value = "b2"))
+    doc2 <- studio_doc_apply(doc, ch_ren$ops)
+    expect_identical(doc2$args$highlight$ids, c("a", "b2", "c", "d"))
+    expect_identical(doc2$args$highlight$links$from, c("a", "c"))
+    expect_identical(doc2$args$highlight$links$to, c("b2", "d"))
+    expect_true(studio_build(doc2)$ok)
+
+    ch_rm_b <- resolve(doc2, "remove", list(table = "cards", uid = "u2"))
+    expect_identical(ch_rm_b$text, "Remove card b2")
+    doc3 <- studio_doc_apply(doc2, ch_rm_b$ops)
+    expect_identical(doc3$args$highlight$ids, c("a", "c", "d"))
+    expect_identical(doc3$args$highlight$links, data.frame(from = "c", to = "d"))
+    expect_true(studio_build(doc3)$ok)
+
+    doc4 <- studio_doc_apply(doc3, resolve(doc3, "remove", list(table = "cards", uid = "u1"))$ops)
+    doc5 <- studio_doc_apply(doc4, resolve(doc4, "remove", list(table = "cards", uid = "u4"))$ops)
+    expect_null(doc5$args$highlight$links)
+    doc5b <- studio_doc_apply(doc5, resolve(doc5, "add", list(table = "cards"))$ops)
+    doc6 <- studio_doc_apply(doc5b, resolve(doc5b, "remove", list(table = "cards", uid = "u3"))$ops)
+    expect_null(doc6$args$highlight)
+    expect_true(studio_build(doc6)$ok)
+  })
+
   it("edits a factor column cleanly via resolve", {
     map <- stage_map(
       data.frame(id = "a", label = factor("A"), stage = "s", lane = "l", stringsAsFactors = FALSE),
@@ -135,6 +166,7 @@ describe("studio_resolve() for option", {
     doc <- studio_doc(map_parts(small))
     ch <- resolve(doc, "option", list(name = "layout", value = "levels"))
     expect_identical(ch$key, "arg:layout")
+    expect_identical(ch$text, "Set layout: grid > levels")
     doc2 <- studio_doc_apply(doc, ch$ops)
     expect_identical(doc2$args$layout, "levels")
 
@@ -163,6 +195,7 @@ describe("studio_resolve() for add, remove and move", {
   it("adds cards, stages and lanes with free ids and sets target to the new row", {
     doc <- studio_doc(map_parts(small))
     ch_card <- resolve(doc, "add", list(table = "cards"))
+    expect_identical(ch_card$text, "Add card card")
     expect_identical(ch_card$target$kind, "card")
     doc2 <- studio_doc_apply(doc, ch_card$ops)
     new_card <- studio_row(doc2, "cards", ch_card$target$uid)
@@ -171,10 +204,12 @@ describe("studio_resolve() for add, remove and move", {
     expect_identical(new_card$lane, "docs")
 
     ch_stage <- resolve(doc2, "add", list(table = "stages"))
+    expect_identical(ch_stage$text, "Add stage stage")
     doc3 <- studio_doc_apply(doc2, ch_stage$ops)
     expect_identical(studio_row(doc3, "stages", ch_stage$target$uid)$label, "New stage")
 
     ch_lane <- resolve(doc3, "add", list(table = "lanes"))
+    expect_identical(ch_lane$text, "Add lane lane")
     doc4 <- studio_doc_apply(doc3, ch_lane$ops)
     expect_identical(studio_row(doc4, "lanes", ch_lane$target$uid)$label, "New lane")
 
@@ -233,6 +268,7 @@ describe("studio_resolve() for add, remove and move", {
     expect_match(resolve(doc, "move", list(table = "stages", uid = uid_ship, by = 1L))$refused, "already last")
     expect_match(resolve(doc, "move", list(table = "stages", uid = "missing", by = 1L))$refused, "no longer")
     ch <- resolve(doc, "move", list(table = "stages", uid = uid_write, by = 1L))
+    expect_identical(ch$text, "Move stage write down")
     doc2 <- studio_doc_apply(doc, ch$ops)
     expect_identical(doc2$tables$stages$id, c("check", "write", "ship"))
   })
@@ -249,11 +285,13 @@ describe("studio_resolve() for link_add, link_reverse and fix", {
     expect_match(resolve(doc, "link_add", list(from = "u1", to = "u2", kind = "nope"))$refused, "No link kind")
 
     ch_add <- resolve(doc, "link_add", list(from = "u1", to = "u4", kind = NULL))
+    expect_identical(ch_add$text, "Link a -> d")
     doc2 <- studio_doc_apply(doc, ch_add$ops)
     expect_identical(nrow(doc2$tables$links), 4L)
 
     lk_uid <- doc2$tables$links$.studio_uid[[4L]]
     ch_rev <- resolve(doc2, "link_reverse", list(uid = lk_uid))
+    expect_identical(ch_rev$text, "Reverse link a -> d")
     expect_length(ch_rev$ops, 2L)
     doc3 <- studio_doc_apply(doc2, ch_rev$ops)
     expect_identical(studio_row(doc3, "links", lk_uid)$from, "d")
@@ -268,6 +306,7 @@ describe("studio_resolve() for link_add, link_reverse and fix", {
     expect_match(resolve(doc, "fix", list(fault = fault$id, fix = "missing"))$refused, "That problem is gone\\.")
     ch <- resolve(doc, "fix", list(fault = fault$id, fix = "use"))
     expect_identical(ch$verb, "Fix")
+    expect_identical(ch$text, "Use card \"calc_dose\"")
     doc2 <- studio_doc_apply(doc, ch$ops)
     expect_identical(nrow(studio_faults(doc2)), 0L)
     expect_match(resolve(doc2, "fix", list(fault = fault$id, fix = "use"))$refused, "That problem is gone\\.")

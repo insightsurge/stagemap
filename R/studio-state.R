@@ -8,7 +8,7 @@ studio_target_table <- function(kind) {
 }
 
 # Builds and fault-checks `doc`, updating `good` (using `fallback_map` when the initial/opened doc fails to build)
-# and `check`.
+# and `check`. `good$serial` increments whenever `good$map` is replaced so callers do not rely on `good$rev`.
 studio_state_build <- function(doc, rev, good = NULL, fallback_map = NULL) {
   studio_assert_doc(doc)
   checkmate::assert_int(rev, lower = 0L)
@@ -17,12 +17,13 @@ studio_state_build <- function(doc, rev, good = NULL, fallback_map = NULL) {
 
   built <- studio_build(doc)
   faults <- studio_faults(doc)
+  serial <- if (is.null(good) || is.null(good$serial)) 0L else good$serial
   if (built$ok) {
-    good <- list(rev = rev, map = built$value)
+    good <- list(rev = rev, map = built$value, serial = serial + 1L)
     check <- list(ok = TRUE, head = NULL, lines = list(), faults = faults, notes = built$warnings)
   } else {
     if (!is.null(fallback_map)) {
-      good <- list(rev = rev - 1L, map = fallback_map)
+      good <- list(rev = rev - 1L, map = fallback_map, serial = serial + 1L)
     }
     check <- list(
       ok = FALSE,
@@ -132,7 +133,7 @@ studio_step_open <- function(state, data) {
   }
 
   new_rev <- state$rev + 1L
-  checked <- studio_state_build(doc, new_rev, fallback_map = base_map)
+  checked <- studio_state_build(doc, new_rev, good = state$good, fallback_map = base_map)
   state$doc <- doc
   state$base <- doc
   state$journal <- list()
@@ -142,6 +143,7 @@ studio_step_open <- function(state, data) {
   state$target <- list(kind = "none", uid = NULL)
   state$ask <- NULL
   state$template <- data$template
+  state$seen <- character()
   state$tour <- if (!is.null(tour_id)) {
     list(id = tour_id, done = rep(FALSE, length(studio_tours[[tour_id]]$steps)))
   } else {
@@ -240,20 +242,22 @@ studio_select_effect <- function(state, old_target, old_doc, event_type) {
   list()
 }
 
-# Applies one event (from the page, or server-made `picked`) to `state`, returning `list(state, effects)`.
+# Handles a server-made map pick (`kind`, `id`) without emitting a `select` effect.
+studio_pick <- function(state, kind, id = NULL) {
+  checkmate::assert_list(state, names = "unique")
+  checkmate::assert_string(kind, min.chars = 1L, null.ok = TRUE)
+  checkmate::assert_string(id, null.ok = TRUE)
+  if (isTRUE(state$closed)) {
+    return(studio_refuse(state, "The map has gone back to R: nothing more changes here."))
+  }
+  state <- studio_step_picked(state, list(kind = kind, id = id))
+  state <- studio_tour_tick(state)
+  list(state = state, effects = list())
+}
+
+# Applies one page event to `state`, returning `list(state, effects)`.
 studio_step <- function(state, event) {
   checkmate::assert_list(state, names = "unique")
-  is_picked <- is.list(event) && identical(event$type, "picked")
-  if (is_picked) {
-    if (state$closed) {
-      return(studio_refuse(state, "The map has gone back to R: nothing more changes here."))
-    }
-    old_target <- state$target
-    state <- studio_step_picked(state, event$data %||% list())
-    state <- studio_tour_tick(state)
-    return(list(state = state, effects = list()))
-  }
-
   checked <- tryCatch(studio_event_check(event), stagemap_error_studio = function(e) e)
   if (inherits(checked, "error")) {
     seq <- if (is.list(event) && checkmate::test_int(event$seq, lower = 1)) as.integer(event$seq) else 0L

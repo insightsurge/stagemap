@@ -6,7 +6,8 @@
 #' session; what it shows comes from the server, so **Copy** copies the code for the latest change, also when the click
 #' comes before the server has answered.
 #'
-#' @param map A [stage_map()] widget to open the studio on, or `NULL` (the default) for a map of one card.
+#' @param map A [stage_map()] widget to open the studio on, or `NULL` (the default) to open on the built-in example map
+#'   with the start card.
 #' @param ... Must stay empty. It makes every argument after it a named argument, and a typo in an argument's name an
 #'   error.
 #' @param run `TRUE` (the default) runs the studio and waits for it to close; it needs an interactive R session.

@@ -35,6 +35,27 @@ describe("studio_facts()", {
   })
 })
 
+describe("studio_view_journal()", {
+  it("keeps only the listed page fields (n, verb, text, state, target) on journal entries", {
+    s <- studio_state_new(small)
+    s <- studio_step(
+      s,
+      list(
+        seq = 1L,
+        type = "edit",
+        data = list(table = "cards", uid = "u1", field = "label", value = "Edited"),
+        rev = 0L
+      )
+    )$state
+    entries <- studio_view_journal(s$journal)
+    expect_length(entries, 1L)
+    expect_named(entries[[1L]], c("n", "verb", "text", "state", "target"))
+    expect_identical(entries[[1L]]$verb, "Edit")
+    expect_identical(entries[[1L]]$state, "done")
+    expect_error(studio_view_journal("bad"), "journal")
+  })
+})
+
 describe("studio_view_code()", {
   it("is one line, a call that holds the title, written as R text", {
     code <- studio_view_code("Say \"hi\"")

@@ -288,7 +288,7 @@ studio_op_insert <- function(doc, op) {
       cols[[col]] <- studio_coerce_cell(op$table, col, op$row[[col]])
     }
     cols$.studio_uid <- uid
-    tbl <- as.data.frame(cols, stringsAsFactors = FALSE)
+    tbl <- as.data.frame(cols, stringsAsFactors = FALSE, check.names = FALSE)
     rownames(tbl) <- NULL
     doc$tables[[op$table]] <- tbl
     doc$tables <- doc$tables[intersect(map_table_names, names(doc$tables))]
@@ -337,7 +337,7 @@ studio_op_insert <- function(doc, op) {
       }
     }
   }
-  new_df <- as.data.frame(new_row, stringsAsFactors = FALSE)
+  new_df <- as.data.frame(new_row, stringsAsFactors = FALSE, check.names = FALSE)
   if (nrow(tbl) == 0L) {
     tbl <- new_df
   } else if (at == nrow(tbl)) {

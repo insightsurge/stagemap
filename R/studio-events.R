@@ -103,6 +103,24 @@ studio_cascade_ops <- function(doc, table, old_id, new_id) {
   if (identical(table, "cards") && identical(as_text(doc$args$target), old_id)) {
     ops[[length(ops) + 1L]] <- list(op = "arg", name = "target", value = new_id)
   }
+  if (identical(table, "cards") && !is.null(doc$args$highlight)) {
+    hl <- doc$args$highlight
+    hl_ids <- as_text(hl$ids)
+    in_ids <- old_id %in% hl_ids
+    has_links <- is.data.frame(hl$links) && nrow(hl$links) > 0L
+    in_links <- has_links && any(as_text(hl$links$from) == old_id | as_text(hl$links$to) == old_id, na.rm = TRUE)
+    if (in_ids || in_links) {
+      hl2 <- hl
+      if (in_ids) {
+        hl2$ids <- ifelse(hl_ids == old_id, new_id, hl_ids)
+      }
+      if (in_links) {
+        hl2$links$from <- ifelse(as_text(hl$links$from) == old_id, new_id, as_text(hl$links$from))
+        hl2$links$to <- ifelse(as_text(hl$links$to) == old_id, new_id, as_text(hl$links$to))
+      }
+      ops[[length(ops) + 1L]] <- list(op = "arg", name = "highlight", value = hl2)
+    }
+  }
   if (identical(table, "variants") && identical(as_text(doc$args$variant), old_id)) {
     ops[[length(ops) + 1L]] <- list(op = "arg", name = "variant", value = new_id)
   }
@@ -367,6 +385,33 @@ studio_resolve_remove <- function(doc, data) {
       }
       if (identical(as_text(doc$args$target), card_id)) {
         ops[[length(ops) + 1L]] <- list(op = "arg", name = "target", value = NULL)
+      }
+      if (!is.null(doc$args$highlight)) {
+        hl <- doc$args$highlight
+        hl_ids <- as_text(hl$ids)
+        in_ids <- card_id %in% hl_ids
+        has_links <- is.data.frame(hl$links) && nrow(hl$links) > 0L
+        in_links <- has_links && any(as_text(hl$links$from) == card_id | as_text(hl$links$to) == card_id, na.rm = TRUE)
+        if (in_ids || in_links) {
+          new_ids <- hl_ids[hl_ids != card_id]
+          if (length(new_ids) == 0L) {
+            hl2 <- NULL
+          } else {
+            hl2 <- hl
+            hl2$ids <- new_ids
+            if (in_links) {
+              keep <- as_text(hl$links$from) != card_id & as_text(hl$links$to) != card_id
+              if (any(keep)) {
+                links2 <- hl$links[keep, , drop = FALSE]
+                rownames(links2) <- NULL
+                hl2$links <- links2
+              } else {
+                hl2$links <- NULL
+              }
+            }
+          }
+          ops[[length(ops) + 1L]] <- list(op = "arg", name = "highlight", value = hl2)
+        }
       }
     }
   }
