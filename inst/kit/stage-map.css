@@ -1,4 +1,4 @@
-/* stagemap stage map 0.51.0, built from its source; do not edit. */
+/* stagemap stage map 0.60.0, built from its source; do not edit. */
 :where(:root),
 :where([data-stagemap-mode="light"]) {
   --stagemap-space-1: 4px;
