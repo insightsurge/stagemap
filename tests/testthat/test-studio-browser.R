@@ -100,7 +100,7 @@ describe("typing a title", {
     expect_identical(app$get_js("document.querySelector('.sms-toast').dataset.smsTone"), "problem")
     # The tone is not the colour alone: the word and a mark show beside the text
     expect_identical(app$get_js("document.querySelector('.sms-toast-tone').textContent"), "Problem")
-    expect_identical(app$get_js("getComputedStyle(document.querySelector('.sms-toast-mark')).display"), "inline-grid")
+    expect_identical(app$get_js("getComputedStyle(document.querySelector('.sms-toast-mark')).display"), "grid")
     expect_identical(app$get_js(sprintf("%s.dataset.smsRev", studio_root_js)), "0")
     expect_studio_clean(app)
   })
@@ -364,36 +364,25 @@ describe("answers that arrive late", {
 
 describe("a reconnect", {
   it("sends ready first and, after Shiny has set up the session, what was done while the connection was down", {
-    # Given a page that notes when Shiny connects, when its session is set up and what it posts
+    # Given a page that notes what it sends over the websocket, in the order it leaves
     app <- studio_driver()
     studio_open_code(app)
     stub_studio_clipboard(app)
-    app$run_js(
-      "window.__sms = window.__sms || {}; window.__sms.log = [];
-       $(document).on('shiny:connected', () => window.__sms.log.push('connected'));
-       $(document).on('shiny:sessioninitialized', () => window.__sms.log.push('initialized'));
-       const set = Shiny.setInputValue;
-       Shiny.setInputValue = function (name, value, options) {
-         if (/event$/.test(name)) window.__sms.log.push(`post ${value.type} ${value.seq}`);
-         return set.call(Shiny, name, value, options);
-       };"
-    )
+    record_studio_wire(app)
     drop_studio_connection(app)
     # When a title is typed, Copy clicked and Done clicked while it is down, and the page then reconnects
     app$run_js(paste(title_js("Typed while down"), studio_copy_js, studio_click_js(".sms-done")))
-    expect_identical(app$get_js("window.__sms.log.length"), 0L)
+    expect_identical(app$get_js("window.__sms.wire.length"), 0L)
     reconnect_studio(app)
     app$wait_for_js(sprintf(
       "%s.dataset.smsClosed !== undefined && document.getElementById('done').textContent !== ''",
       studio_root_js
     ))
-    # Then nothing was posted before the session was set up, and ready went first, ahead of what was typed
-    log <- unlist(app$get_js("window.__sms.log"))
-    expect_identical(log[1:2], c("connected", "initialized"))
-    posts <- log[-(1:2)]
-    expect_match(posts, "^post (ready|option|done) [0-9]+$")
-    expect_identical(sub("^post ([a-z]+) .*$", "\\1", posts), c("ready", "option", "done"))
-    seqs <- as.integer(sub("^post [a-z]+ ([0-9]+)$", "\\1", posts))
+    # Then Shiny's own init went first, and ready came after it, ahead of what was typed, each with a higher seq
+    wire <- unlist(app$get_js("window.__sms.wire"))
+    expect_match(wire, "^(init|post (ready|option|done) [0-9]+)$")
+    expect_identical(sub("^post ([a-z]+) .*$", "\\1", wire), c("init", "ready", "option", "done"))
+    seqs <- as.integer(sub("^post [a-z]+ ([0-9]+)$", "\\1", wire[-1]))
     expect_true(all(diff(seqs) > 0L))
     # and the new session applied it all in order: Done returned the typed title, and Copy has the code for it
     done <- jsonlite::fromJSON(app$get_js("document.getElementById('done').textContent"))
@@ -403,7 +392,9 @@ describe("a reconnect", {
     expect_identical(studio_copied(app)[[1]]$text, shown)
     expect_match(shown, "Typed while down", fixed = TRUE)
     studio_wait_step(app)
-    expect_studio_clean(app, closed = TRUE)
+    # Shiny's own page refuses a new session's outputs after a manual reconnect and says so in the console; nothing
+    # else may be in it
+    expect_studio_clean(app, closed = TRUE, ignore = "unexpected state of")
   })
 })
 

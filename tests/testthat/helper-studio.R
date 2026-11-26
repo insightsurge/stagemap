@@ -129,16 +129,25 @@ studio_sent <- function(app) {
   app$get_js("JSON.stringify(window.__sms.sent)") |> jsonlite::fromJSON(simplifyVector = FALSE)
 }
 
-# Records, in window.__sms.posted, every value the page hands to Shiny for the studio's event input, at the moment it
-# does so (record_studio_events() records when an event is made, this when it leaves for the server).
-record_studio_posts <- function(app) {
+# Records, in window.__sms.wire, what the page sends over its websocket, in the order it leaves: "init" for Shiny's own
+# init message and "post <type> <seq>" for each studio event. It patches WebSocket.send, so it sees the real order,
+# which Shiny's connected and sessioninitialized events do not show to a listener added after the studio's.
+record_studio_wire <- function(app) {
   checkmate::assert_r6(app, "AppDriver")
   app$run_js(
-    "window.__sms = window.__sms || {}; window.__sms.posted = [];
-     const set = Shiny.setInputValue;
-     Shiny.setInputValue = function (name, value, options) {
-       if (/event$/.test(name)) window.__sms.posted.push({ seq: value.seq, type: value.type, init: Shiny.shinyapp.config !== null });
-       return set.call(Shiny, name, value, options);
+    "window.__sms = window.__sms || {}; window.__sms.wire = [];
+     const send = WebSocket.prototype.send;
+     WebSocket.prototype.send = function (data) {
+       try {
+         const m = JSON.parse(data);
+         if (m.method === 'init') window.__sms.wire.push('init');
+         else if (m.method === 'update') {
+           for (const [name, value] of Object.entries(m.data)) {
+             if (/event/.test(name) && value && value.type) window.__sms.wire.push(`post ${value.type} ${value.seq}`);
+           }
+         }
+       } catch (e) { /* not a message of Shiny's */ }
+       return send.call(this, data);
      };"
   )
   invisible(app)
@@ -272,10 +281,16 @@ studio_console <- function(app) {
 
 # Expects the page to be clean: no console error, nothing busy, and nothing inert that is shown (a closed room is
 # hidden as well as inert). After Done (`closed = TRUE`) the sheet, the tray and the title block are inert on purpose.
-expect_studio_clean <- function(app, closed = FALSE) {
+# Console lines that match the regular expression `ignore` are left out (a test says why).
+expect_studio_clean <- function(app, closed = FALSE, ignore = NULL) {
   checkmate::assert_r6(app, "AppDriver")
   checkmate::assert_flag(closed)
-  testthat::expect_identical(studio_console(app), character())
+  checkmate::assert_string(ignore, null.ok = TRUE)
+  console <- studio_console(app)
+  if (!is.null(ignore)) {
+    console <- console[!grepl(ignore, console)]
+  }
+  testthat::expect_identical(console, character())
   state <- app$get_js(sprintf(
     "(() => { const r = %s; const shown = (n) => !n.closest('[hidden]');
       const closed = %s;
