@@ -98,18 +98,19 @@ describe("stage_map_code() on many maps", {
     expect_code_rebuilds(stage_map(cards))
   })
 
-  it("rebuilds the map from a file saved and read back as UTF-8, in a C locale", {
+  it("rebuilds the map from a file saved and read back as the help page says, in a C locale", {
     # The strings are made first: a string written with a Unicode escape in a C locale is not marked as UTF-8.
     labels <- c("caf\u00e9", "\u4e2d\u6587")
-    withr::local_locale(c(LC_CTYPE = "C"))
     map <- stage_map(data.frame(id = c("a", "b"), label = labels, stage = "s", lane = "l"))
+    expect_identical(Encoding(stage_map_tables(map)$cards$label[[1]]), "UTF-8")
+    withr::local_locale(c(LC_CTYPE = "C"))
     path <- file.path(withr::local_tempdir(), "map.R")
     writeLines(stage_map_code(map), path, useBytes = TRUE)
-    parsed <- parse(file = path, keep.source = FALSE, encoding = "UTF-8")
+    # The route of the help page, run where library(stagemap) does nothing: the tests load the package without
+    # installing it.
     env <- new.env(parent = asNamespace("stagemap"))
-    for (expr in parsed[-1]) {
-      again <- eval(expr, env)
-    }
+    env$library <- function(...) invisible(NULL)
+    again <- eval(parse(path, encoding = "UTF-8"), env)
     expect_identical(again$x$data, map$x$data)
     expect_identical(stage_map_tables(again)$cards$label, labels)
   })

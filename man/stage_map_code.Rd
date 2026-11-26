@@ -29,8 +29,11 @@ cards. A column that holds only \code{NA} is not written: the map reads it as le
 you would type them; a column of another class is written as its values inside \code{structure()}, with its attributes.
 
 The text is UTF-8, with every letter as it is. To save it so that it reads back the same in any locale, write the
-bytes as they are and read the file as UTF-8, as the example does: \code{writeLines(code, path, useBytes = TRUE)}, then
-\code{source(path, encoding = "UTF-8")}.
+bytes as they are and parse the file as UTF-8, as the example does: \code{writeLines(code, path, useBytes = TRUE)}, then
+\code{eval(parse(path, encoding = "UTF-8"))}. (\code{\link[=source]{source()}} with \code{encoding = "UTF-8"} cannot read letters beyond ASCII in a
+session whose locale is not UTF-8.) Text in the map that is not marked as UTF-8, such as a string typed in such a
+session, is written as the session holds it. A matrix column comes back as the separate columns \code{\link[=data.frame]{data.frame()}}
+makes of it, and a raw column comes back without its names.
 }
 \examples{
 map <- stage_map(
@@ -43,7 +46,7 @@ code
 # Save it as a script, and run it to get the map back.
 path <- tempfile(fileext = ".R")
 writeLines(code, path, useBytes = TRUE)
-again <- source(path, encoding = "UTF-8")$value
+again <- eval(parse(path, encoding = "UTF-8"))
 class(again)
 unlink(path)
 }

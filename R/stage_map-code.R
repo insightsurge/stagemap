@@ -16,8 +16,11 @@
 #' you would type them; a column of another class is written as its values inside `structure()`, with its attributes.
 #'
 #' The text is UTF-8, with every letter as it is. To save it so that it reads back the same in any locale, write the
-#' bytes as they are and read the file as UTF-8, as the example does: `writeLines(code, path, useBytes = TRUE)`, then
-#' `source(path, encoding = "UTF-8")`.
+#' bytes as they are and parse the file as UTF-8, as the example does: `writeLines(code, path, useBytes = TRUE)`, then
+#' `eval(parse(path, encoding = "UTF-8"))`. ([source()] with `encoding = "UTF-8"` cannot read letters beyond ASCII in a
+#' session whose locale is not UTF-8.) Text in the map that is not marked as UTF-8, such as a string typed in such a
+#' session, is written as the session holds it. A matrix column comes back as the separate columns [data.frame()]
+#' makes of it, and a raw column comes back without its names.
 #'
 #' @inheritParams stage_map_tables
 #' @returns A character vector of class `stagemap_code`, one line of code per element; it prints as the code. A `map`
@@ -35,7 +38,7 @@
 #' # Save it as a script, and run it to get the map back.
 #' path <- tempfile(fileext = ".R")
 #' writeLines(code, path, useBytes = TRUE)
-#' again <- source(path, encoding = "UTF-8")$value
+#' again <- eval(parse(path, encoding = "UTF-8"))
 #' class(again)
 #' unlink(path)
 #' @export

@@ -110,6 +110,16 @@ describe("code_vector()", {
 })
 
 describe("code_value()", {
+  it("writes an item's attributes other than names in structure()", {
+    x <- list(structure(1:4, dim = c(2L, 2L)), structure(list(1), class = "foo"), c(a = 1))
+    text <- code_flat(code_value(x))
+    expect_identical(
+      text,
+      "list(structure(c(1L, 2L, 3L, 4L), dim = c(2L, 2L)), structure(list(1), class = \"foo\"), c(a = 1))"
+    )
+    expect_identical(eval(parse(text = text)), x)
+  })
+
   it("writes NULL, a data frame, a list or a vector", {
     expect_identical(code_flat(code_value(NULL)), "NULL")
     expect_identical(code_flat(code_value(list(a = 1, NULL))), "list(a = 1, NULL)")
@@ -149,6 +159,25 @@ describe("code_frame()", {
       "stats::setNames(data.frame(x1 = c(1, 2), x2 = \"x\"), c(\"stringsAsFactors\", \"my col\"))"
     )
     expect_identical(eval(parse(text = text)), x)
+  })
+
+  it("keeps the names of a named list column without making them row names", {
+    x <- data.frame(id = c("a", "b"))
+    x$about <- I(list(p = 1, q = "r"))
+    text <- code_flat(code_frame(x))
+    expect_match(text, "row.names = NULL", fixed = TRUE)
+    expect_identical(eval(parse(text = text)), x)
+    # The same in a table written inside stats::setNames().
+    names(x)[1] <- "row.names"
+    expect_identical(eval(parse(text = code_flat(code_frame(x)))), x)
+  })
+
+  it("writes a matrix column with its dim, which data.frame() makes into columns", {
+    x <- data.frame(id = c("a", "b"))
+    x$m <- matrix(1:4, 2L)
+    back <- eval(parse(text = code_flat(code_frame(x))))
+    expect_identical(names(back), c("id", "m.1", "m.2"))
+    expect_identical(back$m.2, 3:4)
   })
 
   it("keeps a name R cannot read bare, with check.names = FALSE", {

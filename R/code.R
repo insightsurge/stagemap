@@ -186,7 +186,8 @@ code_vector <- function(x) {
   code_call("c", args)
 }
 
-# Any value as a node: NULL, a data frame, an atomic vector, or a list (written item by item in `list()`).
+# Any value as a node: NULL, a data frame, an atomic vector, or a list (written item by item in `list()`), with its
+# attributes.
 code_value <- function(x) {
   checkmate::assert(
     checkmate::check_data_frame(x),
@@ -198,6 +199,14 @@ code_value <- function(x) {
   }
   if (is.data.frame(x)) {
     return(code_frame(x))
+  }
+  # An item that is not an object but has attributes (a matrix's `dim`, a list's class) gets them in structure().
+  extra <- attributes(x)
+  extra$names <- NULL
+  if ((is.list(x) || !is.object(x)) && length(extra) > 0L) {
+    bare <- x
+    attributes(bare) <- if (!is.null(names(x))) list(names = names(x))
+    return(code_call("structure", c(list(code_value(bare)), lapply(extra, code_value))))
   }
   if (is.list(x)) {
     args <- lapply(x, code_value)
@@ -235,15 +244,27 @@ code_frame <- function(x) {
       class(items) <- setdiff(class(column), "AsIs")
       return(code_call("I", list(code_value(unclass(items)))))
     }
+    # A matrix keeps its `dim`, so data.frame() makes its columns from it.
+    if (!is.null(dim(column))) {
+      return(code_value(column))
+    }
     code_vector(if (constant[[i]]) column[1L] else column)
   })
+  # A column with names would give data.frame() its row names: `row.names = NULL` keeps them as numbers.
+  named <- any(vapply(columns, function(column) !is.null(names(column)), logical(1)))
   if (any(names(columns) %in% code_frame_args)) {
     names(args) <- paste0("x", seq_along(args))
+    if (named) {
+      args$row.names <- code_atom("NULL")
+    }
     return(code_call("stats::setNames", list(code_call("data.frame", args), code_vector(names(columns)))))
   }
   names(args) <- names(columns)
   if (any(code_name(names(columns)) != names(columns))) {
     args$check.names <- code_atom("FALSE")
+  }
+  if (named) {
+    args$row.names <- code_atom("NULL")
   }
   code_call("data.frame", args)
 }
