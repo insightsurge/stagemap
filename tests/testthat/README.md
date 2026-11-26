@@ -81,3 +81,18 @@ that makes a change and fires the action without waiting in between, then checks
    `skip_unless_extended()`.
 3. Its browser tests in `test-<name>-browser.R`, starting with `skip_without_chrome()`; its snapshot tests in
    `test-<name>-snap.R`. A Shiny app or view gets one "do X, then Y at once" test for each action (above).
+
+## Studio helpers and scenarios
+
+- **Helpers** (`helper-studio.R`): `studio_small()`, `studio_large()`, and `studio_steps()` build the studio's test maps
+  with no random numbers. `studio_driver()` starts `apps/studio/app.R` on the chosen fixture, installs
+  `studio_count_shim()` before the page's scripts, and waits for the first drawn message and map. Browser tests act
+  and synchronise through `studio_do()`, `studio_wait_step()`, `studio_wait_map()`, `studio_stamp()`,
+  `studio_section()`, `studio_type()`, `studio_press()`, `studio_emulate()`, `hold_studio_events()` /
+  `release_studio_events()`, `hold_studio_messages()` / `release_studio_messages()`, `wait_studio_held()`,
+  `stub_studio_clipboard()`, `studio_counts()`, and `expect_studio_clean()`.
+- **Scenarios** (`apps/studio/scenarios.csv`): lists every studio user action (`SMS-001` onwards, `auto` or `manual`).
+  `test-studio-scenarios.R` verifies the table's structure and checks that each `auto` scenario ID appears in an `it()`
+  description of its area's browser test file.
+- **Leak count** (`test-studio-leak-browser.R`): runs 30 rounds of shell actions and compares `studio_counts()`
+  (listeners, active observers, pending timers, DOM nodes) against the warm-up reading.
