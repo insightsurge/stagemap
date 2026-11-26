@@ -1,8 +1,9 @@
 /*
  * The shell: which room of the tray is open and where focus goes, the toast, and the closed state after Done. Rooms open
  * and close from their buttons in the title block (`data-sms-room`, with `aria-expanded` and `aria-controls`); a closed
- * room is hidden and `inert`, and so is the tray while no room is open. Escape closes the room opened last and puts
- * focus back on its button. On a phone (640px and below) one room is open at a time.
+ * room is hidden and `inert`, and so is the tray while no room is open. Escape closes the room opened last; focus goes
+ * back to its button when it was inside the room, and stays where it was otherwise. On a phone (640px and below) one
+ * room is open at a time.
  */
 import { setText } from './dom.js';
 
@@ -32,14 +33,18 @@ export function createShell(root, boot, tools) {
     open.push(name);
     tray.inert = false;
     root.dataset.smsTray = open.join(' ');
+    /* Focus goes into the room, to its heading, so the next Tab reaches the room's first control. */
+    room.querySelector('[tabindex="-1"]')?.focus({ preventScroll: true });
   }
 
-  /* Closes the room `name`; with `refocus`, focus goes back to the button that opened it. */
+  /* Closes the room `name`; with `refocus`, focus that was inside the room goes back to the button that opened it. */
   function closeRoom(name, refocus = true) {
     const index = open.indexOf(name);
     if (index < 0) return;
     const button = buttonOf(name);
     const room = roomOf(button);
+    /* Read before the room is hidden, which moves focus away: only focus that was inside the room goes back. */
+    const inside = room.contains(document.activeElement);
     open.splice(index, 1);
     room.hidden = true;
     room.inert = true;
@@ -50,7 +55,7 @@ export function createShell(root, boot, tools) {
     } else {
       root.dataset.smsTray = open.join(' ');
     }
-    if (refocus) button.focus();
+    if (refocus && inside) button.focus();
   }
 
   function toggleRoom(name) {
@@ -69,12 +74,14 @@ export function createShell(root, boot, tools) {
   /* A short message in the toast (a status region), gone after a while. `tone` is "info" or "problem". */
   function toast(text, tone = 'info') {
     const box = root.querySelector('.sms-toast');
+    setText(box.querySelector('.sms-toast-tone'), tone === 'problem' ? boot.labels.problem : '');
     setText(box.querySelector('.sms-toast-text'), text);
     box.dataset.smsOn = '';
     box.dataset.smsTone = tone;
     cancel(toastTimer);
     toastTimer = later(() => {
       delete box.dataset.smsOn;
+      setText(box.querySelector('.sms-toast-tone'), '');
       setText(box.querySelector('.sms-toast-text'), '');
     }, TOAST_MS);
   }

@@ -37,6 +37,7 @@ studio_ui <- function(id, options = list()) {
         tags$section(class = "sms-start", id = ns("start"), `aria-label` = "Start", hidden = NA)
       ),
       tags$aside(class = "sms-inspector", id = ns("inspector"), `aria-label` = "Inspector", hidden = NA),
+      studio_ui_block(ns),
       tags$div(
         class = "sms-tray",
         id = ns("tray"),
@@ -58,8 +59,13 @@ studio_ui <- function(id, options = list()) {
           )
         )
       ),
-      studio_ui_block(ns),
-      tags$div(class = "sms-toast", role = "status", tags$span(class = "sms-toast-text")),
+      tags$div(
+        class = "sms-toast",
+        role = "status",
+        tags$span(class = "sms-toast-mark", `aria-hidden` = "true", "!"),
+        tags$span(class = "sms-toast-tone"),
+        tags$span(class = "sms-toast-text")
+      ),
       tags$div(class = "sms-closed", role = "status"),
       tags$script(type = "application/json", class = "sms-boot", studio_boot(options))
     )
@@ -115,7 +121,8 @@ studio_ui_room <- function(ns, name, title, head = list(), body = list()) {
     inert = NA,
     tags$div(
       class = "sms-room-head",
-      tags$h2(id = ns(paste0("room-", name, "-title")), title),
+      # Focus goes to the heading when the room opens, so the next Tab reaches the room's first control.
+      tags$h2(id = ns(paste0("room-", name, "-title")), tabindex = "-1", title),
       head,
       tags$button(
         class = "sms-btn",
@@ -169,7 +176,8 @@ studio_ui_block <- function(ns) {
       type = "button",
       role = "switch",
       `aria-checked` = "false",
-      `aria-label` = "Dark mode",
+      # The accessible name starts with the visible words, as the label-in-name rule asks.
+      `aria-label` = "Theme, dark mode",
       `data-sms-theme` = "toggle",
       tags$span(class = "sms-lab", "Theme"),
       tags$span(
@@ -235,6 +243,7 @@ studio_labels <- function() {
     copy_late = "Could not copy: the server did not answer in time. Try again.",
     copy_manual = "Could not copy by itself. The code is selected: press Ctrl+C (Cmd+C on a Mac).",
     closed = "The map has gone back to R. You can close this tab.",
+    problem = "Problem",
     line = "line",
     lines = "lines"
   )

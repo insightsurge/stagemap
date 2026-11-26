@@ -40,10 +40,19 @@
   cursor: pointer;
 }
 
+/* The ring is a box-shadow, which forced-colors mode removes; the outline is transparent, so there it shows in the
+   system's colour. */
 .sms :focus-visible {
-  outline: none;
+  outline: 2px solid transparent;
+  outline-offset: 2px;
   box-shadow: var(--_stagemap-studio-ring);
   border-radius: 3px;
+}
+
+@media (forced-colors: active) {
+  .sms :focus-visible {
+    outline-color: Highlight;
+  }
 }
 
 .sms .sms-skip {
@@ -324,6 +333,7 @@
 .sms button.sms-cell:focus-visible {
   box-shadow: inset 0 0 0 3px var(--_stagemap-studio-blue);
   border-radius: 0;
+  outline-offset: -4px;
 }
 
 .sms .sms-brand {
@@ -393,6 +403,7 @@
   box-shadow:
     inset 0 0 0 3px var(--_stagemap-studio-panel),
     inset 0 0 0 5px var(--_stagemap-studio-ink);
+  outline-offset: -4px;
 }
 
 .sms .sms-theme {
@@ -439,6 +450,7 @@
 .sms .sms-theme:focus-visible {
   box-shadow: inset 0 0 0 3px var(--_stagemap-studio-blue);
   border-radius: 0;
+  outline-offset: -4px;
 }
 
 /* After Done: the page says the map has gone back to R. */

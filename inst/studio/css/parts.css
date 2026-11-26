@@ -95,8 +95,33 @@
   bottom: calc(var(--_stagemap-studio-block-h) + var(--_stagemap-studio-tray-h) + 14px);
 }
 
+/* The tone is never the colour alone: a problem also has a mark and the word. The edge colour is the other mode's red,
+   so it keeps 3:1 against the toast, which is dark in the light theme and light in the dark one. */
+.sms .sms-toast-mark,
+.sms .sms-toast-tone:empty {
+  display: none;
+}
+
 .sms .sms-toast[data-sms-tone="problem"] {
-  border-left: 4px solid var(--_stagemap-studio-red);
+  border: 2px solid var(--_stagemap-studio-toast-edge);
+}
+
+.sms .sms-toast[data-sms-tone="problem"] .sms-toast-mark {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--_stagemap-studio-toast-edge);
+  border-radius: 50%;
+  color: var(--_stagemap-studio-toast-edge);
+  font-weight: 700;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.sms .sms-toast-tone {
+  font-weight: 700;
 }
 
 .sms .sms-toast:not([data-sms-on]),

@@ -66,6 +66,30 @@ describe("studio_ui()", {
     expect_match(html, "<div class=\"sms-tray\" id=\"studio-tray\" inert>", fixed = TRUE)
   })
 
+  it("puts the title block before the tray, so Tab goes on from a room's button into the room", {
+    expect_lt(regexpr("<nav class=\"sms-block\"", html), regexpr("<div class=\"sms-tray\"", html))
+  })
+
+  it("lets focus move to each room's heading when the room opens", {
+    headings <- regmatches(html, gregexpr("<h2 id=\"studio-room-[a-z]+-title\"[^>]*>", html))[[1]]
+    expect_length(headings, 4L)
+    expect_true(all(grepl("tabindex=\"-1\"", headings, fixed = TRUE)))
+  })
+
+  it("names the theme switch with the words it shows, first", {
+    switch <- regmatches(html, regexpr("<button class=\"sms-theme\"[^>]*>", html))
+    expect_match(attr_values(switch, "aria-label"), "^Theme")
+    expect_match(html, "<span class=\"sms-lab\">Theme</span>", fixed = TRUE)
+  })
+
+  it("draws a toast with a mark and a word for a problem, beside its text", {
+    toast <- sub(".*(<div class=\"sms-toast\".*?</div>).*", "\\1", html)
+    expect_match(toast, "sms-toast-mark", fixed = TRUE)
+    expect_match(toast, "sms-toast-tone", fixed = TRUE)
+    expect_match(toast, "sms-toast-text", fixed = TRUE)
+    expect_identical(studio_labels()$problem, "Problem")
+  })
+
   it("is in English", {
     expect_identical(attr(studio_ui("studio"), "lang"), "en")
   })
