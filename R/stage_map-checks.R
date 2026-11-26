@@ -6,7 +6,7 @@
 # alone until that table arrives, and is the engine's to report if it never does.
 
 # The tables of the map: the name of each, and the singular of a row (for a message) and the function that gives it.
-stage_map_tables <- list(
+stage_map_table_words <- list(
   cards = list(row = "card", given = "`cards` of `stage_map()`"),
   stages = list(row = "stage", given = "`stages` of `stage_map()`"),
   lanes = list(row = "lane", given = "`lanes` of `stage_map()`"),
@@ -60,7 +60,7 @@ format_field <- function(x) {
 # The problems with ids that are given twice in a table, as cli message lines; NULL when there are none.
 stage_map_duplicate_problems <- function(data) {
   checkmate::assert_list(data, names = "named")
-  lines <- lapply(names(stage_map_tables), function(name) {
+  lines <- lapply(names(stage_map_table_words), function(name) {
     ids <- if (is.data.frame(data[[name]])) as_text(data[[name]]$id)
     twice <- unique(ids[!is.na(ids) & duplicated(ids)])
     if (length(twice) == 0L) {
@@ -71,7 +71,7 @@ stage_map_duplicate_problems <- function(data) {
         format_field(paste0(name, "$id")),
         cli::format_inline(" has ids given more than once: {.val {twice}}.")
       ),
-      paste0("Give each ", stage_map_tables[[name]]$row, " one row.")
+      paste0("Give each ", stage_map_table_words[[name]]$row, " one row.")
     )
   })
   unlist(lines)
@@ -94,7 +94,7 @@ stage_map_join_problems <- function(data) {
       if (identical(to, "kinds") && length(found) > 0L) {
         return(check_lines(
           paste0(field, cli::format_inline(" names kinds ({.val {found}}), but no {.arg kinds} were given.")),
-          paste0("Give the kinds in ", stage_map_tables$kinds$given, ", or leave ", field, " out.")
+          paste0("Give the kinds in ", stage_map_table_words$kinds$given, ", or leave ", field, " out.")
         ))
       }
       return(NULL)
@@ -109,9 +109,9 @@ stage_map_join_problems <- function(data) {
         "Use an id from ",
         target_ids,
         ", or add that ",
-        stage_map_tables[[to]]$row,
+        stage_map_table_words[[to]]$row,
         " to ",
-        stage_map_tables[[to]]$given,
+        stage_map_table_words[[to]]$given,
         "."
       )
     )
@@ -129,7 +129,7 @@ stage_map_option_problems <- function(data) {
       return(NULL)
     }
     check_lines(
-      cli::format_inline("{.arg {option}} is not a {stage_map_tables[[to]]$row} of the map: {.val {value}}."),
+      cli::format_inline("{.arg {option}} is not a {stage_map_table_words[[to]]$row} of the map: {.val {value}}."),
       paste0("Use an id from ", format_field(paste0(to, "$id")), ".")
     )
   }
