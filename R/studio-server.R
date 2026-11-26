@@ -69,7 +69,7 @@ studio_server <- function(id, map = NULL, on_done = shiny::stopApp, options = li
       )
     })
 
-    output$map <- render_stage_map(studio_display_map(first$map))
+    output$map <- render_stage_map(studio_display_map(first$good$map))
   })
 }
 

@@ -27,7 +27,7 @@ describe("studio_view()", {
 
 describe("studio_facts()", {
   it("counts cards, stages and lanes, in the singular for one", {
-    expect_identical(studio_facts(studio_first_map()), "1 card in 1 stage and 1 lane")
+    expect_identical(studio_facts(studio_template("blank")$map), "1 card in 1 stage and 1 lane")
   })
 
   it("checks the map", {

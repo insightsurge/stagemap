@@ -6,11 +6,12 @@
 # The view of `state`: the sections `header`, `status`, `notice` and `code`.
 studio_view <- function(state) {
   checkmate::assert_list(state, names = "unique")
+  title <- state$doc$args$title %||% ""
   list(
-    header = list(title = state$title, facts = studio_facts(state$map), template = NULL),
-    status = list(drawn_rev = state$rev, problems = 0L, closed = state$closed),
+    header = list(title = title, facts = studio_facts(state$good$map), template = NULL),
+    status = list(drawn_rev = state$good$rev, problems = nrow(state$check$faults), closed = state$closed),
     notice = state$notice,
-    code = studio_view_code(state$title)
+    code = studio_view_code(title)
   )
 }
 
