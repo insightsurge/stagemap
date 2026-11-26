@@ -59,6 +59,39 @@ describe("studio_server()", {
     })
   })
 
+  it("steps no event before ready: a replayed done neither closes the studio nor calls on_done", {
+    # Given a session that starts with the last event of an earlier one (Shiny's init carries it), a done
+    log <- local_studio_log()
+    on_done <- function(map) log$done[[length(log$done) + 1L]] <- map
+    shiny::testServer(studio_server, args = list(map = small, on_done = on_done), {
+      session$setInputs(event = event(7L, "done"))
+      session$setInputs(event = event(8L, "option", list(name = "title", value = "Old edit")))
+      # Then nothing is answered and nothing is called
+      expect_length(log$messages, 0L)
+      expect_length(log$done, 0L)
+      # When the page then asks with ready
+      session$setInputs(event = event(3L, "ready"))
+      # Then it gets the map as it was opened, open, with the ack of the ready alone
+      expect_length(log$messages, 1L)
+      expect_identical(log$messages[[1]]$ack, 3L)
+      expect_identical(log$messages[[1]]$sections$header$title, "A map")
+      expect_false(log$messages[[1]]$sections$status$closed)
+      expect_length(log$done, 0L)
+    })
+  })
+
+  it("acknowledges each event as it applies it, in the order they arrive after ready", {
+    log <- local_studio_log()
+    shiny::testServer(studio_server, args = list(map = small), {
+      session$setInputs(event = event(10L, "ready"))
+      session$setInputs(event = event(11L, "option", list(name = "title", value = "First")))
+      session$setInputs(event = event(12L, "option", list(name = "title", value = "Second")))
+      expect_identical(vapply(log$messages, function(m) m$ack, integer(1)), c(10L, 11L, 12L))
+      expect_match(log$messages[[2]]$sections$code$text, "First", fixed = TRUE)
+      expect_match(log$messages[[3]]$sections$code$text, "Second", fixed = TRUE)
+    })
+  })
+
   it("sends every section again when the page asks with ready again", {
     log <- local_studio_log()
     shiny::testServer(studio_server, args = list(map = small), {

@@ -17,14 +17,15 @@ error.}
 }
 \value{
 With \code{run = TRUE}, the map from \strong{Done} (a \code{\link[=stage_map]{stage_map()}} widget, with the title set in the studio),
-invisibly, or \code{NULL} invisibly when the app was stopped another way. With \code{run = FALSE}, the app, a
+invisibly, or \code{NULL} invisibly when the studio's page was closed without \strong{Done}. With \code{run = FALSE}, the app, a
 \code{shiny.appobj}.
 }
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}} \code{stage_map_studio()} opens the stagemap studio, a 'Shiny' app that shows a map
 on a drawing sheet, with its title above it and the R code that makes it one click away. Click \strong{Done} to close the
-studio and return the map to R. The studio runs in this R session; what it shows comes from the server, so \strong{Copy}
-copies the code for the latest change, also when the click comes before the server has answered.
+studio and return the map to R; closing its page without \strong{Done} returns \code{NULL}. The studio runs in this R
+session; what it shows comes from the server, so \strong{Copy} copies the code for the latest change, also when the click
+comes before the server has answered.
 }
 \examples{
 if (rlang::is_installed("shiny")) {

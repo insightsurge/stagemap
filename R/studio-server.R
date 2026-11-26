@@ -3,9 +3,10 @@
 # leaves after the outputs of the same flush. No observer, reactive or handler is made inside another, so a session
 # always has the same number of them.
 
-# The server of the studio module `id`, opened on `map` (NULL for a map of one card). `on_done` is called with the map
-# once Done has been answered on the page. `options` are the page's settings (studio_options()); the server checks them
-# and the page reads them from the boot JSON.
+# The server of the studio module `id`, opened on `map` (NULL for a map of one card). The page's events reach it in the
+# order they were sent, `ready` first, so the `ack` of an answer is the last event the server has applied. `on_done` is
+# called with the map once Done has been answered on the page. `options` are the page's settings (studio_options());
+# the server checks them and the page reads them from the boot JSON.
 studio_server <- function(id, map = NULL, on_done = shiny::stopApp, options = list()) {
   checkmate::assert_string(id, min.chars = 1L)
   checkmate::assert_class(map, "stagemap_widget", null.ok = TRUE)
@@ -26,7 +27,14 @@ studio_server <- function(id, map = NULL, on_done = shiny::stopApp, options = li
 
     shiny::observeEvent(input$event, {
       event <- input$event
-      if (is.list(event) && identical(event$type, "ready")) {
+      is_ready <- is.list(event) && identical(event$type, "ready")
+      # The page sends `ready` first. An event that comes before it is not the page's own: when a page reconnects, the
+      # new session starts with the last event of the old one (Shiny's `init` carries every input), which may be a
+      # `done`. Only `ready` is stepped until it has come.
+      if (!outbox$ready && !is_ready) {
+        return()
+      }
+      if (is_ready) {
         # The page starts again (a first load or a reconnect): it gets every section.
         outbox$ready <- TRUE
         outbox$view <- NULL

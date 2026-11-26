@@ -24,14 +24,17 @@ export function createStore(root, boot, tools) {
   const view = {};
   const waiters = new Set(); /* whenInStep() promises: { target, resolve, reject, timer } */
   const listeners = new Set();
-  const waiting = []; /* events sent before Shiny connected */
+  const waiting = []; /* events sent while the session is not initialised, in the order they were sent */
   let seq = 0;
   let sent = 0;
   let ack = 0;
   let n = 0;
   let rev = 0;
-  let connected = Boolean(window.Shiny?.shinyapp?.isConnected?.());
-  let started = connected;
+  /* Whether events may go out: the session is initialised (Shiny has applied its `init` message), which is later than
+     `shiny:connected`. `begun` says a session was initialised before, so the next one is a reconnect. */
+  let connected = Boolean(window.Shiny?.shinyapp?.config) && Boolean(window.Shiny?.shinyapp?.isConnected?.());
+  let begun = connected;
+  let restarting = false; /* the `ready` for the next session is already waiting */
 
   function post(event) {
     window.Shiny.setInputValue(`${ns}event`, event, { priority: 'event' });
@@ -42,9 +45,8 @@ export function createStore(root, boot, tools) {
     else root.removeAttribute('aria-busy');
   }
 
-  /* Sends the event `type` with `data` and returns its seq. Held text goes first. */
-  function send(type, data = {}) {
-    flush();
+  /* Numbers and raises the event `type`; it goes out at once, or waits for the session. */
+  function emit(type, data) {
     seq += 1;
     const event = { seq, type, data, rev };
     sent = seq;
@@ -58,6 +60,12 @@ export function createStore(root, boot, tools) {
       else waiting.push(event);
     }
     return seq;
+  }
+
+  /* Sends the event `type` with `data` and returns its seq. Held text goes first. */
+  function send(type, data = {}) {
+    flush();
+    return emit(type, data);
   }
 
   /* Draws a message: its sections join the view, the subscribers draw them, then the root says what it shows. */
@@ -128,28 +136,36 @@ export function createStore(root, boot, tools) {
     return () => listeners.delete(listener);
   }
 
-  /* Shiny connected: what waited goes out. After a reconnect the server has a new session, whose messages count from
-     1 again, so the page forgets its count and asks for everything with `ready`. */
-  function onConnected() {
-    connected = true;
-    if (started) {
-      n = 0;
-      send('ready');
-    }
-    started = true;
-    for (const event of waiting.splice(0)) post(event);
-  }
+  /* The connection dropped. The next session starts from nothing and its server steps no event before `ready`, so the
+     `ready` that asks for everything is numbered now, once for the gap: every event typed from here on has a higher
+     seq, and the answer to `ready` cannot acknowledge an edit the new session has not applied. It does not flush held
+     text first, which would number that text ahead of it. */
   function onDisconnected() {
     connected = false;
+    if (begun && !restarting) {
+      restarting = true;
+      emit('ready', {});
+    }
+  }
+
+  /* Shiny has applied its `init` message: what waited goes out, in order. It is posted here and not on
+     `shiny:connected`, which comes before `init`, whose copy of the inputs would overwrite what was posted. After a
+     reconnect the server has a new session, whose messages count from 1 again, so the page forgets its count. */
+  function onInitialized() {
+    connected = true;
+    if (begun) n = 0;
+    begun = true;
+    restarting = false;
+    for (const event of waiting.splice(0)) post(event);
   }
 
   const $ = window.jQuery;
-  $?.(document).on('shiny:connected', onConnected);
+  $?.(document).on('shiny:sessioninitialized', onInitialized);
   $?.(document).on('shiny:disconnected', onDisconnected);
   root.addEventListener('stagemap-studio:deliver', (event) => apply(event.detail), { signal });
 
   function destroy() {
-    $?.(document).off('shiny:connected', onConnected);
+    $?.(document).off('shiny:sessioninitialized', onInitialized);
     $?.(document).off('shiny:disconnected', onDisconnected);
     waiters.clear();
     listeners.clear();

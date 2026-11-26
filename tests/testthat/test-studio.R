@@ -67,6 +67,67 @@ describe("stage_map_studio()", {
   })
 })
 
+describe("stage_map_studio() when the page is closed", {
+  skip_if_not_installed("shiny")
+
+  # Runs the app that stage_map_studio() hands to studio_run(), with the stand-ins for its timer and its stop, and
+  # returns what they recorded.
+  close_page <- function(run, env = parent.frame()) {
+    seen <- new.env()
+    seen$stops <- 0L
+    seen$timers <- list()
+    local_mocked_bindings(
+      studio_after = function(seconds, fn) seen$timers[[length(seen$timers) + 1L]] <- fn,
+      studio_stop = function() seen$stops <- seen$stops + 1L,
+      studio_interactive = function() TRUE,
+      studio_run = function(app) {
+        seen$app <- app
+        NULL
+      },
+      .env = env
+    )
+    if (run) {
+      stage_map_studio(small)
+    } else {
+      seen$app <- stage_map_studio(small, run = FALSE)
+    }
+    seen
+  }
+
+  it("stops the app with NULL once its page is gone without Done", {
+    seen <- close_page(run = TRUE)
+    shiny::testServer(seen$app, {
+      session$setInputs(`studio-event` = list(seq = 1L, type = "ready", data = list(), rev = 0L))
+      session$close()
+    })
+    # The stop waits for the timer, so a page that reloads can open its new session first
+    expect_identical(seen$stops, 0L)
+    seen$timers[[1]]()
+    expect_identical(seen$stops, 1L)
+  })
+
+  it("does not stop the app after Done, which has already returned the map", {
+    seen <- close_page(run = TRUE)
+    shiny::testServer(seen$app, {
+      session$setInputs(`studio-event` = list(seq = 1L, type = "ready", data = list(), rev = 0L))
+      session$setInputs(`studio-event` = list(seq = 2L, type = "done", data = list(), rev = 0L))
+      session$flushReact()
+      session$close()
+    })
+    seen$timers[[1]]()
+    expect_identical(seen$stops, 0L)
+  })
+
+  it("leaves an app from run = FALSE running when its page closes", {
+    seen <- close_page(run = FALSE)
+    shiny::testServer(seen$app, {
+      session$close()
+    })
+    expect_length(seen$timers, 0L)
+    expect_identical(seen$stops, 0L)
+  })
+})
+
 describe("studio_interactive()", {
   it("says whether R runs interactively", {
     expect_identical(studio_interactive(), interactive())
