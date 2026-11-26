@@ -144,6 +144,7 @@ A week before a review, a programmer is asked which study requirements have no t
 | Draw | `stage_map()`, `add_links()`, `add_zones()`, `add_steps()`, `add_variants()` (experimental) |
 | Ask | `sm_trace()`, `sm_orphans()`, `sm_missing()` |
 | Shiny | `stage_map_output()`, `render_stage_map()`, `stage_map_proxy()`, `stage_map_select()`, `stage_map_highlight()`, `stage_map_show()` (experimental), `stage_map_hide()` (experimental), `stage_map_enable()` (experimental), `stage_map_disable()` (experimental) |
+| Studio | `stage_map_studio()` (experimental): change a map's title in an app, copy its R code, and take the map back to R |
 
 Read the [Get started](https://insightsurge.github.io/stagemap/articles/stagemap.html) article (`vignette("stagemap")`) for zones, steps and Shiny, or run the demo app with `shiny::runApp(system.file("examples", "shiny-demo", package = "stagemap"))`.
 

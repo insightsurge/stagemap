@@ -68,3 +68,6 @@ reference:
     contents:
       - stage_map_output
       - stage_map_select
+  - title: Studio
+    contents:
+      - stage_map_studio

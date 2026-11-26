@@ -1,0 +1,79 @@
+/*
+ * The R code room: numbered lines on a dark code sheet, in both themes. A changed line is marked with the yellow
+ * pencil and the word "changed", so the mark does not rest on colour alone.
+ */
+.sms .sms-code {
+  background: var(--_stagemap-studio-code-bg);
+  color: var(--_stagemap-studio-code-ink);
+  font: 13px / 1.6 var(--_stagemap-studio-mono);
+  margin: 0;
+  padding: 10px 0;
+  overflow: auto;
+  border-radius: 2px;
+  counter-reset: sms-line;
+  tab-size: 2;
+}
+
+.sms .sms-code .sms-l {
+  display: block;
+  white-space: pre;
+  padding: 0 14px 0 52px;
+  position: relative;
+  min-height: 1.6em;
+}
+
+.sms .sms-code .sms-l::before {
+  counter-increment: sms-line;
+  content: counter(sms-line);
+  position: absolute;
+  left: 0;
+  width: 36px;
+  text-align: right;
+  color: var(--_stagemap-studio-code-mute);
+  font-size: 12px;
+}
+
+.sms .sms-code .sms-l[data-sms-changed] {
+  background: color-mix(in srgb, var(--_stagemap-studio-mark) 20%, transparent);
+  box-shadow: inset 3px 0 0 var(--_stagemap-studio-mark);
+}
+
+.sms .sms-code .sms-l[data-sms-changed]::after {
+  content: "changed";
+  position: absolute;
+  right: 10px;
+  font: 600 12px var(--_stagemap-studio-mono);
+  color: var(--_stagemap-studio-mark);
+}
+
+.sms .sms-code .sms-tok-c {
+  color: var(--_stagemap-studio-code-mute);
+}
+
+.sms .sms-code .sms-tok-s {
+  color: var(--_stagemap-studio-code-str);
+}
+
+.sms .sms-code .sms-tok-f {
+  color: var(--_stagemap-studio-code-fn);
+}
+
+.sms .sms-code .sms-tok-k {
+  color: var(--_stagemap-studio-code-kw);
+}
+
+.sms .sms-code-note:empty {
+  display: none;
+}
+
+.sms .sms-code-note {
+  font-size: 13px;
+  color: var(--_stagemap-studio-muted);
+  margin: 10px 0 0;
+}
+
+@media (max-width: 640px) {
+  .sms .sms-code {
+    font-size: 12px;
+  }
+}

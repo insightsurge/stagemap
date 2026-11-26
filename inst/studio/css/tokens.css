@@ -1,0 +1,136 @@
+/*
+ * The studio's colours and sizes, private to it (--_stagemap-studio-*): light by default, dark for data-theme="dark",
+ * and dark for data-theme="auto" when the system asks for it. Three pencils: blue edits, red flags a problem, yellow
+ * marks an answer. The drawing sheet maps them onto the map engine's public hooks (--stagemap-*).
+ */
+.sms {
+  --_stagemap-studio-font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --_stagemap-studio-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --_stagemap-studio-bg: #e8ebed;
+  --_stagemap-studio-field: #f1f3f4;
+  --_stagemap-studio-dot: #c5ccd1;
+  --_stagemap-studio-panel: #ffffff;
+  --_stagemap-studio-panel2: #f4f6f7;
+  --_stagemap-studio-line: #cfd6da;
+  --_stagemap-studio-line2: #848e95;
+  --_stagemap-studio-ink: #12171a;
+  --_stagemap-studio-muted: #505b62;
+  --_stagemap-studio-faint: #6b767d;
+  --_stagemap-studio-blue: #1c46b8;
+  --_stagemap-studio-blue-ink: #ffffff;
+  --_stagemap-studio-blue-soft: #e2e9fb;
+  --_stagemap-studio-red: #b3261e;
+  --_stagemap-studio-red-soft: #fbe4e1;
+  --_stagemap-studio-mark: #f2d94a;
+  --_stagemap-studio-mark-ink: #2a2300;
+  --_stagemap-studio-good: #1d7440;
+  --_stagemap-studio-good-soft: #e0f2e7;
+  --_stagemap-studio-warn: #8a5a00;
+  --_stagemap-studio-warn-soft: #fbefd2;
+  --_stagemap-studio-code-bg: #14191c;
+  --_stagemap-studio-code-ink: #dfe7ea;
+  --_stagemap-studio-code-mute: #8c9aa1;
+  --_stagemap-studio-code-str: #9fd0ff;
+  --_stagemap-studio-code-fn: #ffd479;
+  --_stagemap-studio-code-kw: #f4a3b0;
+  --_stagemap-studio-shadow: 0 1px 0 rgba(18, 23, 26, 0.06), 0 10px 30px -12px rgba(18, 23, 26, 0.28);
+  --_stagemap-studio-ring: 0 0 0 2px var(--_stagemap-studio-panel), 0 0 0 4px var(--_stagemap-studio-blue);
+  --_stagemap-studio-block-h: 64px;
+  --_stagemap-studio-tray-h: 380px;
+  --_stagemap-studio-ease: cubic-bezier(0.2, 0, 0, 1);
+  color-scheme: light;
+}
+
+.sms[data-theme="dark"] {
+  --_stagemap-studio-bg: #0c1013;
+  --_stagemap-studio-field: #11161a;
+  --_stagemap-studio-dot: #252e34;
+  --_stagemap-studio-panel: #1a2125;
+  --_stagemap-studio-panel2: #20282d;
+  --_stagemap-studio-line: #2d373d;
+  --_stagemap-studio-line2: #697780;
+  --_stagemap-studio-ink: #e8edf0;
+  --_stagemap-studio-muted: #a3afb6;
+  --_stagemap-studio-faint: #8e9aa1;
+  --_stagemap-studio-blue: #8aabff;
+  --_stagemap-studio-blue-ink: #0a1228;
+  --_stagemap-studio-blue-soft: #1b2a52;
+  --_stagemap-studio-red: #ff9d92;
+  --_stagemap-studio-red-soft: #43211e;
+  --_stagemap-studio-mark: #d8bf3a;
+  --_stagemap-studio-mark-ink: #1f1a00;
+  --_stagemap-studio-good: #6fd596;
+  --_stagemap-studio-good-soft: #173324;
+  --_stagemap-studio-warn: #e9b64f;
+  --_stagemap-studio-warn-soft: #38290f;
+  --_stagemap-studio-code-bg: #0b0f11;
+  --_stagemap-studio-code-ink: #dde5e8;
+  --_stagemap-studio-shadow: 0 1px 0 rgba(0, 0, 0, 0.4), 0 14px 34px -12px rgba(0, 0, 0, 0.7);
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  .sms[data-theme="auto"] {
+    --_stagemap-studio-bg: #0c1013;
+    --_stagemap-studio-field: #11161a;
+    --_stagemap-studio-dot: #252e34;
+    --_stagemap-studio-panel: #1a2125;
+    --_stagemap-studio-panel2: #20282d;
+    --_stagemap-studio-line: #2d373d;
+    --_stagemap-studio-line2: #697780;
+    --_stagemap-studio-ink: #e8edf0;
+    --_stagemap-studio-muted: #a3afb6;
+    --_stagemap-studio-faint: #8e9aa1;
+    --_stagemap-studio-blue: #8aabff;
+    --_stagemap-studio-blue-ink: #0a1228;
+    --_stagemap-studio-blue-soft: #1b2a52;
+    --_stagemap-studio-red: #ff9d92;
+    --_stagemap-studio-red-soft: #43211e;
+    --_stagemap-studio-mark: #d8bf3a;
+    --_stagemap-studio-mark-ink: #1f1a00;
+    --_stagemap-studio-good: #6fd596;
+    --_stagemap-studio-good-soft: #173324;
+    --_stagemap-studio-warn: #e9b64f;
+    --_stagemap-studio-warn-soft: #38290f;
+    --_stagemap-studio-code-bg: #0b0f11;
+    --_stagemap-studio-code-ink: #dde5e8;
+    --_stagemap-studio-shadow: 0 1px 0 rgba(0, 0, 0, 0.4), 0 14px 34px -12px rgba(0, 0, 0, 0.7);
+    color-scheme: dark;
+  }
+}
+
+/* The map engine reads its public hooks; on the drawing sheet they take the studio's pencils, in both themes. The
+   engine sets its own values on its element (the one with data-stagemap-mode), so they are set there too. */
+.sms .sms-paper,
+.sms .sms-paper [data-stagemap-mode] {
+  --stagemap-font-body: var(--_stagemap-studio-font);
+  --stagemap-font-display: var(--_stagemap-studio-font);
+  --stagemap-font-mono: var(--_stagemap-studio-mono);
+  --stagemap-page: var(--_stagemap-studio-field);
+  --stagemap-panel: var(--_stagemap-studio-panel);
+  --stagemap-panel-soft: var(--_stagemap-studio-panel2);
+  --stagemap-card: var(--_stagemap-studio-panel);
+  --stagemap-sidebar: var(--_stagemap-studio-panel2);
+  --stagemap-drawer: var(--_stagemap-studio-panel);
+  --stagemap-popup: var(--_stagemap-studio-panel);
+  --stagemap-ink: var(--_stagemap-studio-ink);
+  --stagemap-muted: var(--_stagemap-studio-muted);
+  --stagemap-line: var(--_stagemap-studio-line);
+  --stagemap-line-strong: var(--_stagemap-studio-line2);
+  --stagemap-accent: var(--_stagemap-studio-blue);
+  --stagemap-accent-soft: var(--_stagemap-studio-blue-soft);
+  --stagemap-on-accent: var(--_stagemap-studio-blue-ink);
+  --stagemap-accent-ink: var(--_stagemap-studio-blue);
+  --stagemap-accent-line: var(--_stagemap-studio-blue);
+  --stagemap-focus: var(--_stagemap-studio-blue);
+  --stagemap-good: var(--_stagemap-studio-good);
+  --stagemap-good-soft: var(--_stagemap-studio-good-soft);
+  --stagemap-warn: var(--_stagemap-studio-warn);
+  --stagemap-warn-soft: var(--_stagemap-studio-warn-soft);
+  --stagemap-bad: var(--_stagemap-studio-red);
+  --stagemap-bad-soft: var(--_stagemap-studio-red-soft);
+  --stagemap-mark-muted: var(--_stagemap-studio-faint);
+  --stagemap-radius-s: 3px;
+  --stagemap-radius-m: 4px;
+  --stagemap-radius-l: 6px;
+}
