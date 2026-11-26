@@ -111,4 +111,48 @@ describe("the studio helper argument checks", {
     expect_match(studio_click_js(".sms-done"), ".click()", fixed = TRUE)
     expect_match(studio_count_shim(), "__smsCounts", fixed = TRUE)
   })
+
+  it("includes brace-containing error messages and app logs in studio_abort_draw()", {
+    fake_logs_app <- structure(
+      list2env(list(
+        get_logs = function() {
+          data.frame(location = "chromote", level = "error", message = "R error {detail}")
+        }
+      )),
+      class = c("AppDriver", "R6")
+    )
+    err <- simpleError("timeout waiting for (() => { return false; })")
+    expect_error(
+      studio_abort_draw(fake_logs_app, err),
+      "timeout waiting for \\(\\(\\) => \\{ return false; \\}\\).*R error \\{detail\\}"
+    )
+    expect_error(studio_abort_draw("x", err), "app")
+    expect_error(studio_abort_draw(fake_logs_app, "err"), "e")
+  })
+
+  it("merges emulated media features per session without dropping earlier features", {
+    key <- "test-session-merge"
+    on.exit(rm(list = key, envir = studio_emulated_media), add = TRUE)
+    first <- studio_merge_media(key, "forced-colors", "active")
+    expect_identical(first, list(list(name = "forced-colors", value = "active")))
+    second <- studio_merge_media(key, "prefers-reduced-motion", "reduce")
+    expect_identical(
+      second,
+      list(
+        list(name = "forced-colors", value = "active"),
+        list(name = "prefers-reduced-motion", value = "reduce")
+      )
+    )
+    updated <- studio_merge_media(key, "forced-colors", "none")
+    expect_identical(
+      updated,
+      list(
+        list(name = "forced-colors", value = "none"),
+        list(name = "prefers-reduced-motion", value = "reduce")
+      )
+    )
+    expect_error(studio_merge_media("", "a", "b"), "key")
+    expect_error(studio_merge_media(key, "", "b"), "feature")
+    expect_error(studio_merge_media(key, "a", 1), "value")
+  })
 })

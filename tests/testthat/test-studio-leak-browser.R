@@ -17,6 +17,9 @@ describe("the studio leak count", {
     studio_wait_step(app)
 
     before <- studio_counts(app)
+    expect_gt(before$listeners, 0L)
+    expect_gt(before$observers, 0L)
+    expect_gt(before$nodes, 0L)
 
     for (i in seq_len(30L)) {
       studio_do(
@@ -40,6 +43,41 @@ describe("the studio leak count", {
     expect_identical(after$observers, before$observers)
     expect_identical(after$timers, before$timers)
     expect_identical(after$nodes, before$nodes)
+    expect_studio_clean(app)
+  })
+
+  it("[SMS-085] counts a synthetic listener, MutationObserver, pending timer and node when added and drops them when removed", {
+    app <- studio_driver()
+    base <- studio_counts(app)
+    app$run_js(
+      "{ const node = document.createElement('div');
+         const fn = () => {};
+         const obs = new MutationObserver(() => {});
+         document.body.append(node);
+         node.addEventListener('click', fn);
+         obs.observe(node, { childList: true });
+         const timer = setTimeout(() => {}, 60000);
+         window.__smsCanary = { node, fn, obs, timer }; }"
+    )
+    added <- studio_counts(app)
+    expect_identical(added$listeners, base$listeners + 1L)
+    expect_identical(added$observers, base$observers + 1L)
+    expect_identical(added$timers, base$timers + 1L)
+    expect_identical(added$nodes, base$nodes + 1L)
+
+    app$run_js(
+      "{ const { node, fn, obs, timer } = window.__smsCanary;
+         node.removeEventListener('click', fn);
+         obs.disconnect();
+         clearTimeout(timer);
+         node.remove();
+         delete window.__smsCanary; }"
+    )
+    removed <- studio_counts(app)
+    expect_identical(removed$listeners, base$listeners)
+    expect_identical(removed$observers, base$observers)
+    expect_identical(removed$timers, base$timers)
+    expect_identical(removed$nodes, base$nodes)
     expect_studio_clean(app)
   })
 })

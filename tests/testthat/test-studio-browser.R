@@ -378,6 +378,9 @@ describe("the focus ring and the toast", {
   it("[SMS-016] keep a visible outline in forced-colors mode", {
     app <- studio_driver()
     studio_emulate(app, "forced-colors", "active")
+    studio_emulate(app, "prefers-reduced-motion", "reduce")
+    expect_true(app$get_js("matchMedia('(forced-colors: active)').matches"))
+    expect_true(app$get_js("matchMedia('(prefers-reduced-motion: reduce)').matches"))
     studio_press(app, "Tab", code = "Tab", key_code = 9L)
     for (selector in c(".sms-skip", ".sms-title", "[data-sms-room='code']", ".sms-theme", ".sms-done")) {
       app$run_js(sprintf("document.querySelector(%s).focus()", jsonlite::toJSON(selector, auto_unbox = TRUE)))

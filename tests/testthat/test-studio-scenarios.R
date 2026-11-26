@@ -37,7 +37,7 @@ scenario_files <- c(
 it_descriptions <- function(file) {
   found <- character()
   walk <- function(expr) {
-    if (!is.call(expr)) {
+    if (missing(expr) || !is.call(expr)) {
       return()
     }
     head <- expr[[1]]
@@ -45,8 +45,8 @@ it_descriptions <- function(file) {
     if (identical(name, "it") && length(expr) >= 2L && is.character(expr[[2]])) {
       found <<- c(found, expr[[2]])
     }
-    for (part in as.list(expr)[-1]) {
-      walk(part)
+    for (i in seq_along(expr)[-1]) {
+      walk(expr[[i]])
     }
   }
   for (expr in parse(file, keep.source = FALSE)) {
@@ -90,5 +90,14 @@ describe("the studio scenarios file", {
       missing <- auto_ids[!vapply(auto_ids, function(id) any(grepl(id, descriptions, fixed = TRUE)), logical(1))]
       expect_identical(missing, character(), info = paste(area, "->", basename(file)))
     }
+  })
+
+  it("parses test files containing empty call arguments such as df[1, ] and x[, 1]", {
+    path_tmp <- withr::local_tempfile(fileext = ".R")
+    writeLines(
+      c("df <- data.frame(a = 1)", "x <- df[1, ]", "y <- df[, 1]", "it('has [SMS-999]', { expect_true(TRUE) })"),
+      path_tmp
+    )
+    expect_identical(it_descriptions(path_tmp), "has [SMS-999]")
   })
 })

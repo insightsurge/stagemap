@@ -231,6 +231,22 @@ studio_format_logs <- function(app) {
   paste(utils::tail(lines, 20L), collapse = "\n")
 }
 
+# Aborts when the studio app fails to draw, interpolating message and logs through variables so braces are not parsed.
+studio_abort_draw <- function(app, e) {
+  checkmate::assert_r6(app, "AppDriver")
+  checkmate::assert_class(e, "condition")
+  msg <- conditionMessage(e)
+  logs <- studio_format_logs(app)
+  cli::cli_abort(
+    c(
+      "The studio app did not draw in time.",
+      "x" = "{msg}",
+      "i" = "App logs:\n{logs}"
+    ),
+    parent = e
+  )
+}
+
 # Starts the studio app on the map `fixture` ("none", "small", "large", or "steps"), installs the count shim before
 # the page's scripts, and waits until the page has drawn the server's first message and the map. `copy_wait_ms` is
 # Copy's wait (the app's default when NULL); `...` goes to AppDriver$new().
@@ -254,16 +270,7 @@ studio_driver <- function(fixture = "small", copy_wait_ms = NULL, ..., env = par
       app$wait_for_js("window.__smsShimPending === undefined && typeof window.__smsCounts === 'function'")
       studio_wait_drawn(app)
     },
-    error = function(e) {
-      cli::cli_abort(
-        c(
-          "The studio app did not draw in time.",
-          "x" = conditionMessage(e),
-          "i" = paste("App logs:\n", studio_format_logs(app))
-        ),
-        parent = e
-      )
-    }
+    error = function(e) studio_abort_draw(app, e)
   )
   app
 }
@@ -527,8 +534,22 @@ studio_click_real <- function(app, selector) {
   invisible(app)
 }
 
-# Sets a media feature of the page (such as ("prefers-reduced-motion", "reduce")), or resizes the viewport width when
-# `feature == "width"` (for phone layout tests).
+# Active emulated media features per chromote session id, so setting one feature preserves earlier ones.
+studio_emulated_media <- new.env(parent = emptyenv())
+
+# Merges `feature = value` into the active media features recorded for `key` and returns the CDP features list.
+studio_merge_media <- function(key, feature, value) {
+  checkmate::assert_string(key, min.chars = 1L)
+  checkmate::assert_string(feature, min.chars = 1L)
+  checkmate::assert_string(value)
+  current <- studio_emulated_media[[key]] %||% list()
+  current[[feature]] <- value
+  studio_emulated_media[[key]] <- current
+  lapply(names(current), function(name) list(name = name, value = current[[name]]))
+}
+
+# Sets a media feature of the page (such as ("prefers-reduced-motion", "reduce")), preserving features already set
+# on the same session, or resizes the viewport width when `feature == "width"` (for phone layout tests).
 studio_emulate <- function(app, feature, value) {
   checkmate::assert_r6(app, "AppDriver")
   checkmate::assert_string(feature, min.chars = 1L)
@@ -547,7 +568,9 @@ studio_emulate <- function(app, feature, value) {
     return(invisible(app))
   }
   checkmate::assert_string(value)
-  app$get_chromote_session()$Emulation$setEmulatedMedia(features = list(list(name = feature, value = value)))
+  session <- app$get_chromote_session()
+  features <- studio_merge_media(session$get_session_id(), feature, value)
+  session$Emulation$setEmulatedMedia(features = features)
   invisible(app)
 }
 
