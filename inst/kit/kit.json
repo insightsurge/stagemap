@@ -1,7 +1,7 @@
 {
-  "engine": "0.51.0",
-  "commit": "3e464a69ce00723b7f38a4bd41d903667190876e",
-  "date": "2026-11-24",
+  "engine": "0.60.0",
+  "commit": "b99d701d004bcc948bf8d46cb7640c928c778781",
+  "date": "2026-11-27",
   "d3": "7.9.0",
   "files": [
     "LICENSE-d3",
@@ -16,10 +16,10 @@
     "LICENSE-d3": "823a20e14faceca92891e0eb9e5bbea3123f9e5cbe5bd31d9c7fac5d86d513e7",
     "LICENSE-lucide": "b495047bd93a9b06913511076f504daba17d5bbeb3e0650f3bb53a4220329c57",
     "d3.min.js": "8b56e04f36583949cb0832c5cb863785ad26d6b9d444068f069764ea154f379a",
-    "stage-map.css": "48c60813d791be9b45b01f9f9cee26099c3fb8004360a1d6111ee2f84b910079",
-    "stage-map.js": "263f0cd3587d35ca26c8fce9f0955dec197dd79683b7a84ba8212c1d459afbe9",
-    "stage-map.json": "45c2a2f6149a7b52ed0ad8a888a04816b07fa794ae8ef77cda9e6b9bc13363f2",
-    "stage-map.sha256": "64fa338b2ffc6946302cd6431fc07aba64ced7c04680ee4cbaefed4b250c4456"
+    "stage-map.css": "aec293743e221afc19cf39fa0272710803957b9c2fb4cd4b588c5cefde4f4afe",
+    "stage-map.js": "93fcbbd54116e3576b8588e5ed4ba9026ca7ca8bf3648ae6e11f0bd88a25e064",
+    "stage-map.json": "1547039d28485ddd1eaec0b90294aec5edfea7e751c0f4e98540fc4be6129ea7",
+    "stage-map.sha256": "b74a7690cbbfa6d80f572b42c2d3bce782ccbfaba1bee8650378d4a9088000f5"
   },
   "names": {
     "global": "stagemap",
