@@ -1,0 +1,149 @@
+/*
+ * Parts the studio's rooms and forms share: the kicker, buttons (square, 3px corners; a busy one is aria-busy and
+ * aria-disabled, never disabled), the text field, the toast and the hidden area Copy may use.
+ */
+.sms .sms-kick {
+  font-size: 12px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--_stagemap-studio-muted);
+  font-weight: 650;
+  margin: 0;
+}
+
+.sms .sms-btn {
+  background: transparent;
+  border: 1px solid var(--_stagemap-studio-line2);
+  border-radius: 3px;
+  padding: 5px 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--_stagemap-studio-ink);
+  min-height: 32px;
+}
+
+.sms .sms-btn:hover {
+  background: var(--_stagemap-studio-panel);
+  border-color: var(--_stagemap-studio-ink);
+}
+
+.sms .sms-btn.sms-pri {
+  background: var(--_stagemap-studio-blue);
+  border-color: var(--_stagemap-studio-blue);
+  color: var(--_stagemap-studio-blue-ink);
+}
+
+.sms .sms-btn.sms-pri:hover {
+  filter: brightness(1.08);
+}
+
+.sms .sms-btn.sms-danger {
+  color: var(--_stagemap-studio-red);
+  border-color: color-mix(in srgb, var(--_stagemap-studio-red) 50%, var(--_stagemap-studio-line2));
+}
+
+.sms [aria-disabled="true"] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.sms [aria-busy="true"] {
+  cursor: progress;
+}
+
+.sms .sms-in {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid var(--_stagemap-studio-line2);
+  background: var(--_stagemap-studio-panel);
+  border-radius: 3px;
+  padding: 6px 9px;
+}
+
+.sms .sms-in:hover {
+  border-color: var(--_stagemap-studio-ink);
+}
+
+.sms .sms-in:focus-visible {
+  box-shadow: var(--_stagemap-studio-ring);
+  border-color: var(--_stagemap-studio-blue);
+}
+
+.sms .sms-in[data-sms-wait] {
+  border-style: dotted;
+  border-color: var(--_stagemap-studio-blue);
+}
+
+/* The toast: a status region that is always there, shown while it has something to say. */
+.sms .sms-toast {
+  position: absolute;
+  left: 24px;
+  bottom: calc(var(--_stagemap-studio-block-h) + 62px);
+  max-width: calc(100% - 48px);
+  z-index: 30;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 8px 14px;
+  background: var(--_stagemap-studio-ink);
+  color: var(--_stagemap-studio-panel);
+  box-shadow: var(--_stagemap-studio-shadow);
+  font-size: 13px;
+}
+
+.sms[data-sms-tray] .sms-toast {
+  bottom: calc(var(--_stagemap-studio-block-h) + var(--_stagemap-studio-tray-h) + 14px);
+}
+
+/* The tone is never the colour alone: a problem also has a mark and the word. The edge colour is the other mode's red,
+   so it keeps 3:1 against the toast, which is dark in the light theme and light in the dark one. */
+.sms .sms-toast-mark,
+.sms .sms-toast-tone:empty {
+  display: none;
+}
+
+.sms .sms-toast[data-sms-tone="problem"] {
+  border: 2px solid var(--_stagemap-studio-toast-edge);
+}
+
+.sms .sms-toast[data-sms-tone="problem"] .sms-toast-mark {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--_stagemap-studio-toast-edge);
+  border-radius: 50%;
+  color: var(--_stagemap-studio-toast-edge);
+  font-weight: 700;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.sms .sms-toast-tone {
+  font-weight: 700;
+}
+
+.sms .sms-toast:not([data-sms-on]),
+.sms .sms-copy-area {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 640px) {
+  .sms .sms-toast {
+    left: 12px;
+    bottom: calc(var(--_stagemap-studio-block-h) + 66px);
+  }
+
+  .sms .sms-btn {
+    min-height: 44px;
+    padding: 5px 8px;
+  }
+}
