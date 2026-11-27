@@ -22,7 +22,10 @@ describe("studio_ui()", {
     ids <- attr_values(html, "id")
     expect_true(all(attr_values(html, "aria-controls") %in% ids))
     expect_true(all(attr_values(html, "aria-labelledby") %in% ids))
-    expect_setequal(attr_values(html, "aria-controls"), paste0("studio-room-", c("map", "ask", "check", "code")))
+    expect_setequal(
+      attr_values(html, "aria-controls"),
+      c(paste0("studio-room-", c("map", "ask", "check", "code")), "studio-try")
+    )
   })
 
   it("has no inline script and no inline style of its own: its only script is the boot JSON", {
@@ -109,6 +112,30 @@ describe("studio_ui()", {
     expect_false(identical(labels$download_late, labels$copy_late))
   })
 
+  it("draws the hint bar with the guide's button and list closed, and each line a polite status region", {
+    bar <- sub(".*(<div class=\"sms-hint\".*?<ol></ol></div></div>).*", "\\1", html)
+    expect_match(bar, "class=\"sms-hint\" hidden", fixed = TRUE)
+    expect_match(bar, "<p class=\"sms-hint-text\" aria-live=\"polite\"></p>", fixed = TRUE)
+    expect_match(bar, "<p class=\"sms-hint-next\" aria-live=\"polite\"></p>", fixed = TRUE)
+    button <- regmatches(bar, regexpr("<button[^>]*sms-try-btn[^>]*>", bar))
+    expect_match(button, "aria-expanded=\"false\"", fixed = TRUE)
+    expect_match(button, "aria-controls=\"studio-try\"", fixed = TRUE)
+    expect_match(button, "hidden", fixed = TRUE)
+    expect_match(bar, "id=\"studio-try\"", fixed = TRUE)
+    expect_match(bar, "aria-labelledby=\"studio-try-title\"", fixed = TRUE)
+  })
+
+  it("carries every word the page writes itself, and none is blank", {
+    labels <- studio_labels()
+    needed <- c(
+      "guide_next", "guide_try", "guide_done", "guide_all_done", "changed", "ask_question", "ask_failed", "ask_stale",
+      "ask_clear", "ask_nothing", "ask_none", "legend_blue", "legend_red", "legend_mark", "start_close", "code_r",
+      "code_r_file", "code_csv"
+    )
+    expect_true(all(needed %in% names(labels)))
+    expect_true(all(nzchar(unlist(labels))))
+  })
+
   it("is in English", {
     expect_identical(attr(studio_ui("studio"), "lang"), "en")
   })
@@ -128,6 +155,7 @@ describe("the parts of the page", {
     expect_error(studio_ui_room(ns, "code", "R code", head = "x"), "head")
     expect_error(studio_ui_room(ns, "code", "R code", body = "x"), "body")
     expect_error(studio_ui_block("ns"), "ns")
+    expect_error(studio_ui_hint("ns"), "ns")
     expect_error(studio_boot("x"), "options")
     expect_error(studio_json("x"), "x")
   })
