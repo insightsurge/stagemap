@@ -182,4 +182,94 @@ describe("the studio leak count", {
     expect_identical(removed$nodes, base$nodes)
     expect_studio_clean(app)
   })
+
+  it("keeps listener, observer, timer and node counts flat across 30 layout switches and 30 fixes and undos", {
+    journal_nodes <- function(app) {
+      app$get_js("document.querySelectorAll('.sms-journal-list *').length")
+    }
+
+    # 30 layout switches on a clean map
+    app1 <- studio_driver("small")
+    click_now(app1, ".sms-block [data-sms-room='map']")
+    app1$wait_for_js("document.querySelector('[data-sms-room-of=\"map\"]').hidden === false")
+    s0 <- studio_stamp(app1)
+    studio_do(app1, studio_click_js("[data-sms-room-of='map'] input[type='radio'][value='levels']"))
+    studio_wait_map(app1, s0)
+    s1 <- studio_stamp(app1)
+    studio_do(app1, studio_click_js("[data-sms-room-of='map'] input[type='radio'][value='grid']"))
+    studio_wait_map(app1, s1)
+    click_now(app1, "[data-sms-close='map']")
+    studio_wait_step(app1)
+    app1$wait_for_js("document.querySelector('.sms-toast').dataset.smsOn === undefined")
+
+    before1 <- studio_counts(app1)
+    before_j1 <- journal_nodes(app1)
+    for (i in seq_len(30L)) {
+      click_now(app1, ".sms-block [data-sms-room='map']")
+      app1$wait_for_js("document.querySelector('[data-sms-room-of=\"map\"]').hidden === false")
+      sa <- studio_stamp(app1)
+      studio_do(app1, studio_click_js("[data-sms-room-of='map'] input[type='radio'][value='levels']"))
+      studio_wait_map(app1, sa)
+      sb <- studio_stamp(app1)
+      studio_do(app1, studio_click_js("[data-sms-room-of='map'] input[type='radio'][value='grid']"))
+      studio_wait_map(app1, sb)
+      click_now(app1, "[data-sms-close='map']")
+    }
+    studio_wait_step(app1)
+    app1$wait_for_js("document.querySelector('.sms-toast').dataset.smsOn === undefined")
+    after1 <- studio_counts(app1)
+    after_j1 <- journal_nodes(app1)
+    expect_identical(after1$listeners, before1$listeners)
+    expect_identical(after1$observers, before1$observers)
+    expect_identical(after1$timers, before1$timers)
+    expect_identical(after1$nodes - after_j1, before1$nodes - before_j1)
+    expect_studio_clean(app1)
+    app1$stop()
+
+    # 30 fixes and undos on the broken example map
+    app2 <- studio_driver("none")
+    click_now(app2, ".sms-start .sms-opt")
+    app2$wait_for_js(
+      "document.querySelector('.sms-start').hidden === true &&
+       document.querySelector('.sms-stamp').textContent.includes('1 problem')"
+    )
+    studio_wait_step(app2)
+    click_now(app2, "[data-sms-room='check']")
+    app2$wait_for_js("document.querySelector('[data-sms-room-of=\"check\"]').hidden === false")
+    s2 <- studio_stamp(app2)
+    studio_do(app2, studio_click_js("[data-sms-room-of='check'] .sms-chk .sms-pri"))
+    studio_wait_map(app2, s2)
+    studio_do(app2, studio_click_js(".sms-undo"))
+    click_now(app2, "[data-sms-close='check']")
+    studio_wait_step(app2)
+    app2$wait_for_js("document.querySelector('.sms-toast').dataset.smsOn === undefined")
+
+    before2 <- studio_counts(app2)
+    before_j2 <- journal_nodes(app2)
+    for (i in seq_len(30L)) {
+      click_now(app2, "[data-sms-room='check']")
+      app2$wait_for_js("document.querySelector('[data-sms-room-of=\"check\"]').hidden === false")
+      sc <- studio_stamp(app2)
+      fix_sel <- if (i %% 2L == 1L) {
+        "[data-sms-room-of='check'] .sms-danger"
+      } else {
+        "[data-sms-room-of='check'] .sms-chk .sms-pri"
+      }
+      studio_do(app2, studio_click_js(fix_sel))
+      studio_wait_map(app2, sc)
+      studio_do(app2, studio_click_js(".sms-undo"))
+      click_now(app2, "[data-sms-close='check']")
+    }
+
+    studio_wait_step(app2)
+    app2$wait_for_js("document.querySelector('.sms-toast').dataset.smsOn === undefined")
+    after2 <- studio_counts(app2)
+    after_j2 <- journal_nodes(app2)
+
+    expect_identical(after2$listeners, before2$listeners)
+    expect_identical(after2$observers, before2$observers)
+    expect_identical(after2$timers, before2$timers)
+    expect_identical(after2$nodes - after_j2, before2$nodes - before_j2)
+    expect_studio_clean(app2)
+  })
 })

@@ -299,7 +299,9 @@ studio_resolve_option <- function(doc, data) {
       return(list(refused = sprintf("Option `%s` must be TRUE or FALSE.", data$name)))
     }
   } else if (identical(data$name, "cell_columns")) {
-    if (is.numeric(value)) {
+    if (is.character(value) && length(value) == 1L && grepl("^[1-6]$", value)) {
+      value <- as.integer(value)
+    } else if (is.numeric(value)) {
       if (!checkmate::test_int(value, lower = 1L, upper = 6L)) {
         return(list(refused = "Cards per cell must be a whole number from 1 to 6, or \"auto\"."))
       }

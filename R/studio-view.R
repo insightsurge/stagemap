@@ -474,16 +474,27 @@ studio_form_card <- function(doc, row, faults) {
     }
   ))
 
-  # Link lists: "Comes from" and "Goes to"
+  # Link lists: "Comes from" and "Goes to". Links store card ids rather than row keys, so when a card id is duplicated
+  # a card cannot tell its own links from the other row's.
   cards_tbl <- doc$tables$cards
+  id_count <- if (nzchar(trimws(card_id)) && is.data.frame(cards_tbl) && "id" %in% names(cards_tbl)) {
+    sum(as_text(cards_tbl$id) == card_id, na.rm = TRUE)
+  } else {
+    0L
+  }
+  unique_card_id <- id_count == 1L
+
   card_label_of <- function(cid) {
     if (is.na(cid) || !nzchar(trimws(cid))) {
       return("(no card)")
     }
     if (is.data.frame(cards_tbl) && "id" %in% names(cards_tbl)) {
-      idx <- match(cid, as_text(cards_tbl$id))
-      if (!is.na(idx)) {
-        return(studio_row_title(cards_tbl, idx, cid))
+      hits <- which(as_text(cards_tbl$id) == cid)
+      if (length(hits) > 1L) {
+        return(sprintf("%s (duplicate id)", cid))
+      }
+      if (length(hits) == 1L) {
+        return(studio_row_title(cards_tbl, hits[[1L]], cid))
       }
     }
     sprintf("%s (no such card)", cid)
@@ -506,7 +517,7 @@ studio_form_card <- function(doc, row, faults) {
 
   links_tbl <- doc$tables$links
   link_rows <- function(match_col, other_col) {
-    if (!nzchar(trimws(card_id)) || !is.data.frame(links_tbl) || nrow(links_tbl) == 0L) {
+    if (!unique_card_id || !is.data.frame(links_tbl) || nrow(links_tbl) == 0L) {
       return(list())
     }
     hit <- which(as_text(links_tbl[[match_col]]) == card_id)
@@ -543,6 +554,8 @@ studio_form_card <- function(doc, row, faults) {
 
   connect_disabled <- if (!nzchar(trimws(card_id))) {
     "Give this card an id first."
+  } else if (!unique_card_id) {
+    "Give this card a unique id first."
   } else if (length(other_card_choices) == 0L) {
     "Add another card first."
   } else {

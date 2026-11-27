@@ -126,15 +126,23 @@ studio_extra_joins <- list(
   list(table = "changes", column = "step", to = "steps")
 )
 
-# Locates cells and options at fault in `doc`: `blank` (missing/blank required `id` or `label`), `duplicate`
-# (repeated `id` in a table of `stage_map_table_words`), and `join` (unmatched id along `stage_map_joins`,
-# `changes`, `args$target`, `args$variant`, and `args$highlight`).
+# Locates cells and options at fault in `doc`: `blank` (missing/blank required columns), `duplicate` (repeated `id`
+# in a table of `stage_map_table_words`), `join` (unmatched id along `stage_map_joins`, `changes`, `args$target`,
+# `args$variant`, and `args$highlight`), and `status` (unknown status in `cards$status` or `changes$status`).
 studio_faults <- function(doc) {
   studio_assert_doc(doc)
   tables <- doc$tables
   spec_fields <- sm_spec()$fields
   acc <- new.env(parent = emptyenv())
   acc$rows <- list()
+
+  extra_row_words <- c(links = "link", statuses = "status", changes = "change")
+  row_word_for <- function(name) {
+    if (!is.null(stage_map_table_words[[name]])) {
+      return(stage_map_table_words[[name]]$row)
+    }
+    unname(extra_row_words[[name]])
+  }
 
   add_fault <- function(table, uid, field, type, value, to, text) {
     n <- length(acc$rows) + 1L
@@ -156,15 +164,15 @@ studio_faults <- function(doc) {
     if (!is.data.frame(tbl) || nrow(tbl) == 0L || is.null(tbl_spec)) {
       next
     }
-    row_word <- if (!is.null(stage_map_table_words[[name]])) stage_map_table_words[[name]]$row else name
-    for (field in intersect(c("id", "label"), names(tbl_spec))) {
+    row_word <- row_word_for(name)
+    for (field in names(tbl_spec)) {
       if (!isTRUE(tbl_spec[[field]]$required) || !(field %in% names(tbl))) {
         next
       }
       vals <- as_text(tbl[[field]])
       bad <- is.na(vals) | !nzchar(trimws(vals))
       for (i in which(bad)) {
-        article <- if (identical(field, "id")) "an" else "a"
+        article <- if (grepl("^[aeiou]", field)) "an" else "a"
         add_fault(
           name,
           tbl$.studio_uid[[i]],
@@ -227,11 +235,13 @@ studio_faults <- function(doc) {
     } else {
       target_ids <- as_text(target_tbl$id)
     }
+    tbl_spec <- spec_fields[[join$table]]$fields
+    req_join <- !is.null(tbl_spec) && isTRUE(tbl_spec[[join$column]]$required)
     to_word <- stage_map_table_words[[to]]$row
     vals <- as_text(tbl[[join$column]])
     for (i in seq_len(nrow(tbl))) {
       v <- vals[[i]]
-      if (is.na(v)) {
+      if (is.na(v) || (req_join && !nzchar(trimws(v)))) {
         next
       }
       if (isTRUE(join$split)) {
@@ -338,6 +348,26 @@ studio_faults <- function(doc) {
     }
   }
 
+  known_statuses <- stage_map_status_ids(tables)
+  for (name in c("cards", "changes")) {
+    tbl <- tables[[name]]
+    if (!is.data.frame(tbl) || nrow(tbl) == 0L || !("status" %in% names(tbl))) {
+      next
+    }
+    vals <- as_text(tbl$status)
+    for (i in which(!is.na(vals) & !(vals %in% known_statuses))) {
+      add_fault(
+        name,
+        tbl$.studio_uid[[i]],
+        "status",
+        "status",
+        vals[[i]],
+        NA_character_,
+        sprintf("No status has the id \"%s\".", vals[[i]])
+      )
+    }
+  }
+
   studio_faults_df(acc$rows)
 }
 
@@ -372,6 +402,56 @@ studio_fixes <- function(doc, fault) {
       target = NULL,
       ops = list(list(op = "set", table = fault$table, uid = fault$uid, field = "id", value = new_id))
     )
+  }
+
+  if (identical(fault$type, "blank") && fault$table %in% c("links", "changes")) {
+    what <- if (identical(fault$table, "links")) "link" else "change"
+    fixes$remove <- list(
+      label = sprintf("Remove %s", what),
+      verb = "Fix",
+      text = sprintf("Remove broken %s", what),
+      key = NA_character_,
+      target = NULL,
+      ops = list(list(op = "delete", table = fault$table, uid = fault$uid))
+    )
+  }
+
+  if (identical(fault$type, "status")) {
+    known_statuses <- stage_map_status_ids(doc$tables)
+    known_statuses <- known_statuses[!is.na(known_statuses) & nzchar(trimws(known_statuses))]
+    if (!is.na(fault$value) && length(known_statuses) > 0L) {
+      dists <- as.numeric(utils::adist(fault$value, known_statuses)[1L, ])
+      best_idx <- which.min(dists)
+      if (dists[[best_idx]] <= 2) {
+        best <- known_statuses[[best_idx]]
+        fixes$use <- list(
+          label = sprintf("Use \"%s\"", best),
+          verb = "Fix",
+          text = sprintf("Use status \"%s\"", best),
+          key = NA_character_,
+          target = NULL,
+          ops = list(list(op = "set", table = fault$table, uid = fault$uid, field = "status", value = best))
+        )
+      }
+    }
+    fixes$clear <- list(
+      label = "Clear status",
+      verb = "Fix",
+      text = "Clear unknown status",
+      key = NA_character_,
+      target = NULL,
+      ops = list(list(op = "set", table = fault$table, uid = fault$uid, field = "status", value = NULL))
+    )
+    if (identical(fault$table, "changes")) {
+      fixes$remove <- list(
+        label = "Remove change",
+        verb = "Fix",
+        text = "Remove broken change",
+        key = NA_character_,
+        target = NULL,
+        ops = list(list(op = "delete", table = fault$table, uid = fault$uid))
+      )
+    }
   }
 
   if (identical(fault$type, "join") && !is.na(fault$to)) {

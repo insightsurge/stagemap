@@ -504,6 +504,109 @@ describe("studio_faults() and studio_fixes()", {
     }
   })
 
+  it("catches every required column as a blank fault and catches unknown statuses with fixes", {
+    map <- full_map(title = "A map") |>
+      add_steps(
+        data.frame(id = "s1", label = "Step 1", stage = "write"),
+        changes = data.frame(step = "s1", card = "b", stage = "ship", status = "done")
+      )
+    base <- studio_doc(map_parts(map))
+
+    blank_cases <- list(
+      list(table = "cards", uid = "u1", field = "stage", expected_fix = character()),
+      list(table = "cards", uid = "u1", field = "lane", expected_fix = character()),
+      list(table = "links", uid = "u10", field = "from", expected_fix = "remove"),
+      list(table = "links", uid = "u10", field = "to", expected_fix = "remove"),
+      list(
+        table = "changes",
+        uid = base$tables$changes$.studio_uid[[1L]],
+        field = "step",
+        expected_fix = "remove"
+      ),
+      list(
+        table = "changes",
+        uid = base$tables$changes$.studio_uid[[1L]],
+        field = "card",
+        expected_fix = "remove"
+      )
+    )
+    for (case in blank_cases) {
+      doc <- studio_doc_apply(
+        base,
+        list(list(op = "set", table = case$table, uid = case$uid, field = case$field, value = "  "))
+      )
+      expect_false(studio_build(doc)$ok, info = paste(case$table, case$field))
+      faults <- studio_faults(doc)
+      hit <- faults[faults$table == case$table & faults$field == case$field & faults$type == "blank", , drop = FALSE]
+      expect_identical(nrow(hit), 1L, info = paste(case$table, case$field))
+      expect_identical(
+        nrow(faults[faults$table == case$table & faults$field == case$field & faults$type == "join", ]),
+        0L
+      )
+      fixes <- studio_fixes(doc, hit)
+      if (length(case$expected_fix) == 0L) {
+        expect_length(fixes, 0L)
+      } else {
+        expect_setequal(names(fixes), case$expected_fix)
+      }
+      for (fix_name in names(fixes)) {
+        fixed <- studio_doc_apply(doc, fixes[[fix_name]]$ops)
+        expect_true(studio_build(fixed)$ok, info = paste(case$table, case$field, fix_name))
+      }
+    }
+
+    # Unknown status via an accepted edit places a status fault and offers use/clear fixes
+    s <- studio_state_new(map)
+    s_bad <- studio_step(
+      s,
+      list(seq = 1L, type = "edit", data = list(table = "cards", uid = "u1", field = "status", value = "don"), rev = 0L)
+    )$state
+    expect_false(s_bad$check$ok)
+    hit <- s_bad$check$faults[s_bad$check$faults$type == "status", , drop = FALSE]
+    expect_identical(nrow(hit), 1L)
+    expect_identical(hit$field, "status")
+    fixes <- studio_fixes(s_bad$doc, hit)
+    expect_setequal(names(fixes), c("use", "clear"))
+    for (fix_name in names(fixes)) {
+      fixed <- studio_doc_apply(s_bad$doc, fixes[[fix_name]]$ops)
+      expect_true(studio_build(fixed)$ok, info = fix_name)
+    }
+
+    # Unknown status in changes offers use, clear and remove; custom status table id is accepted
+    doc_chg <- studio_doc_apply(
+      base,
+      list(list(
+        op = "set",
+        table = "changes",
+        uid = base$tables$changes$.studio_uid[[1L]],
+        field = "status",
+        value = "dne"
+      ))
+    )
+    expect_false(studio_build(doc_chg)$ok)
+    hit_chg <- studio_faults(doc_chg)
+    expect_identical(hit_chg$type, "status")
+    expect_setequal(names(studio_fixes(doc_chg, hit_chg)), c("use", "clear", "remove"))
+
+    custom_map <- stage_map(
+      data.frame(id = "a", label = "A", stage = "s", lane = "l", status = "hold"),
+      statuses = data.frame(id = "hold", label = "Hold", tone = "warn")
+    )
+    custom_doc <- studio_doc(map_parts(custom_map))
+    expect_identical(nrow(studio_faults(custom_doc)), 0L)
+    blank_status <- studio_doc_apply(
+      custom_doc,
+      list(list(
+        op = "set",
+        table = "statuses",
+        uid = custom_doc$tables$statuses$.studio_uid[[1L]],
+        field = "id",
+        value = ""
+      ))
+    )
+    expect_true("statuses" %in% studio_faults(blank_status)$table)
+  })
+
   it("checks its arguments", {
     expect_error(studio_build("doc"), "doc")
     expect_error(studio_faults("doc"), "doc")

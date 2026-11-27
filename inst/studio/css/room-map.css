@@ -1,1 +1,93 @@
-/* Map room styles. */
+/*
+ * Map room styles: horizontal option groups divided by 1px rules with small uppercase labels (like the options bar),
+ * the layout tag in the title block's Map cell, and the phone header opener.
+ */
+.sms [data-sms-room="map"] .sms-map-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sms .sms-map-layout:empty {
+  display: none;
+}
+
+.sms .sms-map-layout {
+  border-left: 1px solid var(--_stagemap-studio-line2);
+  padding-left: 7px;
+  font-size: 13px;
+  color: var(--_stagemap-studio-ink);
+  flex: none;
+}
+
+.sms .sms-phone-map {
+  display: none;
+}
+
+.sms .sms-map-form .sms-form-body {
+  padding: 0;
+  overflow: visible;
+}
+
+.sms .sms-map-form .sms-form-fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px 0;
+}
+
+.sms .sms-map-form .sms-fld {
+  margin: 0;
+  padding: 0 18px;
+  border-right: 1px solid var(--_stagemap-studio-line);
+}
+
+.sms .sms-map-form .sms-fld:first-child {
+  padding-left: 0;
+}
+
+.sms .sms-map-form .sms-fld:last-child {
+  border-right: 0;
+  padding-right: 0;
+}
+
+.sms .sms-map-form .sms-fld > label,
+.sms .sms-map-form .sms-fieldset > legend {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--_stagemap-studio-muted);
+}
+
+.sms .sms-map-form .sms-fld-row > select.sms-in {
+  width: auto;
+  min-width: 112px;
+}
+
+.sms .sms-map-form .sms-toggle {
+  margin-top: 4px;
+  min-height: 36px;
+}
+
+@media (max-width: 640px) {
+  .sms .sms-phone-map {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .sms .sms-map-form .sms-form-fields {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .sms .sms-map-form .sms-fld {
+    padding: 0;
+    border-right: 0;
+  }
+
+  .sms .sms-map-form .sms-fld-row > select.sms-in {
+    width: 100%;
+  }
+}

@@ -172,6 +172,8 @@ describe("studio_resolve() for option", {
 
     doc2 <- studio_doc_apply(doc2, resolve(doc2, "option", list(name = "cell_columns", value = 3))$ops)
     expect_identical(doc2$args$cell_columns, 3L)
+    doc2 <- studio_doc_apply(doc2, resolve(doc2, "option", list(name = "cell_columns", value = "4"))$ops)
+    expect_identical(doc2$args$cell_columns, 4L)
     doc2 <- studio_doc_apply(doc2, resolve(doc2, "option", list(name = "cell_columns", value = "auto"))$ops)
     expect_identical(doc2$args$cell_columns, "auto")
     doc2 <- studio_doc_apply(doc2, resolve(doc2, "option", list(name = "target", value = ""))$ops)

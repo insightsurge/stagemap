@@ -319,6 +319,11 @@ describe("studio_view_inspector()", {
     expect_gte(length(to_f$problem$fixes), 2L)
     expect_valid_form_events(lk)
 
+    # Card linking to a missing card id displays "(no such card)" in Goes to
+    from_uid <- studio_uid_of(ex$doc, "cards", "test_round")
+    from_card <- studio_view_inspector(ex$doc, list(kind = "card", uid = from_uid), faults = ex$check$faults)
+    expect_identical(from_card$lists[[2L]]$rows[[1L]]$text, "calc_does (no such card)")
+
     # Duplicate card id shows problem + free-id fix beside Id
     s <- studio_state_new(small)
     s_dup <- studio_step(
@@ -330,6 +335,16 @@ describe("studio_view_inspector()", {
     expect_match(id_f$problem$text, "Another card")
     expect_identical(id_f$problem$fixes[[1L]]$event$type, "fix")
     expect_valid_form_events(dup_card)
+
+    # Duplicate card ids do not show each other's links, disable Connect, and label links to a duplicate id clearly
+    expect_length(dup_card$lists[[1L]]$rows, 0L)
+    expect_length(dup_card$lists[[2L]]$rows, 0L)
+    expect_match(dup_card$lists[[1L]]$add$action$disabled, "unique id")
+    dup_b <- studio_view_inspector(s_dup$doc, list(kind = "card", uid = "u2"), faults = s_dup$check$faults)
+    expect_length(dup_b$lists[[1L]]$rows, 0L)
+    expect_length(dup_b$lists[[2L]]$rows, 0L)
+    card_c <- studio_view_inspector(s_dup$doc, list(kind = "card", uid = "u3"), faults = s_dup$check$faults)
+    expect_identical(card_c$lists[[1L]]$rows[[1L]]$text, "b (duplicate id)")
 
     # Broken stage on card adds missing choice, drops Edit side action, and attaches fixes
     doc_bad <- studio_doc_apply(
