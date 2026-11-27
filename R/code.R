@@ -58,9 +58,20 @@ code_name <- function(x) {
   ifelse(bare, x, paste0("`", escaped, "`"))
 }
 
+# The Unicode bidirectional controls and their UTF-8 bytes: the Arabic letter mark, the left-to-right and
+# right-to-left marks, the embeddings and overrides (202A to 202E) and the isolates (2066 to 2069).
+code_bidi_controls <- c(
+  list(list(code = 0x061CL, bytes = as.raw(c(0xD8, 0x9C)))),
+  lapply(c(0x200EL, 0x200FL, 0x202AL:0x202EL, 0x2066L:0x2069L), function(code) {
+    list(code = code, bytes = as.raw(c(0xE2, 0x80 + (code %/% 64L) %% 64L, 0x80 + code %% 64L)))
+  })
+)
+
 # Strings as R code, in double quotes: a backslash, a double quote, a newline, a carriage return, a tab and every
-# other control character are escaped, and every other character is left as it is. NA is `NA`. The text is UTF-8 and
-# is worked on byte by byte (no byte of a UTF-8 letter beyond ASCII is an ASCII byte), so no locale is asked.
+# other control character are escaped, and every other character is left as it is, except the Unicode bidirectional
+# controls (they change how text reads, and R's parser refuses them raw in a string), which are written as `\u` escapes.
+# NA is `NA`. The text is UTF-8 and is worked on byte by byte (no byte of a UTF-8 letter beyond ASCII is an ASCII
+# byte), so no locale is asked.
 code_string <- function(x) {
   checkmate::assert_character(x)
   missing <- is.na(x)
@@ -73,6 +84,9 @@ code_string <- function(x) {
   x <- swap(x, "\t", "\\t")
   for (code in c(1:8, 11:12, 14:31, 127)) {
     x <- swap(x, rawToChar(as.raw(code)), sprintf("\\x%02x", code))
+  }
+  for (control in code_bidi_controls) {
+    x <- swap(x, rawToChar(control$bytes), sprintf("\\u%04x", control$code))
   }
   out <- paste0("\"", x, "\"")
   Encoding(out) <- "UTF-8"

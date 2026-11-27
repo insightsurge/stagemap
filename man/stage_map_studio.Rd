@@ -14,7 +14,8 @@ with the start card.}
 error.}
 
 \item{run}{\code{TRUE} (the default) runs the studio and waits for it to close; it needs an interactive R session.
-\code{FALSE} returns the app without running it, for \code{\link[shiny:runApp]{shiny::runApp()}} or a test.}
+\code{FALSE} returns the app without running it, for \code{\link[shiny:runApp]{shiny::runApp()}} or a test. The app is not made to be hosted for
+several people: see the details.}
 }
 \value{
 With \code{run = TRUE}, the map from \strong{Done} (a \code{\link[=stage_map]{stage_map()}} widget, with the changes made in the studio),
@@ -49,6 +50,11 @@ and status and a link's kind can be chosen in their forms. The tables of kinds, 
 changes, and the variants, are carried through the studio and written into the code, but have no form. Click
 \strong{Done} to close the studio and return the map to R; closing its page without \strong{Done} returns \code{NULL}.
 The studio runs in this R session, and it can be used from the keyboard and on a phone-sized screen.
+
+With \code{run = TRUE} the studio serves one person, and a page that reloads or reconnects continues the work. The app
+that \code{run = FALSE} returns starts every session from the map it was given and shares nothing between sessions; when
+a page's connection drops, its new session says that the studio started again. On a hosted copy, a visitor's \strong{Done}
+ends the app for every visitor, and a hosted copy is not what the studio is made for yet.
 
 Experimental means the studio's names, arguments and layout can still change before the first release.
 }

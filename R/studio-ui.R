@@ -293,8 +293,7 @@ studio_options <- function(options) {
   )
 }
 
-# The boot JSON: the words the page writes itself, the settings, the names of the engine's events (from its contract)
-# and whether Done is offered.
+# The boot JSON: the words the page writes itself, the settings, the names of the engine's events (from its contract).
 studio_boot <- function(options) {
   checkmate::assert_list(options, names = "unique")
   prefix <- sm_spec()$prefix
@@ -302,8 +301,7 @@ studio_boot <- function(options) {
     labels = studio_labels(),
     copy_wait_ms = options$copy_wait_ms,
     hold_ms = options$hold_ms,
-    events = list(select = paste0(prefix, ":select"), hover = paste0(prefix, ":hover")),
-    done = TRUE
+    events = list(select = paste0(prefix, ":select"), hover = paste0(prefix, ":hover"))
   )
   # Written inside a script element, so a "<" is escaped to keep "</script>" out of it.
   htmltools::HTML(gsub("<", "\\u003c", studio_json(boot), fixed = TRUE))

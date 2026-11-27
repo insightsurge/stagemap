@@ -81,19 +81,24 @@ studio_ask_resolve_distance <- function(raw) {
   if (is.null(raw) || (is.character(raw) && length(raw) == 1L && !nzchar(trimws(raw)))) {
     return(Inf)
   }
-  if (is.numeric(raw) && length(raw) == 1L && !is.na(raw)) {
-    return(if (is.infinite(raw)) Inf else as.numeric(raw))
+  num <- if (is.numeric(raw) && length(raw) == 1L) {
+    as.numeric(raw)
+  } else if (is.character(raw) && length(raw) == 1L) {
+    suppressWarnings(as.numeric(raw))
+  } else {
+    NA_real_
   }
-  if (is.character(raw) && length(raw) == 1L) {
-    num <- suppressWarnings(as.numeric(raw))
-    if (!is.na(num)) {
-      return(num)
-    }
+  if (isTRUE(is.infinite(num) && num > 0)) {
+    return(Inf)
   }
-  sm_abort(
-    "{.arg max_distance} must be a whole number from 0, or empty for no limit.",
-    class = "stagemap_error_arg"
-  )
+  # A whole number that an integer can hold: a larger one is not a distance a map has.
+  if (is.na(num) || is.infinite(num) || num < 0 || num != trunc(num) || num > .Machine$integer.max) {
+    sm_abort(
+      "{.arg max_distance} must be a whole number from 0 to 2147483647, or empty for no limit.",
+      class = "stagemap_error_arg"
+    )
+  }
+  num
 }
 
 # Formats a question call node into R code text.
@@ -159,7 +164,7 @@ studio_ask_trace_links <- function(rows, map) {
   data.frame(from = out_from, to = out_to, kind = out_kind, stringsAsFactors = FALSE)
 }
 
-# Builds a failed `state$ask` entry and emits an unlight highlight effect.
+# Builds a failed `state$ask` entry and emits an unlight highlight effect (the document's own highlight).
 studio_ask_error <- function(state, question, data, head, lines = list(), notice_room = NULL) {
   checkmate::assert_list(state, names = "unique")
   checkmate::assert_string(question, min.chars = 1L)
@@ -185,7 +190,7 @@ studio_ask_error <- function(state, question, data, head, lines = list(), notice
   } else {
     state["notice"] <- list(NULL)
   }
-  list(state = state, effects = list(list(type = "highlight", ids = character(), links = NULL)))
+  list(state = state, effects = list(studio_unlight_effect(state)))
 }
 
 # Steps an `ask` event (`question` in `"trace"`, `"orphans"`, `"missing"`), returning `list(state, effects)`.
@@ -307,7 +312,8 @@ studio_room_ask_step <- function(state, data) {
     linked_to_id = meta$linked_to_id
   )
   state["notice"] <- list(NULL)
-  effects <- list(list(type = "highlight", ids = hl_ids, links = if (lit) links else NULL))
+  # An answer with no cards lights none, and the map goes back to what the document highlights itself.
+  effects <- list(if (lit) list(type = "highlight", ids = hl_ids, links = links) else studio_unlight_effect(state))
   list(state = state, effects = effects)
 }
 
@@ -316,7 +322,7 @@ studio_room_ask_clear <- function(state) {
   checkmate::assert_list(state, names = "unique")
   state["ask"] <- list(NULL)
   state["notice"] <- list(NULL)
-  list(state = state, effects = list(list(type = "highlight", ids = character(), links = NULL)))
+  list(state = state, effects = list(studio_unlight_effect(state)))
 }
 
 # Link kind choices for Ask (`""` = Every kind), returning NULL when the map has no kinds.
@@ -490,8 +496,8 @@ studio_ask_head <- function(ask, doc) {
       "downstream of"
     )
     within <- if (isTRUE(is.finite(ask$max_distance))) {
-      steps <- as.integer(ask$max_distance)
-      sprintf(" within %d %s", steps, if (steps == 1L) "step" else "steps")
+      steps <- ask$max_distance
+      sprintf(" within %s %s", format(steps, scientific = FALSE, trim = TRUE), if (steps == 1) "step" else "steps")
     } else {
       ""
     }

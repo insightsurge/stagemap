@@ -165,3 +165,18 @@ describe("studio_app()", {
     expect_identical(sent$messages[[1]]$ns, "studio-")
   })
 })
+
+describe("stage_map_studio() with a map the studio cannot open", {
+  skip_if_not_installed("shiny")
+
+  it("refuses at the call a map with a column named .studio_uid, naming the table", {
+    d <- data.frame(id = c("a", "b"), label = c("A", "B"), stage = "s", lane = "l")
+    d[[".studio_uid"]] <- c("x", "y")
+    m <- stage_map(d)
+    expect_error(stage_map_studio(m, run = FALSE), "cards", class = "stagemap_error_studio")
+    expect_error(stage_map_studio(m, run = FALSE), ".studio_uid", fixed = TRUE)
+    expect_error(studio_check_map(m, "call"), "call")
+    expect_null(studio_check_map(NULL))
+    expect_no_error(stage_map_studio(small, run = FALSE))
+  })
+})

@@ -47,7 +47,7 @@ export function createShell(root, boot, tools) {
     tray.inert = false;
     root.dataset.smsTray = open.join(' ');
     syncSheets();
-    /* Sent on every open: the server forgets it when the map is opened again or the page reconnects. */
+    /* Sent on every open: the server forgets it when the map is opened again, or, on a hosted copy, when the page reconnects. */
     if (name === 'code' && root.dataset.smsClosed === undefined) {
       tools.send?.('seen', { what: 'code' });
     }

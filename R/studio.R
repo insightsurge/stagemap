@@ -25,6 +25,11 @@
 #' **Done** to close the studio and return the map to R; closing its page without **Done** returns `NULL`.
 #' The studio runs in this R session, and it can be used from the keyboard and on a phone-sized screen.
 #'
+#' With `run = TRUE` the studio serves one person, and a page that reloads or reconnects continues the work. The app
+#' that `run = FALSE` returns starts every session from the map it was given and shares nothing between sessions; when
+#' a page's connection drops, its new session says that the studio started again. On a hosted copy, a visitor's **Done**
+#' ends the app for every visitor, and a hosted copy is not what the studio is made for yet.
+#'
 #' Experimental means the studio's names, arguments and layout can still change before the first release.
 #'
 #' @param map A [stage_map()] widget to open the studio on, or `NULL` (the default) to open on the built-in example map
@@ -32,7 +37,8 @@
 #' @param ... Must stay empty. It makes every argument after it a named argument, and a typo in an argument's name an
 #'   error.
 #' @param run `TRUE` (the default) runs the studio and waits for it to close; it needs an interactive R session.
-#'   `FALSE` returns the app without running it, for [shiny::runApp()] or a test.
+#'   `FALSE` returns the app without running it, for [shiny::runApp()] or a test. The app is not made to be hosted for
+#'   several people: see the details.
 #' @returns With `run = TRUE`, the map from **Done** (a [stage_map()] widget, with the changes made in the studio),
 #'   invisibly, or `NULL` invisibly when the studio's page was closed without **Done**. With `run = FALSE`, the app, a
 #'   `shiny.appobj`.
@@ -63,6 +69,7 @@ stage_map_studio <- function(map = NULL, ..., run = TRUE) {
   checkmate::assert_flag(run)
   check_dots(...)
   rlang::check_installed("shiny", reason = "to run the stagemap studio.", version = "1.7.5")
+  studio_check_map(map, call)
   app <- studio_app(map, stop_when_closed = run)
   if (!run) {
     return(app)
@@ -80,6 +87,30 @@ stage_map_studio <- function(map = NULL, ..., run = TRUE) {
   invisible(studio_run(app))
 }
 
+# Stops at the call when `map` cannot open in the studio: the studio keeps a row key in a column named `.studio_uid` of
+# each table, so a map whose table has a column of that name cannot be opened. NULL (the built-in example) always can.
+studio_check_map <- function(map, call = rlang::caller_env()) {
+  checkmate::assert_class(map, "stagemap_widget", null.ok = TRUE)
+  checkmate::assert_environment(call)
+  if (is.null(map)) {
+    return(invisible(NULL))
+  }
+  tables <- map_parts(map, call = call)$tables
+  for (name in names(tables)) {
+    if (".studio_uid" %in% names(tables[[name]])) {
+      sm_abort(
+        c(
+          "{.arg map} cannot be opened in the studio.",
+          "x" = "Its {.field {name}} table has a column named {.field .studio_uid}, which the studio keeps for itself."
+        ),
+        class = "stagemap_error_studio",
+        call = call
+      )
+    }
+  }
+  invisible(NULL)
+}
+
 # The studio as a Shiny app: the module `studio` on its own page. `on_done` is called with the map from Done (by
 # default it stops the app, whose value is then that map); `options` are the page's settings (studio_options()). The
 # server closes over `map`: no option, global or query string carries it. With `stop_when_closed` (the app that
@@ -95,6 +126,8 @@ studio_app <- function(map = NULL, on_done = shiny::stopApp, options = list(), s
   app <- new.env(parent = emptyenv())
   app$sessions <- 0L
   app$done <- FALSE
+  # The last state, for the studio that serves one person (`stop_when_closed`): a reload or a reconnect continues it.
+  app$kept <- new.env(parent = emptyenv())
   shiny::shinyApp(
     ui = function(request) studio_ui("studio", options),
     server = function(input, output, session) {
@@ -103,7 +136,7 @@ studio_app <- function(map = NULL, on_done = shiny::stopApp, options = list(), s
         app$done <- TRUE
         on_done(map)
       }
-      studio_server("studio", map, done, options)
+      studio_server("studio", map, done, options, keep = if (stop_when_closed) app$kept)
       if (stop_when_closed) {
         session$onSessionEnded(function() {
           app$sessions <- app$sessions - 1L

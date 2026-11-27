@@ -119,3 +119,42 @@ describe("studio_message()", {
     expect_error(studio_message(view, "sent"), "sent")
   })
 })
+
+describe("studio_event_check() and the names of data", {
+  it("refuses data with a repeated key or a key without a name, instead of reaching a handler", {
+    repeated <- jsonlite::parse_json('{"kind":"card","uid":"u1","uid":"u2"}')
+    expect_length(repeated, 3L)
+    unnamed <- jsonlite::parse_json('{"kind":"card","uid":"u1","":5}')
+    for (type in c("open", "target", "add", "ask", "ready")) {
+      expect_error(
+        studio_event_check(event(type, repeated)),
+        "Its `data`: Must have unique names",
+        class = "stagemap_error_studio"
+      )
+      expect_error(
+        studio_event_check(event(type, unnamed)),
+        "Its `data`",
+        class = "stagemap_error_studio"
+      )
+    }
+    expect_error(studio_event_check(event("target", list(1, 2))), "Its `data`", class = "stagemap_error_studio")
+  })
+
+  it("answers such an event with a notice and changes nothing", {
+    s <- studio_state_new(full_map())
+    for (type in c("open", "target", "add", "ask")) {
+      data <- jsonlite::parse_json(
+        '{"kind":"card","uid":"u1","uid":"u2","table":"cards","template":"blank","question":"trace"}'
+      )
+      res <- studio_step(s, list(seq = 1L, type = type, data = data, rev = 0L))
+      expect_match(res$state$notice$text, "unique names")
+      expect_identical(res$state$doc, s$doc)
+      expect_length(res$effects, 0L)
+    }
+  })
+
+  it("still takes an empty object and data whose names are all different", {
+    expect_no_error(studio_event_check(event("ready", jsonlite::parse_json("{}"))))
+    expect_no_error(studio_event_check(event("target", jsonlite::parse_json('{"kind":"none","uid":null}'))))
+  })
+})

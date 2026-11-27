@@ -12,7 +12,7 @@ export function render(el, notice, ctx) {
   const prev = seenNotice.get(el) ?? 0;
   if (notice.n === prev) return;
   seenNotice.set(el, notice.n);
-  ctx.toast(notice.text, notice.tone, notice.undo ? 7000 : 4000);
+  ctx.toast(notice.text, notice.tone);
   if (notice.room) {
     const roomEl = el.querySelector(`[data-sms-room-of="${CSS.escape(notice.room)}"]`);
     const roomBtn = el.querySelector(`[data-sms-room="${CSS.escape(notice.room)}"]`);
