@@ -163,8 +163,12 @@ function syncSelectOptions(select, choices, wanted, isDraft, ack, created) {
     select.dataset.smsChoices = sig;
   }
   if (isDraft) {
+    /* A draft keeps the person's pick, but takes a value the server has newly chosen (the card now selected on the
+       map) unless the person is using the control. The value last seen from the server is kept on the control. */
     const valid = list.some((c) => String(c.value ?? '') === select.value);
-    if (created || !valid) select.value = wanted;
+    const moved = select.dataset.smsServer !== wanted && select !== document.activeElement;
+    if (created || !valid || moved) select.value = wanted;
+    select.dataset.smsServer = wanted;
   } else if (canPatch(select, ack) && select.value !== wanted) {
     select.value = wanted;
   }

@@ -175,6 +175,7 @@ studio_ask_error <- function(state, question, data, head, lines = list(), notice
     rows = NULL,
     links = NULL,
     rev = state$rev,
+    run = state$ack,
     stale = FALSE,
     lit = FALSE,
     error = list(head = head, lines = lines)
@@ -230,6 +231,8 @@ studio_room_ask_step <- function(state, data) {
         call_args$max_distance <- code_value(as.numeric(max_distance))
       }
       meta$direction <- direction
+      meta$kinds <- kinds
+      meta$max_distance <- max_distance
       meta$call <- studio_ask_call_text("sm_trace", call_args)
       res
     } else if (identical(question, "orphans")) {
@@ -262,6 +265,7 @@ studio_room_ask_step <- function(state, data) {
       if (!is.null(kinds)) {
         call_args$kinds <- code_value(kinds)
       }
+      meta$kinds <- kinds
       meta$stage_id <- stage_id
       meta$linked_to_id <- linked_id
       meta$call <- studio_ask_call_text("sm_missing", call_args)
@@ -292,10 +296,13 @@ studio_room_ask_step <- function(state, data) {
     rows = rows,
     links = links,
     rev = state$rev,
+    run = state$ack,
     stale = FALSE,
     lit = lit,
     error = NULL,
     direction = meta$direction,
+    kinds = meta$kinds,
+    max_distance = meta$max_distance,
     stage_id = meta$stage_id,
     linked_to_id = meta$linked_to_id
   )
@@ -436,18 +443,27 @@ studio_ask_head <- function(ask, doc) {
   rows <- ask$rows
   q <- ask$question
 
-  stage_title <- function(sid) {
-    if (is.null(sid) || is.na(sid) || !nzchar(sid)) {
+  title_of <- function(table, id) {
+    if (is.null(id) || is.na(id) || !nzchar(id)) {
       return("")
     }
-    stages_tbl <- doc$tables$stages
-    if (is.data.frame(stages_tbl) && "id" %in% names(stages_tbl)) {
-      idx <- match(sid, as_text(stages_tbl$id))
+    tbl <- doc$tables[[table]]
+    if (is.data.frame(tbl) && "id" %in% names(tbl)) {
+      idx <- match(id, as_text(tbl$id))
       if (!is.na(idx)) {
-        return(studio_row_title(stages_tbl, idx, sid))
+        return(studio_row_title(tbl, idx, id))
       }
     }
-    sid
+    id
+  }
+  stage_title <- function(sid) title_of("stages", sid)
+  # The chosen link kinds as words ("Verifies or Hand"), or "" when every kind counts.
+  kinds_text <- function() {
+    kinds <- ask$kinds
+    if (length(kinds) == 0L) {
+      return("")
+    }
+    paste(vapply(kinds, function(k) title_of("kinds", k), ""), collapse = " or ")
   }
 
   if (identical(q, "trace")) {
@@ -473,12 +489,19 @@ studio_ask_head <- function(ask, doc) {
       both = "either side of",
       "downstream of"
     )
+    within <- if (isTRUE(is.finite(ask$max_distance))) {
+      steps <- as.integer(ask$max_distance)
+      sprintf(" within %d %s", steps, if (steps == 1L) "step" else "steps")
+    } else {
+      ""
+    }
     return(sprintf(
-      "%d %s %s %s",
+      "%d %s %s %s%s",
       n_other,
       if (n_other == 1L) "card" else "cards",
       phrase,
-      paste(start_lbls, collapse = ", ")
+      paste(start_lbls, collapse = ", "),
+      within
     ))
   }
 
@@ -493,10 +516,23 @@ studio_ask_head <- function(ask, doc) {
   n <- nrow(rows)
   s_lbl <- stage_title(ask$stage_id)
   l_lbl <- stage_title(ask$linked_to_id)
+  k_lbl <- kinds_text()
   if (n == 0L) {
-    return(sprintf("No gaps: every %s card links to %s", s_lbl, l_lbl))
+    return(sprintf(
+      "No gaps: every %s card %s to %s",
+      s_lbl,
+      if (nzchar(k_lbl)) sprintf("has a %s link", k_lbl) else "links",
+      l_lbl
+    ))
   }
-  sprintf("%d %s in %s with no direct link to %s", n, if (n == 1L) "card" else "cards", s_lbl, l_lbl)
+  sprintf(
+    "%d %s in %s with no direct %slink to %s",
+    n,
+    if (n == 1L) "card" else "cards",
+    s_lbl,
+    if (nzchar(k_lbl)) paste0(k_lbl, " ") else "",
+    l_lbl
+  )
 }
 
 # Builds the `ask` section view for `state`: `questions` and `answer`.
@@ -517,6 +553,7 @@ studio_room_ask_view <- function(state) {
       answer = list(
         question = ask$question,
         call = ask$call,
+        run = ask$run,
         stale = stale,
         error = ask$error,
         head = NULL,
@@ -580,6 +617,7 @@ studio_room_ask_view <- function(state) {
     answer = list(
       question = ask$question,
       call = ask$call,
+      run = ask$run,
       stale = stale,
       error = NULL,
       head = studio_ask_head(ask, state$doc),

@@ -75,8 +75,10 @@
   min-width: 0;
 }
 
+/* A stale answer keeps its text at full colour (the stale words and the call must stay readable); the dashed edge
+   and the words "Map changed since" mark it. */
 .sms .sms-ask-ans[data-sms-stale="true"] {
-  opacity: 0.78;
+  border-style: dashed;
 }
 
 .sms .sms-ask-ans-head {

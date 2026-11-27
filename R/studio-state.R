@@ -402,6 +402,10 @@ studio_step <- function(state, event) {
     if (!is.null(opened$effects)) {
       return(opened)
     }
+    # The map is drawn again; a card that is lit and still exists would stay lit with no answer to clear it.
+    if (isTRUE(state$ask$lit)) {
+      effects[[length(effects) + 1L]] <- list(type = "highlight", ids = character(), links = NULL)
+    }
     state <- opened
   } else if (checked$type %in% names(studio_events())) {
     if (identical(checked$type, "add")) {

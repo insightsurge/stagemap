@@ -7,6 +7,7 @@ import { make, setText, syncChildren } from './dom.js';
 import { render as renderForm } from './form.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
+const STALE_TEXT = 'Map changed since: ask again';
 const CLEAR_EVENT = JSON.stringify({ type: 'ask_clear', data: {} });
 const prevAnswers = new WeakMap();
 
@@ -133,20 +134,55 @@ function syncPanels(wrap, questions, ctx, ns, syncTraceDrafts) {
   return box;
 }
 
-function makeDistanceCell(cell) {
+/* What a cell of an answer row holds: a card with a button, a card mark alone, distance squares, or text. */
+function cellKind(cell, row) {
+  if (cell.kind === 'card') return row.event ? 'pick' : 'mark';
+  if (cell.kind === 'distance') return 'distance';
+  return 'text';
+}
+
+function makeCell(kind) {
   const td = document.createElement('td');
-  const boxes = make('span', 'sms-ask-dist');
-  boxes.setAttribute('aria-hidden', 'true');
-  const max = Math.max(0, Number(cell.max ?? 0));
-  const val = Math.max(0, Number(cell.value ?? 0));
-  for (let i = 0; i < max; i += 1) {
-    const sq = document.createElement('i');
-    if (i < val) sq.className = 'sms-ask-dist-on';
-    boxes.append(sq);
+  td.dataset.smsKind = kind;
+  if (kind === 'pick') {
+    const btn = make('button', 'sms-ask-pick');
+    btn.type = 'button';
+    btn.append(make('span', 'sms-ask-mk'));
+    td.append(btn);
+  } else if (kind === 'mark') {
+    td.append(make('span', 'sms-ask-mk'));
+  } else if (kind === 'distance') {
+    const boxes = make('span', 'sms-ask-dist');
+    boxes.setAttribute('aria-hidden', 'true');
+    td.append(boxes, make('span', 'sms-ask-dist-text'));
   }
-  const txt = make('span', 'sms-ask-dist-text', String(cell.text ?? ''));
-  td.append(boxes, txt);
   return td;
+}
+
+/* Sets what changed in a cell and leaves its nodes (and so a button's focus and busy state) alone. */
+function patchCell(td, kind, cell, row) {
+  const text = String(cell.text ?? '');
+  if (kind === 'pick') {
+    const btn = td.firstElementChild;
+    const event = JSON.stringify(row.event);
+    if (btn.getAttribute('data-sms-event') !== event) btn.setAttribute('data-sms-event', event);
+    setText(btn.firstElementChild, text);
+  } else if (kind === 'mark') {
+    setText(td.firstElementChild, text);
+  } else if (kind === 'distance') {
+    const boxes = td.firstElementChild;
+    const max = Math.max(0, Number(cell.max ?? 0));
+    const val = Math.max(0, Number(cell.value ?? 0));
+    while (boxes.children.length > max) boxes.lastElementChild.remove();
+    while (boxes.children.length < max) boxes.append(document.createElement('i'));
+    [...boxes.children].forEach((sq, i) => {
+      const cls = i < val ? 'sms-ask-dist-on' : '';
+      if (sq.className !== cls) sq.className = cls;
+    });
+    setText(boxes.nextElementSibling, text);
+  } else {
+    setText(td, text);
+  }
 }
 
 function makeRowNode(existing, row) {
@@ -154,36 +190,42 @@ function makeRowNode(existing, row) {
   if (row.uid) tr.dataset.smsUid = row.uid;
   else delete tr.dataset.smsUid;
 
-  const cells = row.cells ?? [];
-  const tds = cells.map((cell) => {
-    if (cell.kind === 'card') {
-      const td = document.createElement('td');
-      const mark = make('span', 'sms-ask-mk', String(cell.text ?? ''));
-      if (row.event) {
-        const btn = make('button', 'sms-ask-pick');
-        btn.type = 'button';
-        btn.setAttribute('data-sms-event', JSON.stringify(row.event));
-        btn.append(mark);
-        td.append(btn);
-      } else {
-        td.append(mark);
-      }
-      return td;
-    }
-    if (cell.kind === 'distance') {
-      return makeDistanceCell(cell);
-    }
-    return make('td', '', String(cell.text ?? ''));
+  const old = [...tr.children];
+  const tds = (row.cells ?? []).map((cell, i) => {
+    const kind = cellKind(cell, row);
+    const td = old[i]?.dataset.smsKind === kind ? old[i] : makeCell(kind);
+    patchCell(td, kind, cell, row);
+    return td;
   });
 
-  tr.replaceChildren(...tds);
+  syncChildren(tr, tds);
   return tr;
 }
 
+/* The slot's status region, made empty with the slot so a later change is read out. It says what the answer says (the
+   head sentence or the error, and the stale words); the table stays out of it. */
+function getAnnouncer(slot) {
+  let live = slot.querySelector(':scope > .sms-ask-live');
+  if (!live) {
+    live = make('p', 'sms-ask-sr sms-ask-live');
+    live.setAttribute('role', 'status');
+    live.setAttribute('aria-live', 'polite');
+    slot.prepend(live);
+  }
+  return live;
+}
+
+function announcement(answer) {
+  const said = answer.error ? `Could not run question. ${String(answer.error.head ?? '')}` : String(answer.head ?? '');
+  return answer.stale ? `${said}. ${STALE_TEXT}` : said;
+}
+
 function syncAnswer(slot, answer, wrap) {
+  const live = getAnnouncer(slot);
   if (!answer) {
     const hadFocus = slot.contains(document.activeElement);
-    slot.replaceChildren();
+    setText(live, '');
+    slot.querySelector(':scope > .sms-ask-ans')?.remove();
     if (hadFocus) {
       const checked = wrap.querySelector('.sms-ask-switch input[type="radio"]:checked')?.value;
       const activePanel = checked ? wrap.querySelector(`.sms-ask-panel[data-sms-q="${CSS.escape(checked)}"]`) : null;
@@ -203,6 +245,7 @@ function syncAnswer(slot, answer, wrap) {
     box = make('div', 'sms-ask-ans');
     head = make('div', 'sms-ask-ans-head');
     meta = make('div', 'sms-ask-ans-meta');
+    meta.setAttribute('aria-hidden', 'true'); /* the status region above the box says it */
     titleEl = make('p', 'sms-ask-ans-title');
     meta.append(titleEl);
     clearBtn = make('button', 'sms-btn', 'Clear');
@@ -211,7 +254,7 @@ function syncAnswer(slot, answer, wrap) {
     clearBtn.setAttribute('data-sms-event', CLEAR_EVENT);
     head.append(meta, clearBtn);
     box.append(head);
-    slot.replaceChildren(box);
+    slot.append(box);
   } else {
     head = box.querySelector(':scope > .sms-ask-ans-head');
     meta = head.querySelector(':scope > .sms-ask-ans-meta');
@@ -222,11 +265,12 @@ function syncAnswer(slot, answer, wrap) {
   if (answer.stale) box.dataset.smsStale = 'true';
   else delete box.dataset.smsStale;
 
+  setText(live, announcement(answer));
   setText(titleEl, answer.error ? 'Could not run question' : String(answer.head ?? ''));
   let staleEl = meta.querySelector(':scope > .sms-ask-stale');
   if (answer.stale) {
-    if (!staleEl) staleEl = make('p', 'sms-ask-stale', 'Map changed since: ask again');
-    else setText(staleEl, 'Map changed since: ask again');
+    if (!staleEl) staleEl = make('p', 'sms-ask-stale', STALE_TEXT);
+    else setText(staleEl, STALE_TEXT);
     syncChildren(meta, [titleEl, staleEl]);
   } else {
     syncChildren(meta, [titleEl]);

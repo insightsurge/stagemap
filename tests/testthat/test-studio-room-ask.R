@@ -89,8 +89,8 @@ describe("studio_room_ask_step() and studio_room_ask_clear()", {
       data.frame(id = "l", label = "Main")
     ) |>
       add_links(
-        data.frame(from = "r1", to = "t1", kind = "verifies"),
-        kinds = data.frame(id = "verifies", label = "Verifies")
+        data.frame(from = c("r1", "r2"), to = "t1", kind = c("verifies", "other")),
+        kinds = data.frame(id = c("verifies", "other"), label = c("Verifies", "Other"))
       )
     s <- studio_state_new(m)
 
@@ -100,7 +100,7 @@ describe("studio_room_ask_step() and studio_room_ask_clear()", {
     expect_identical(res_o$state$ask$rows[, names(direct_o)], direct_o)
     expect_identical(eval_ask_call(res_o$state$ask$call, m), direct_o)
     expect_null(res_o$state$ask$links)
-    expect_identical(res_o$effects[[1L]]$ids, c("r2", "x1"))
+    expect_identical(res_o$effects[[1L]]$ids, "x1")
 
     # Loose ends with none found -> unlight
     s_all_linked <- studio_state_new(small_map)
@@ -116,11 +116,113 @@ describe("studio_room_ask_step() and studio_room_ask_clear()", {
     expect_identical(res_m$state$ask$rows[, names(direct_m)], direct_m)
     expect_identical(eval_ask_call(res_m$state$ask$call, m), direct_m)
     expect_identical(res_m$effects[[1L]]$ids, c("r2", "x1"))
+    expect_match(res_m$state$ask$call, 'kinds = "verifies"', fixed = TRUE)
+
+    # The kinds filter changes the answer: r2 is linked, but not by a "verifies" link
+    res_m_all <- studio_room_ask_step(s, list(question = "missing", stage = u_req, linked_to = u_test))
+    direct_m_all <- sm_missing(m, "req", "test")
+    expect_identical(res_m_all$state$ask$rows[, names(direct_m_all)], direct_m_all)
+    expect_identical(res_m_all$effects[[1L]]$ids, "x1")
+    expect_false(grepl("kinds", res_m_all$state$ask$call, fixed = TRUE))
+    expect_identical(res_m_all$state$ask$kinds, NULL)
+    expect_identical(res_m$state$ask$kinds, "verifies")
+
+    # The head sentence says which kind the answer is about, and so does the "no gaps" one
+    expect_identical(
+      studio_room_ask_view(res_m$state)$answer$head,
+      "2 cards in Requirement with no direct Verifies link to Test"
+    )
+    expect_identical(
+      studio_room_ask_view(res_m_all$state)$answer$head,
+      "1 card in Requirement with no direct link to Test"
+    )
+    res_m_two <- studio_room_ask_step(
+      s,
+      list(question = "missing", stage = u_req, linked_to = u_test, kinds = list("verifies", "other"))
+    )
+    expect_match(
+      studio_room_ask_view(res_m_two$state)$answer$head,
+      "no direct Verifies or Other link to Test",
+      fixed = TRUE
+    )
+    res_m_none <- studio_room_ask_step(
+      s,
+      list(question = "missing", stage = u_test, linked_to = u_req, kinds = "other")
+    )
+    expect_identical(
+      studio_room_ask_view(res_m_none$state)$answer$head,
+      "No gaps: every Test card has a Other link to Requirement"
+    )
 
     # Missing with no gaps -> unlight
     res_m_clean <- studio_room_ask_step(s, list(question = "missing", stage = u_test, linked_to = u_req))
     expect_identical(nrow(res_m_clean$state$ask$rows), 0L)
     expect_identical(res_m_clean$effects, list(list(type = "highlight", ids = character(), links = NULL)))
+  })
+
+  it("keeps the kinds filter of sm_trace() in the answer, the call text and the head sentence", {
+    m <- stage_map(
+      data.frame(id = c("a", "b", "c"), label = c("A", "B", "C"), stage = "s", lane = "l"),
+      data.frame(id = "s", label = "S"),
+      data.frame(id = "l", label = "L")
+    ) |>
+      add_links(
+        data.frame(from = c("a", "a"), to = c("b", "c"), kind = c("x", "y")),
+        kinds = data.frame(id = c("x", "y"), label = c("Ex", "Why"))
+      )
+    s <- studio_state_new(m)
+
+    res_k <- studio_room_ask_step(s, list(question = "trace", ids = "u1", kinds = "x"))
+    direct_k <- sm_trace(m, "a", kinds = "x")
+    expect_identical(res_k$state$ask$rows[, names(direct_k)], direct_k)
+    expect_identical(res_k$effects[[1L]]$ids, c("a", "b"))
+    expect_identical(res_k$state$ask$call, 'sm_trace(map, "a", kinds = "x")')
+    expect_identical(eval_ask_call(res_k$state$ask$call, m), direct_k)
+
+    res_all <- studio_room_ask_step(s, list(question = "trace", ids = "u1"))
+    expect_identical(res_all$effects[[1L]]$ids, c("a", "b", "c"))
+    expect_false(grepl("kinds", res_all$state$ask$call, fixed = TRUE))
+
+    # A distance limit is in the call and in the head sentence
+    res_d <- studio_room_ask_step(s, list(question = "trace", ids = "u1", max_distance = 1))
+    expect_match(res_d$state$ask$call, "max_distance = 1", fixed = TRUE)
+    expect_identical(studio_room_ask_view(res_d$state)$answer$head, "2 cards downstream of A within 1 step")
+    res_d2 <- studio_room_ask_step(s, list(question = "trace", ids = "u1", max_distance = "3"))
+    expect_identical(studio_room_ask_view(res_d2$state)$answer$head, "2 cards downstream of A within 3 steps")
+    expect_identical(studio_room_ask_view(res_all$state)$answer$head, "2 cards downstream of A")
+  })
+
+  it("numbers every answer so a repeated question is a new value, and unlights an open map after a lit answer", {
+    s <- studio_state_new(small_map)
+    first <- studio_step(s, ev_ask(3L, list(question = "trace", ids = "u1")))$state
+    again <- studio_step(first, ev_ask(4L, list(question = "trace", ids = "u1"), rev = first$rev))$state
+    expect_identical(first$ask$run, 3L)
+    expect_identical(again$ask$run, 4L)
+    v_first <- studio_room_ask_view(first)
+    v_again <- studio_room_ask_view(again)
+    expect_identical(v_first$answer$run, 3L)
+    expect_false(identical(v_first, v_again))
+    expect_false(identical(studio_message(v_first, v_again), list(sections = structure(list(), names = character()))))
+    # An error answer is numbered too
+    err <- studio_step(s, ev_ask(5L, list(question = "trace", ids = "u999")))$state
+    expect_identical(studio_room_ask_view(err)$answer$run, 5L)
+
+    # Opening a map after a lit answer clears the answer and unlights, so no card stays lit without a way to clear it
+    expect_true(first$ask$lit)
+    for (template in c("blank", "example", "given")) {
+      opened <- studio_step(
+        first,
+        list(seq = 4L, type = "open", data = list(template = template, confirm = FALSE), rev = first$rev)
+      )
+      expect_null(opened$state$ask)
+      expect_identical(opened$effects[[1L]], list(type = "highlight", ids = character(), links = NULL))
+    }
+    # No lit answer, nothing to unlight
+    quiet <- studio_step(
+      s,
+      list(seq = 1L, type = "open", data = list(template = "blank", confirm = FALSE), rev = s$rev)
+    )
+    expect_false(any(vapply(quiet$effects, function(e) identical(e$type, "highlight"), logical(1))))
   })
 
   it("handles errors from unknown keys, bad max_distance, bad types and broken documents with unlight only", {
