@@ -234,6 +234,8 @@ describe("the studio on a phone", {
       app,
       paste(pick_card_js("round_dose"), "document.querySelector(\".sms-block [data-sms-room='ask']\").click();")
     )
+    # The server's answer to the pick comes after its acknowledgement: wait for the form, then look at the sheets
+    app$wait_for_js("document.querySelector('.sms-inspector').hidden === false")
     s <- sheets(app)
     expect_true(s$form)
     expect_length(s$rooms, 0L)
@@ -253,6 +255,7 @@ describe("the studio on a phone", {
     expect_false(s$form)
     release_studio_messages(app)
     studio_wait_step(app)
+    app$wait_for_js("document.querySelector('.sms-inspector').hidden === false")
     s <- sheets(app)
     expect_true(s$form)
     expect_length(s$rooms, 0L)
