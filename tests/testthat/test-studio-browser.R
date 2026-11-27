@@ -284,6 +284,8 @@ describe("the rooms", {
     studio_press(app, "Escape", key_code = 27L)
     app$wait_for_js(sprintf("%s.hidden === true", room))
     expect_identical(app$get_js("document.activeElement.className"), "sms-title")
+    # Opening the code room sends its `seen` event: the page is busy until that answer is drawn
+    studio_wait_step(app)
     expect_studio_clean(app)
   })
 })
