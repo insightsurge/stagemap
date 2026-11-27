@@ -67,7 +67,12 @@ export function render(el, inspector, ctx) {
   const hadFocus = el.contains(document.activeElement);
   el.hidden = false;
   /* On a phone one sheet is open at a time: a new pick closes the rooms. */
-  if (prevUid !== inspector.uid && ctx.isPhone?.()) ctx.closeAllRooms?.();
+  if (prevUid !== inspector.uid) {
+    if (ctx.isPhone?.()) ctx.closeAllRooms?.();
+    /* The form hides the hint bar on a phone and can lie over the guide's list elsewhere, so the list closes with a
+       new pick: Escape then closes what can be seen. */
+    ctx.closeGuide?.();
+  }
   syncInspectorInert(root);
   if (root) root.dataset.smsInspector = inspector.kind;
   el.dataset.smsUid = inspector.uid;

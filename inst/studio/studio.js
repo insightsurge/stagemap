@@ -83,7 +83,13 @@ function mount(root) {
   let hold = null;
   const store = createStore(root, boot, { flush: () => hold?.flush(), later, cancel, signal });
   hold = createHold(boot, store.send, { later, cancel });
-  const shell = createShell(root, boot, { later, cancel, send: store.send, signal });
+  const shell = createShell(root, boot, {
+    later,
+    cancel,
+    send: store.send,
+    signal,
+    closeGuide: () => closeGuide(root, false),
+  });
   const theme = createTheme(root, { signal });
 
   let modality = 'pointer';
@@ -187,6 +193,7 @@ function mount(root) {
     rev: store.rev,
     toast: shell.toast,
     closeAllRooms: shell.closeAllRooms,
+    closeGuide: () => closeGuide(root, false),
     isPhone: shell.isPhone,
     shouldFocusInspector,
     restoreInspectorFocus,

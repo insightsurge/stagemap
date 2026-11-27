@@ -55,6 +55,14 @@ sheets <- function(app) {
   )
 }
 
+# Whether the guide's list is open: its panel is shown and the button says so.
+guide_open <- function(app) {
+  app$get_js(
+    "(() => { const p = document.querySelector('.sms-try'); const b = document.querySelector('.sms-try-btn');
+       return !p.hidden && b.getAttribute('aria-expanded') === 'true'; })()"
+  )
+}
+
 # How far the studio reaches past the screen's width: the sheet's scroll width, the dock, and the right edge of each
 # part of the page of its own.
 overflow <- function(app) {
@@ -102,8 +110,25 @@ describe("the studio on a phone", {
       app$wait_for_js("document.querySelector('[data-sms-room-of=\"map\"]').hidden === false")
       expect_identical(app$get_js("document.querySelector('.sms-phone-map').getAttribute('aria-expanded')"), "true")
       expect_no_sideways(app, paste(width, "with the Map room"))
-      # The header's theme button switches the theme
+      # The header's theme button is a switch that says which mode is on, and switches it
+      theme_state <- function() {
+        jsonlite::fromJSON(app$get_js(
+          sprintf(
+            "JSON.stringify({ role: document.querySelector('.sms-phone-theme').getAttribute('role'),
+               checked: document.querySelector('.sms-phone-theme').getAttribute('aria-checked'),
+               name: document.querySelector('.sms-phone-theme').getAttribute('aria-label'),
+               dark: document.documentElement.getAttribute('data-bs-theme') === 'dark' })"
+          )
+        ))
+      }
+      before <- theme_state()
+      expect_identical(before$role, "switch")
+      expect_identical(before$checked, tolower(as.character(before$dark)))
+      expect_true(startsWith(before$name, "Light or dark"))
       app$run_js("document.querySelector('.sms-phone-theme').click()")
+      after <- theme_state()
+      expect_identical(after$dark, !before$dark)
+      expect_identical(after$checked, tolower(as.character(after$dark)))
       expect_true(app$get_js(sprintf(
         "%s.dataset.theme === 'dark' || %s.dataset.theme === 'light'",
         studio_root_js,
@@ -116,6 +141,17 @@ describe("the studio on a phone", {
   it("[SMS-078] opens one sheet at a time: a room, or the form, never both", {
     for (width in phone_widths) {
       app <- phone_driver(width)
+      expect_true(sheets(app)$hint)
+      # The guide's list is open when a room opens: it closes, and Escape closes the room that can be seen
+      click_now(app, ".sms-try-btn")
+      expect_true(guide_open(app))
+      open_room(app, "ask")
+      expect_false(guide_open(app))
+      expect_identical(app$get_js("document.querySelector('.sms-try-btn').getAttribute('aria-expanded')"), "false")
+      expect_identical(sheets(app)$rooms, "ask")
+      studio_press(app, "Escape")
+      app$wait_for_js("document.querySelector('[data-sms-room-of=\"ask\"]').hidden === true")
+      expect_length(sheets(app)$rooms, 0L)
       expect_true(sheets(app)$hint)
       open_room(app, "ask")
       expect_identical(sheets(app)$rooms, "ask")
@@ -168,6 +204,17 @@ describe("the studio on a phone", {
       studio_press(app, "Escape")
       app$wait_for_js("document.querySelector('.sms-inspector').hidden === true")
       expect_true(sheets(app)$hint)
+
+      # The guide's list is open when a pick opens the form: it closes, and Escape closes the form
+      click_now(app, ".sms-try-btn")
+      expect_true(guide_open(app))
+      app$run_js(pick_card_js("round_dose"))
+      app$wait_for_js("document.querySelector('.sms-inspector').hidden === false")
+      expect_false(guide_open(app))
+      studio_press(app, "Escape")
+      app$wait_for_js("document.querySelector('.sms-inspector').hidden === true")
+      expect_true(sheets(app)$hint)
+      expect_false(guide_open(app))
       expect_studio_clean(app)
     }
   })
@@ -280,6 +327,13 @@ describe("the studio on a phone", {
       }
       expect_gt(length(sizes()), 3L)
       expect_true(all(sizes() >= 16))
+      # The status segments and the switches of the form are 44px high
+      app$wait_for_js("document.getAnimations().length === 0")
+      for (selector in c(".sms-inspector .sms-seg-face", ".sms-inspector .sms-toggle")) {
+        selected <- heights(selector)
+        expect_gt(length(selected), 0L, label = selector)
+        expect_true(all(selected >= 44), label = paste(selector, "heights", paste(selected, collapse = ", ")))
+      }
       studio_do(app, studio_click_js(".sms-inspector .sms-insp-acts button"))
       for (room in c("ask", "map")) {
         open_room(app, room)
@@ -288,6 +342,13 @@ describe("the studio on a phone", {
         expect_gt(length(room_heights), 0L)
         expect_true(all(room_heights >= 44))
       }
+      # The Ask room's segments, and the Map room's Bundle links and Legend switches
+      open_room(app, "ask")
+      expect_gt(length(heights("[data-sms-room-of='ask'] .sms-seg-face")), 0L)
+      expect_true(all(heights("[data-sms-room-of='ask'] .sms-seg-face") >= 44))
+      open_room(app, "map")
+      expect_gt(length(heights("[data-sms-room-of='map'] .sms-toggle")), 0L)
+      expect_true(all(heights("[data-sms-room-of='map'] .sms-toggle") >= 44))
       click_now(app, "[data-sms-close='map']")
 
       # Menus open inside the screen, with items 44px high
@@ -297,9 +358,12 @@ describe("the studio on a phone", {
           "(() => { const r = document.querySelector('#studio-menu-%s').getBoundingClientRect(); return { left: r.left, right: r.right, w: window.innerWidth }; })()",
           menu
         ))
+        expect_gt(pop$right - pop$left, 0)
         expect_gte(pop$left, 0)
         expect_lte(pop$right, pop$w)
-        expect_true(all(heights(sprintf("#studio-menu-%s .sms-menu-item", menu)) >= 44))
+        items <- heights(sprintf("#studio-menu-%s .sms-menu-item", menu))
+        expect_gt(length(items), 0L)
+        expect_true(all(items >= 44))
         expect_no_sideways(app, paste(width, menu, "menu"))
         click_now(app, sprintf("[data-sms-menu='%s']", menu))
       }
@@ -309,16 +373,22 @@ describe("the studio on a phone", {
       pop <- app$get_js(
         "(() => { const r = document.querySelector('#studio-menu-csv').getBoundingClientRect(); return { left: r.left, right: r.right, w: window.innerWidth }; })()"
       )
+      expect_gt(pop$right - pop$left, 0)
+      expect_false(app$get_js("document.querySelector('#studio-menu-csv').hidden"))
       expect_gte(pop$left, 0)
       expect_lte(pop$right, pop$w)
       expect_no_sideways(app, paste(width, "CSV menu"))
       click_now(app, "[data-sms-close='code']")
 
       # The guide's list is inside the screen too
+      expect_true(sheets(app)$hint)
       click_now(app, ".sms-try-btn")
+      expect_true(guide_open(app))
       list <- app$get_js(
         "(() => { const r = document.querySelector('.sms-try').getBoundingClientRect(); return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, w: window.innerWidth, block: document.querySelector('.sms-block').getBoundingClientRect().top }; })()"
       )
+      expect_gt(list$right - list$left, 0)
+      expect_gt(list$bottom - list$top, 0)
       expect_gte(list$left, 0)
       expect_lte(list$right, list$w)
       expect_gte(list$top, 0)

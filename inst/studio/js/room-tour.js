@@ -1,8 +1,8 @@
 /*
  * The guide (the `tour` section): the hint bar shows the next step, and the "Try it n/m" button opens the list of
  * steps, each with a tick and the word "done" once the server has proved it. The server decides what is done; the page
- * counts and draws. `closeGuide` and `toggleGuide` are called by the page's one click and Escape handlers (a renderer
- * adds no listener).
+ * counts and draws. `closeGuide` and `toggleGuide` are called by the page's one click and Escape handlers, and
+ * `closeGuide` also when a room or a new pick opens over the list (a renderer adds no listener).
  */
 import { make, setText, syncChildren } from './dom.js';
 

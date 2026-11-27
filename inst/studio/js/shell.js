@@ -37,6 +37,9 @@ export function createShell(root, boot, tools) {
     if (phone.matches) {
       for (const other of [...open]) closeRoom(other, false);
     }
+    /* The tray covers the guide's list (and on a phone the bar is hidden), so the list closes: Escape then closes
+       what can be seen. */
+    tools.closeGuide?.();
     room.hidden = false;
     room.inert = false;
     for (const btn of buttonsOf(name)) btn.setAttribute('aria-expanded', 'true');

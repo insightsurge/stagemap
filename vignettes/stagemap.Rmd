@@ -195,7 +195,7 @@ Run the bundled demo app with `shiny::runApp(system.file("examples", "shiny-demo
 
 ## Change a map in the studio
 
-`stage_map_studio()` opens an app where a map is changed through forms. Click a card, a stage, a lane or a link and a form opens beside the map; the journal under the map lists every change and has **Undo**. The **Ask** room runs `sm_trace()`, `sm_orphans()` and `sm_missing()` and lights the answer on the map, **Check** shows what stops `stage_map()` and offers fixes, and **R code** shows the code that builds the map, with the changed lines marked. **Done** closes the studio and returns the map. Without a map, it opens on a small example with a guide, **Try it**, that lists six steps.
+`stage_map_studio()` opens an app where a map is changed through forms. Click a card, a stage, a lane or a link and a form opens beside the map; a journal above the map lists the changes and has **Undo** (on a phone it shows the newest one). The **Ask** room runs `sm_trace()`, `sm_orphans()` and `sm_missing()` and lights the answer on the map, **Check** shows what stops `stage_map()` and offers fixes, and **R code** shows the code that builds the map, with the changed lines marked. **Done** closes the studio and returns the map. Without a map, it opens on a small example with a guide, **Try it**, that lists six steps.
 
 ```{r studio, eval = FALSE}
 map <- stage_map_studio(map)
@@ -206,7 +206,11 @@ The code the studio shows is what `stage_map_code()` writes, and the tables are 
 ```{r studio-read-back}
 names(stage_map_tables(map))
 
-head(stage_map_code(map), 8)
+small <- stage_map(
+  data.frame(id = c("draft", "review"), label = c("Draft", "Review"), stage = c("write", "check"), lane = "Team"),
+  title = "Two cards"
+)
+stage_map_code(small)
 ```
 
 ## Where to go next

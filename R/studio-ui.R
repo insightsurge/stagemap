@@ -130,7 +130,17 @@ studio_ui_top <- function(ns) {
         `aria-controls` = ns("room-map"),
         "Map"
       ),
-      tags$button(class = "sms-btn sms-phone-theme", type = "button", `data-sms-theme` = "toggle", "Light or dark")
+      # A switch like the title block's: the page keeps `aria-checked` in step with the mode, and the name starts with
+      # the visible words.
+      tags$button(
+        class = "sms-btn sms-phone-theme",
+        type = "button",
+        role = "switch",
+        `aria-checked` = "false",
+        `aria-label` = "Light or dark, dark mode",
+        `data-sms-theme` = "toggle",
+        "Light or dark"
+      )
     )
   )
 }

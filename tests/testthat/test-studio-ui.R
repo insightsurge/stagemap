@@ -98,6 +98,16 @@ describe("studio_ui()", {
     expect_match(html, "<span class=\"sms-lab\">Theme</span>", fixed = TRUE)
   })
 
+  it("makes the phone's theme button a switch whose name starts with its words", {
+    button <- regmatches(html, regexpr("<button[^>]*sms-phone-theme[^>]*>[^<]*</button>", html))
+    expect_length(button, 1L)
+    expect_match(button, "role=\"switch\"", fixed = TRUE)
+    expect_match(button, "aria-checked=\"false\"", fixed = TRUE)
+    expect_match(button, "data-sms-theme=\"toggle\"", fixed = TRUE)
+    expect_match(attr_values(button, "aria-label"), "^Light or dark")
+    expect_match(button, ">Light or dark</button>", fixed = TRUE)
+  })
+
   it("draws a toast with a mark and a word for a problem, beside its text", {
     toast <- sub(".*(<div class=\"sms-toast\".*?</div>).*", "\\1", html)
     expect_match(toast, "sms-toast-mark", fixed = TRUE)

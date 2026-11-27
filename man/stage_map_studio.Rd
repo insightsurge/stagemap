@@ -26,7 +26,8 @@ invisibly, or \code{NULL} invisibly when the studio's page was closed without \s
 on a drawing sheet and changes it through forms. Click a card, a stage, a lane or a link on the map, or choose one
 from the \strong{Stages} and \strong{Lanes} menus, and a form opens for it; there you edit its fields, connect cards, reorder
 stages and lanes and remove things. The studio edits through forms and does not drag. The map's title is above the
-map, and a journal under it lists the changes made since the map was opened, with \strong{Undo}.
+map, and a journal above it lists the changes made since the map was opened, with \strong{Undo}. On a phone the journal
+shows the newest change.
 }
 \details{
 The rooms along the bottom each answer a question about the map:
@@ -43,9 +44,10 @@ not build, the map shows the last version that worked, and \strong{Done} is refu
 when the click comes before the server has answered.
 }
 
-On the built-in example, a guide called \strong{Try it} lists six steps and ticks each one when it is done. Kinds,
-zones, statuses, steps, changes and variants are carried through the studio and written into the code, but have no
-form. Click \strong{Done} to close the studio and return the map to R; closing its page without \strong{Done} returns \code{NULL}.
+On the built-in example, a guide called \strong{Try it} lists six steps and ticks each one when it is done. A card's zone
+and status and a link's kind can be chosen in their forms. The tables of kinds, zones, custom statuses, steps and
+changes, and the variants, are carried through the studio and written into the code, but have no form. Click
+\strong{Done} to close the studio and return the map to R; closing its page without \strong{Done} returns \code{NULL}.
 The studio runs in this R session, and it can be used from the keyboard and on a phone-sized screen.
 
 Experimental means the studio's names, arguments and layout can still change before the first release.

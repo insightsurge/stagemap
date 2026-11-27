@@ -1,22 +1,38 @@
 skip_without_chrome()
 
-# Browser tests for the keyboard pass: the Tab order and its ring, picking a card and Undo and Escape by key, a walk
-# through the whole studio with key events only, the order Escape closes layers in, and reduced motion. Every key is a
-# real key event (studio_press()); nothing here clicks.
+# Browser tests for the keyboard pass: the Tab order and its ring in both themes, picking a card and Undo and Escape by
+# key, a walk through the whole studio by key, the order Escape closes layers in, and reduced motion. Every key is a
+# real key event (studio_press()). SMS-086 uses key events only and checks that no pointer event fired; the other tests
+# use key events for what they test and click where a step only sets the page up.
 
-# A short description of the element with focus: its tag and class, what names it, whether it shows a ring, and where
-# it is. `ring` is a box shadow or an outline the page gives a keyboard focus.
+# A short description of the element with focus: its tag and class, what names it, whether it shows the studio's own
+# ring, and where it is. `ring` is true when the box shadow of the focused element is not 'none' and differs from the
+# one the same element has at rest (a clone beside it, not focused): the browser's own outline does not count, and
+# neither does a shadow the control has at rest. `faceRing` is for a segment's radio: its face shows the
+# `--_stagemap-studio-ring` token, read from a probe in the same theme.
 focus_js <- "(() => {
   const a = document.activeElement;
-  const cs = getComputedStyle(a);
-  const ring = (cs.boxShadow !== 'none') || (cs.outlineStyle !== 'none' && parseFloat(cs.outlineWidth) > 0 &&
-    cs.outlineColor !== 'rgba(0, 0, 0, 0)');
+  const root = a.closest('.sms') ?? document.querySelector('.sms');
+  const shadow = (el) => getComputedStyle(el).boxShadow;
+  const probe = document.createElement('span');
+  probe.style.boxShadow = 'var(--_stagemap-studio-ring)';
+  root.appendChild(probe);
+  const token = shadow(probe);
+  probe.remove();
+  const rest = a.cloneNode(false);
+  rest.removeAttribute('id');
+  a.after(rest);
+  const resting = shadow(rest);
+  rest.remove();
+  const ring = shadow(a) !== 'none' && shadow(a) !== resting;
+  const face = a.matches('.sms-seg-opt input') ? a.parentElement.querySelector('.sms-seg-face') : null;
+  const faceRing = face ? shadow(face) === token : null;
   const name = a.getAttribute('aria-label') || a.dataset?.card || a.dataset?.smsRoom || a.textContent.trim().slice(0, 30);
   const where = a.closest('.sms-skip') ? 'skip' : a.closest('#studio-map') ? 'map' : a.closest('.sms-tray') ? 'tray' :
     a.closest('.sms-block') ? 'block' : a.closest('.sms-inspector') ? 'inspector' : a.closest('.sms-hint') ? 'hint' :
     a.closest('.sms-top') ? 'top' : a.closest('.sms') ? 'sheet' : 'outside';
-  return JSON.stringify({ tag: a.tagName, cls: String(a.getAttribute('class') ?? ''), name, ring, where, id: a.id,
-    visible: a.matches(':focus-visible') });
+  return JSON.stringify({ tag: a.tagName, cls: String(a.getAttribute('class') ?? ''), name, ring, faceRing, where,
+    id: a.id, shadow: shadow(a), token, resting, visible: a.matches(':focus-visible') });
 })()"
 
 focus_now <- function(app) {
@@ -46,50 +62,99 @@ open_example_by_key <- function(app) {
 }
 
 describe("the studio from the keyboard", {
-  it("[SMS-081] visits every control in page order with a ring, leaves the page at the end and has no trap", {
+  it("[SMS-081] visits every control in page order, each with the studio's ring in both themes, and has no trap", {
     app <- studio_driver("none")
     open_example_by_key(app)
     expect_identical(focus_now(app)$cls, "sms-title")
-
-    # Back to the start of the page, then forward through all of it
-    studio_press(app, "Tab", modifiers = "shift")
-    first <- focus_now(app)
-    expect_identical(first$where, "skip")
-    expect_true(first$ring)
-
-    seen <- list()
-    for (i in 1:60) {
-      studio_press(app, "Tab")
-      now <- focus_now(app)
-      if (identical(now$tag, "BODY") || identical(now$where, "skip")) {
-        break
-      }
-      seen[[length(seen) + 1L]] <- now
+    set_theme <- function(theme) {
+      app$run_js(sprintf("%s.dataset.theme = '%s'", studio_root_js, theme))
+      expect_identical(app$get_js(sprintf("%s.dataset.theme", studio_root_js)), theme)
     }
-    expect_lt(length(seen), 60L)
-    where <- vapply(seen, function(s) s$where, character(1))
-    # Page order: header, the map, the hint bar, then the title block; every stop of the studio's own shows a ring
-    expect_identical(rle(where)$values, c("top", "map", "hint", "block"))
-    own <- seen[where %in% c("top", "hint", "block")]
-    expect_true(all(vapply(own, function(s) s$ring, logical(1))))
-    expect_true(all(vapply(own, function(s) s$visible, logical(1))))
-    names_block <- vapply(seen[where == "block"], function(s) s$name, character(1))
-    expect_match(names_block, "^(map|ask|check|code|Theme, dark mode|Done)", all = FALSE)
-    expect_length(names_block, 6L)
-    expect_match(names_block[[6L]], "^Done")
+    # Focus on a stop reached with Tab shows the studio's ring, in the colours of the theme
+    expect_ring <- function(stop, label) {
+      expect_true(stop$ring, label = paste("ring on", label, "-", stop$shadow, "at rest:", stop$resting))
+      expect_true(stop$visible, label = paste("focus-visible on", label))
+      if (!is.null(stop$faceRing)) expect_true(stop$faceRing, label = paste("ring on the face of", label))
+    }
 
-    # One more Tab leaves the page or wraps to the skip link; none stays on the last control
-    expect_false(identical(focus_now(app)$name, names_block[[6L]]))
+    for (theme in c("light", "dark")) {
+      set_theme(theme)
+      # Back to the start of the page, then forward through all of it
+      app$run_js("document.querySelector('.sms-title').focus()")
+      studio_press(app, "Tab", modifiers = "shift")
+      first <- focus_now(app)
+      expect_identical(first$where, "skip")
+      expect_ring(first, paste("the skip link,", theme))
 
-    # With a room open, its controls come before the title block
+      seen <- list()
+      for (i in 1:60) {
+        studio_press(app, "Tab")
+        now <- focus_now(app)
+        if (identical(now$tag, "BODY") || identical(now$where, "skip")) {
+          break
+        }
+        seen[[length(seen) + 1L]] <- now
+      }
+      expect_lt(length(seen), 60L)
+      where <- vapply(seen, function(s) s$where, character(1))
+      # Page order: header, the map, the hint bar, then the title block; every stop of the studio's own shows a ring
+      expect_identical(rle(where)$values, c("top", "map", "hint", "block"))
+      for (stop in seen[where %in% c("top", "hint", "block")]) {
+        expect_ring(stop, paste(stop$name, theme))
+      }
+      names_block <- vapply(seen[where == "block"], function(s) s$name, character(1))
+      expect_match(names_block, "^(map|ask|check|code|Theme, dark mode|Done)", all = TRUE)
+      expect_length(names_block, 6L)
+      expect_match(names_block[[6L]], "^Done")
+
+      # One more Tab leaves the page or wraps to the skip link; none stays on the last control
+      expect_false(identical(focus_now(app)$name, names_block[[6L]]))
+    }
+
+    # With a room open, its controls come before the title block, and ring in both themes
     app$run_js("document.querySelector(\"[data-sms-room='code']\").focus()")
     studio_press(app, "Enter")
     app$wait_for_js("document.querySelector('[data-sms-room-of=\"code\"]').hidden === false")
     expect_identical(app$get_js("document.activeElement.tagName"), "H2")
-    tab_to(app, "[data-sms-close='code']")
-    expect_identical(focus_now(app)$where, "tray")
-    tab_to(app, ".sms-block [data-sms-room='code']")
-    expect_identical(focus_now(app)$where, "block")
+    for (theme in c("light", "dark")) {
+      set_theme(theme)
+      app$run_js("document.querySelector(\"[data-sms-room-of='code']\").querySelector('[tabindex=\"-1\"]').focus()")
+      tab_to(app, "[data-sms-close='code']")
+      expect_identical(focus_now(app)$where, "tray")
+      expect_ring(focus_now(app), paste("the room's Close,", theme))
+      tab_to(app, ".sms-block [data-sms-room='code']")
+      expect_identical(focus_now(app)$where, "block")
+    }
+    studio_press(app, "Escape")
+    app$wait_for_js("document.querySelector('[data-sms-room-of=\"code\"]').hidden === true")
+
+    # A card's form (its title, a segment, a field and Close) and a menu's items ring in both themes
+    app$run_js("document.querySelector('#studio-map [data-card=\"round_dose\"]').focus()")
+    studio_press(app, "Enter")
+    app$wait_for_js("document.activeElement?.id === 'studio-inspector-title'")
+    for (theme in c("light", "dark")) {
+      set_theme(theme)
+      for (selector in c(
+        ".sms-inspector [data-sms-field='status'] input:checked",
+        ".sms-inspector [data-sms-field='label'] input",
+        ".sms-inspector .sms-insp-acts button"
+      )) {
+        app$run_js("document.getElementById('studio-inspector-title').focus()")
+        tab_to(app, selector, max = 80L)
+        expect_ring(focus_now(app), paste(selector, theme))
+      }
+      expect_identical(focus_now(app)$where, "inspector")
+    }
+    studio_press(app, "Escape")
+    app$wait_for_js("document.querySelector('.sms-inspector').hidden === true")
+    app$run_js("document.querySelector(\"[data-sms-menu='stages']\").focus()")
+    studio_press(app, "Enter")
+    expect_identical(app$get_js("document.activeElement.getAttribute('role')"), "menuitem")
+    for (theme in c("light", "dark")) {
+      set_theme(theme)
+      expect_ring(focus_now(app), paste("a menu item,", theme))
+    }
+    studio_press(app, "Escape")
     expect_studio_clean(app)
   })
 
@@ -109,32 +174,50 @@ describe("the studio from the keyboard", {
     studio_press(app, "Enter")
     app$wait_for_js("document.activeElement?.id === 'studio-inspector-title'")
 
-    # Change the status with the arrow keys, then Ctrl+Z (focus is on a radio, not in text)
+    # Change the status with the arrow keys (focus is on a radio, not in text); the edit can be undone
     app$run_js("document.querySelector('.sms-inspector [data-sms-field=\"status\"] input:checked').focus()")
     before <- app$get_js("document.querySelector('.sms-inspector [data-sms-field=\"status\"] input:checked').value")
     since <- studio_stamp(app)
     studio_press(app, "ArrowRight")
     studio_wait_step(app)
     studio_wait_map(app, since)
-    expect_false(identical(
+    changed <- app$get_js(
+      "document.querySelector('.sms-inspector [data-sms-field=\"status\"] input:checked').value"
+    )
+    expect_false(identical(changed, before))
+    undo_on <- "document.querySelector('.sms-undo').getAttribute('aria-disabled') !== 'true'"
+    journal <- "JSON.stringify([...document.querySelectorAll('.sms-ev')].map((e) => e.dataset.smsState ?? ''))"
+    expect_true(app$get_js(undo_on))
+    entries <- app$get_js(journal)
+
+    # Ctrl+Z in a text field is the field's own: nothing is sent, the journal stays and Undo stays on
+    record_studio_events(app)
+    app$run_js("document.querySelector('.sms-inspector [data-sms-field=\"label\"] input').focus()")
+    studio_press(app, "z", modifiers = "ctrl")
+    studio_wait_step(app)
+    expect_length(studio_sent(app), 0L)
+    expect_identical(app$get_js(journal), entries)
+    expect_true(app$get_js(undo_on))
+    expect_identical(
       app$get_js("document.querySelector('.sms-inspector [data-sms-field=\"status\"] input:checked').value"),
-      before
-    ))
+      changed
+    )
+
+    # Ctrl+Z outside text undoes the edit
+    app$run_js("document.querySelector('.sms-inspector [data-sms-field=\"status\"] input:checked').focus()")
     since <- studio_stamp(app)
     studio_press(app, "z", modifiers = "ctrl")
     studio_wait_step(app)
     studio_wait_map(app, since)
     expect_identical(
+      vapply(studio_sent(app), function(e) e$type, character(1)),
+      "undo"
+    )
+    expect_identical(
       app$get_js("document.querySelector('.sms-inspector [data-sms-field=\"status\"] input:checked').value"),
       before
     )
     expect_identical(app$get_js("document.querySelector('.sms-ev').dataset.smsState"), "undone")
-
-    # Ctrl+Z in a text field is the field's own: nothing is sent
-    record_studio_events(app)
-    app$run_js("document.querySelector('.sms-inspector [data-sms-field=\"label\"] input').focus()")
-    studio_press(app, "z", modifiers = "ctrl")
-    expect_length(studio_sent(app), 0L)
 
     # Escape closes the form and focus goes back into the map
     studio_press(app, "Escape")
@@ -319,6 +402,37 @@ describe("the studio from the keyboard", {
     expect_studio_clean(app)
   })
 
+  it("[SMS-087] closes a room or form opened over the guide's list with the first Escape", {
+    app <- studio_driver("none")
+    open_example_by_key(app)
+    app$run_js("document.querySelector('.sms-try-btn').focus()")
+    studio_press(app, "Enter")
+    expect_false(app$get_js("document.querySelector('.sms-try').hidden"))
+    app$run_js("document.querySelector(\"[data-sms-room='code']\").focus()")
+    studio_press(app, "Enter")
+    app$wait_for_js("document.querySelector('[data-sms-room-of=\"code\"]').hidden === false")
+    # The room covers the list, so the list is closed and its button says so
+    expect_true(app$get_js("document.querySelector('.sms-try').hidden"))
+    expect_identical(app$get_js("document.querySelector('.sms-try-btn').getAttribute('aria-expanded')"), "false")
+    studio_press(app, "Escape")
+    app$wait_for_js("document.querySelector('[data-sms-room-of=\"code\"]').hidden === true")
+    expect_identical(app$get_js("document.activeElement.dataset.smsRoom"), "code")
+    studio_wait_step(app)
+
+    # The same for a card's form: a pick over the open list closes the list, and Escape closes the form
+    app$run_js("document.querySelector('.sms-try-btn').focus()")
+    studio_press(app, "Enter")
+    expect_false(app$get_js("document.querySelector('.sms-try').hidden"))
+    app$run_js("document.querySelector('#studio-map [data-card=\"round_dose\"]').focus()")
+    studio_press(app, "Enter")
+    app$wait_for_js("document.querySelector('.sms-inspector').hidden === false")
+    expect_true(app$get_js("document.querySelector('.sms-try').hidden"))
+    studio_press(app, "Escape")
+    app$wait_for_js("document.querySelector('.sms-inspector').hidden === true")
+    studio_wait_step(app)
+    expect_studio_clean(app)
+  })
+
   it("[SMS-088] leaves the focus on a control when a menu closes with Tab, and moves between items with the arrows", {
     app <- studio_driver("small")
     app$run_js("document.querySelector(\"[data-sms-menu='stages']\").focus()")
@@ -370,6 +484,7 @@ describe("the studio from the keyboard", {
       )
       studio_open_code(app)
     }
+    studio_wait_step(app)
     expect_studio_clean(app)
   })
 

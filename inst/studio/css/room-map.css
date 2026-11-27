@@ -90,4 +90,8 @@
   .sms .sms-map-form .sms-fld-row > select.sms-in {
     width: 100%;
   }
+
+  .sms .sms-map-form .sms-toggle {
+    min-height: 44px;
+  }
 }

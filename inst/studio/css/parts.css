@@ -151,11 +151,6 @@
     font-size: 16px;
     min-height: 44px;
   }
-
-  .sms .sms-seg-face,
-  .sms .sms-toggle {
-    min-height: 44px;
-  }
 }
 
 /* Outline actions and stage/lane menus. */
@@ -886,6 +881,12 @@
   .sms select,
   .sms textarea {
     font-size: 16px;
+  }
+
+  /* After the base rules, so the 44px target wins over their 32px. */
+  .sms .sms-seg-face,
+  .sms .sms-toggle {
+    min-height: 44px;
   }
 
   .sms .sms-start {
