@@ -34,6 +34,10 @@ export function createShell(root, boot, tools) {
     open.push(name);
     tray.inert = false;
     root.dataset.smsTray = open.join(' ');
+    /* Sent on every open: the server forgets it when the map is opened again or the page reconnects. */
+    if (name === 'code' && root.dataset.smsClosed === undefined) {
+      tools.send?.('seen', { what: 'code' });
+    }
     /* Focus goes into the room, to its heading, so the next Tab reaches the room's first control. */
     room.querySelector('[tabindex="-1"]')?.focus({ preventScroll: true });
   }

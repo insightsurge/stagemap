@@ -70,6 +70,7 @@ studio_state_new <- function(map = NULL) {
     doc = doc,
     rev = 0L,
     base = doc,
+    base_code = code_map(studio_doc_parts(doc)),
     journal = list(),
     good = checked$good,
     check = checked$check,
@@ -149,6 +150,7 @@ studio_step_open <- function(state, data) {
   checked <- studio_state_build(doc, new_rev, good = state$good, fallback_map = base_map)
   state$doc <- doc
   state$base <- doc
+  state$base_code <- code_map(studio_doc_parts(doc))
   state$next_uid <- doc$next_uid
   state$journal <- list()
   state$rev <- new_rev
@@ -402,6 +404,10 @@ studio_step <- function(state, event) {
     if (!is.null(opened$effects)) {
       return(opened)
     }
+    # The map is drawn again; a card that is lit and still exists would stay lit with no answer to clear it.
+    if (isTRUE(state$ask$lit)) {
+      effects[[length(effects) + 1L]] <- list(type = "highlight", ids = character(), links = NULL)
+    }
     state <- opened
   } else if (checked$type %in% names(studio_events())) {
     if (identical(checked$type, "add")) {
@@ -485,8 +491,14 @@ studio_step <- function(state, event) {
       return(list(state = res$state, effects = res$effects))
     }
     state <- res$state
-  } else if (checked$type %in% c("ask", "ask_clear")) {
-    return(studio_refuse(state, "Not available yet.", tone = "info"))
+  } else if (identical(checked$type, "ask")) {
+    ask_res <- studio_room_ask_step(state, checked$data)
+    state <- ask_res$state
+    effects <- c(effects, ask_res$effects)
+  } else if (identical(checked$type, "ask_clear")) {
+    ask_res <- studio_room_ask_clear(state)
+    state <- ask_res$state
+    effects <- c(effects, ask_res$effects)
   } else if (identical(checked$type, "seen")) {
     if (!checkmate::test_string(checked$data$what, min.chars = 1L)) {
       return(studio_refuse(state, "Unknown view name."))

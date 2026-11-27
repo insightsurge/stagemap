@@ -103,6 +103,12 @@ describe("studio_ui()", {
     expect_identical(studio_labels()$problem, "Problem")
   })
 
+  it("has its own words for a download that came too late", {
+    labels <- studio_labels()
+    expect_match(labels$download_late, "Could not download", fixed = TRUE)
+    expect_false(identical(labels$download_late, labels$copy_late))
+  })
+
   it("is in English", {
     expect_identical(attr(studio_ui("studio"), "lang"), "en")
   })
