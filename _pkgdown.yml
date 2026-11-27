@@ -59,6 +59,8 @@ reference:
       - add_zones
       - add_steps
       - add_variants
+      - stage_map_tables
+      - stage_map_code
   - title: Ask a map
     contents:
       - sm_trace
@@ -68,3 +70,6 @@ reference:
     contents:
       - stage_map_output
       - stage_map_select
+  - title: Studio
+    contents:
+      - stage_map_studio

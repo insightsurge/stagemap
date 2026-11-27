@@ -1,6 +1,6 @@
-// stagemap stage map 0.51.0, built from its source; do not edit.
+// stagemap stage map 0.60.0, built from its source; do not edit.
 (() => {
-  const VERSION = '0.51.0';
+  const VERSION = '0.60.0';
   if (window.stagemap) {
     if (window.stagemap.version !== VERSION) {
       console.warn(

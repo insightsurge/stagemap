@@ -6,7 +6,7 @@ paths:
 # Tests
 
 Labels as in `r-code.md` (CRAN / house). Reasons and sources: `docs/standards.md`. How the tests are organised (the
-four kinds of test file, their first lines, where each runs, how to run them): `tests/README.md`.
+four kinds of test file, their first lines, where each runs, how to run them): `tests/testthat/README.md`.
 
 - **house:** coverage of at least 70% of lines (the gate's `tests` mode; the limit is
   `Config/quality-gate/coverage` in `DESCRIPTION`, which CI reads too; CRAN itself does not check coverage); a PR never
@@ -45,7 +45,7 @@ four kinds of test file, their first lines, where each runs, how to run them): `
   server in between, then checks the action used the change (the rules it tests: `r-code.md`, "Shiny apps").
   Example: set a colour input and click Copy in one `app$run_js()` call, then expect the copied code to have the new
   colour. A test that waits for each step to settle can't catch these bugs. To widen the gap, hold back what the page
-  sends or what the server answers (how: `tests/README.md`).
+  sends or what the server answers (how: `tests/testthat/README.md`).
 - **CRAN:** no shinytest2 or chromote test runs on CRAN or without Chrome: its file starts with
   `skip_without_chrome()` (`helper-chrome.R`: it skips on CRAN, without chromote or withr, and when
   `chromote::find_chrome()` is `NULL`), and a shinytest2 test also skips without shinytest2. CRAN has asked that no

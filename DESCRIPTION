@@ -25,6 +25,7 @@ Suggests:
     chromote,
     covr,
     knitr,
+    later,
     lifecycle,
     promises,
     rmarkdown,

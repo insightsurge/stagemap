@@ -1,0 +1,937 @@
+/*
+ * Parts the studio's rooms and forms share: the kicker, buttons (square, 3px corners; a busy one is aria-busy and
+ * aria-disabled, never disabled), the text field, the toast and the hidden area Copy may use.
+ */
+.sms .sms-kick {
+  font-size: 12px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--_stagemap-studio-muted);
+  font-weight: 650;
+  margin: 0;
+}
+
+.sms .sms-btn {
+  background: transparent;
+  border: 1px solid var(--_stagemap-studio-line2);
+  border-radius: 3px;
+  padding: 5px 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--_stagemap-studio-ink);
+  min-height: 32px;
+}
+
+.sms .sms-btn:hover {
+  background: var(--_stagemap-studio-panel);
+  border-color: var(--_stagemap-studio-ink);
+}
+
+.sms .sms-btn.sms-pri {
+  background: var(--_stagemap-studio-blue);
+  border-color: var(--_stagemap-studio-blue);
+  color: var(--_stagemap-studio-blue-ink);
+}
+
+.sms .sms-btn.sms-pri:hover {
+  filter: brightness(1.08);
+}
+
+.sms .sms-btn.sms-danger {
+  color: var(--_stagemap-studio-red);
+  border-color: color-mix(in srgb, var(--_stagemap-studio-red) 50%, var(--_stagemap-studio-line2));
+}
+
+.sms [aria-disabled="true"] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.sms [aria-busy="true"] {
+  cursor: progress;
+}
+
+.sms .sms-in {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid var(--_stagemap-studio-line2);
+  background: var(--_stagemap-studio-panel);
+  border-radius: 3px;
+  padding: 6px 9px;
+}
+
+.sms .sms-in:hover {
+  border-color: var(--_stagemap-studio-ink);
+}
+
+.sms .sms-in:focus-visible {
+  box-shadow: var(--_stagemap-studio-ring);
+  border-color: var(--_stagemap-studio-blue);
+}
+
+.sms .sms-in[data-sms-wait] {
+  border-style: dotted;
+  border-color: var(--_stagemap-studio-blue);
+}
+
+/* The toast: a status region that is always there, shown while it has something to say. */
+.sms .sms-toast {
+  position: absolute;
+  left: 24px;
+  bottom: calc(var(--_stagemap-studio-block-h) + 62px);
+  max-width: calc(100% - 48px);
+  z-index: 30;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 8px 14px;
+  background: var(--_stagemap-studio-ink);
+  color: var(--_stagemap-studio-panel);
+  box-shadow: var(--_stagemap-studio-shadow);
+  font-size: 13px;
+}
+
+.sms[data-sms-tray] .sms-toast {
+  bottom: calc(var(--_stagemap-studio-block-h) + var(--_stagemap-studio-tray-h) + 14px);
+}
+
+/* The tone is never the colour alone: a problem also has a mark and the word. The edge colour is the other mode's red,
+   so it keeps 3:1 against the toast, which is dark in the light theme and light in the dark one. */
+.sms .sms-toast-mark,
+.sms .sms-toast-tone:empty {
+  display: none;
+}
+
+.sms .sms-toast[data-sms-tone="problem"] {
+  border: 2px solid var(--_stagemap-studio-toast-edge);
+}
+
+.sms .sms-toast[data-sms-tone="problem"] .sms-toast-mark {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--_stagemap-studio-toast-edge);
+  border-radius: 50%;
+  color: var(--_stagemap-studio-toast-edge);
+  font-weight: 700;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.sms .sms-toast-tone {
+  font-weight: 700;
+}
+
+.sms .sms-toast:not([data-sms-on]),
+.sms .sms-copy-area {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 640px) {
+  .sms .sms-toast {
+    left: 12px;
+    bottom: calc(var(--_stagemap-studio-block-h) + 66px);
+  }
+
+  .sms .sms-btn {
+    min-height: 44px;
+    padding: 5px 8px;
+  }
+
+  .sms .sms-in {
+    font-size: 16px;
+    min-height: 44px;
+  }
+}
+
+/* Outline actions and stage/lane menus. */
+.sms .sms-outline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.sms .sms-menu {
+  position: relative;
+}
+
+.sms .sms-menu-pop {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  min-width: 196px;
+  max-height: 260px;
+  overflow: auto;
+  background: var(--_stagemap-studio-panel);
+  border: 1px solid var(--_stagemap-studio-line2);
+  box-shadow: var(--_stagemap-studio-shadow);
+  padding: 4px;
+  z-index: 25;
+}
+
+/* On a phone a pop-up is as wide as its row, so it can never reach past the screen. */
+@media (max-width: 640px) {
+  .sms .sms-outline,
+  .sms .sms-room-head {
+    position: relative;
+  }
+
+  .sms .sms-outline .sms-menu,
+  .sms .sms-room-head .sms-menu {
+    position: static;
+  }
+
+  .sms .sms-menu-pop {
+    left: 0;
+    right: 0;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .sms .sms-menu-item {
+    min-height: 44px;
+  }
+}
+
+.sms .sms-menu-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  padding: 6px 10px;
+  font-size: 13px;
+  border-radius: 3px;
+}
+
+.sms .sms-menu-item:hover {
+  background: var(--_stagemap-studio-blue-soft);
+}
+
+.sms .sms-menu-count {
+  font: 600 12px var(--_stagemap-studio-mono);
+  color: var(--_stagemap-studio-muted);
+}
+
+/* Journal ribbon: one line above the map sheet, hidden until the first entry. */
+.sms .sms-journal {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 1100px;
+  min-height: 40px;
+  margin-bottom: 10px;
+  padding: 4px 10px;
+  background: var(--_stagemap-studio-panel);
+  border: 1px solid var(--_stagemap-studio-line);
+  border-radius: 2px;
+}
+
+.sms .sms-journal-lab {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--_stagemap-studio-muted);
+  flex: none;
+}
+
+.sms .sms-journal-list {
+  list-style: none;
+  margin: 0;
+  padding: 2px 0;
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  flex: 1;
+  min-width: 0;
+  scrollbar-width: thin;
+}
+
+/* Room for the focus ring, which the scroller would clip. */
+.sms .sms-journal-list {
+  padding: 6px;
+  margin: -4px;
+}
+
+.sms .sms-ev {
+  flex: none;
+  display: flex;
+  align-items: center;
+}
+
+.sms .sms-ev-btn,
+.sms .sms-ev-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 3px 9px;
+  background: var(--_stagemap-studio-panel2);
+  border: 1px solid var(--_stagemap-studio-line2);
+  border-left: 3px solid var(--_stagemap-studio-blue);
+  border-radius: 2px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.sms .sms-ev-btn:hover {
+  background: var(--_stagemap-studio-blue-soft);
+  border-color: var(--_stagemap-studio-blue);
+}
+
+.sms .sms-ev-n {
+  font: 700 12px var(--_stagemap-studio-mono);
+  color: var(--_stagemap-studio-blue);
+}
+
+.sms .sms-ev-v {
+  font: 700 12px var(--_stagemap-studio-mono);
+}
+
+.sms .sms-ev-d {
+  color: var(--_stagemap-studio-muted);
+}
+
+.sms .sms-ev[data-sms-state="undone"] .sms-ev-btn,
+.sms .sms-ev[data-sms-state="undone"] .sms-ev-item {
+  border-left-color: var(--_stagemap-studio-warn);
+  opacity: 0.8;
+}
+
+.sms .sms-ev[data-sms-state="undone"] .sms-ev-d {
+  text-decoration: line-through;
+}
+
+.sms .sms-ev[data-sms-state="undone"] .sms-ev-n {
+  color: var(--_stagemap-studio-warn);
+}
+
+.sms .sms-ev-undone {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--_stagemap-studio-warn);
+}
+
+.sms .sms-undo {
+  flex: none;
+}
+
+/* Start card overlay inside the drawing sheet. */
+.sms .sms-start {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: color-mix(in srgb, var(--_stagemap-studio-field) 82%, transparent);
+  overflow: auto;
+}
+
+.sms .sms-start-in {
+  width: min(760px, 100%);
+  background: var(--_stagemap-studio-panel);
+  border: 1px solid var(--_stagemap-studio-line2);
+  box-shadow: var(--_stagemap-studio-shadow);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+  position: relative;
+}
+
+.sms .sms-start-in::before {
+  content: "";
+  position: absolute;
+  left: -6px;
+  top: -6px;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--_stagemap-studio-blue);
+  border-right: 0;
+  border-bottom: 0;
+}
+
+.sms .sms-start-lede {
+  padding: 28px 26px;
+  border-right: 1px solid var(--_stagemap-studio-line);
+}
+
+.sms .sms-start-lede h1 {
+  font: 650 28px / 1.12 var(--_stagemap-studio-font);
+  letter-spacing: -0.015em;
+  margin: 8px 0 12px;
+}
+
+.sms .sms-start-lede p {
+  margin: 0 0 10px;
+  color: var(--_stagemap-studio-muted);
+}
+
+.sms .sms-start-legend {
+  display: grid;
+  gap: 7px;
+  margin-top: 18px;
+  font-size: 13px;
+}
+
+.sms .sms-start-legend div {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.sms .sms-start-right {
+  display: flex;
+  flex-direction: column;
+}
+
+.sms .sms-start-head {
+  display: flex;
+  justify-content: flex-end;
+  padding: 10px 14px 0;
+}
+
+.sms .sms-start-opts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.sms .sms-start-opts li {
+  border-bottom: 1px solid var(--_stagemap-studio-line);
+}
+
+.sms .sms-start-opts li:last-child {
+  border-bottom: 0;
+}
+
+.sms .sms-opt {
+  display: grid;
+  grid-template-columns: 34px 1fr auto;
+  gap: 2px 12px;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  padding: 16px 20px;
+  align-items: start;
+  border-radius: 0;
+}
+
+.sms .sms-opt:hover {
+  background: var(--_stagemap-studio-panel2);
+}
+
+.sms .sms-opt:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--_stagemap-studio-blue);
+}
+
+.sms .sms-opt-n {
+  font: 700 13px / 22px var(--_stagemap-studio-mono);
+  color: var(--_stagemap-studio-muted);
+  grid-row: 1 / 3;
+}
+
+.sms .sms-opt b {
+  font-size: 15px;
+}
+
+.sms .sms-opt small {
+  color: var(--_stagemap-studio-muted);
+  font-size: 13px;
+  grid-column: 2;
+}
+
+.sms .sms-opt-go {
+  grid-row: 1 / 3;
+  grid-column: 3;
+  align-self: center;
+  font-weight: 700;
+  color: var(--_stagemap-studio-blue);
+}
+
+/* Inspector slip. */
+.sms .sms-inspector {
+  position: absolute;
+  top: 22px;
+  right: 20px;
+  width: 300px;
+  max-height: calc(100% - var(--_stagemap-studio-block-h) - 44px);
+  display: flex;
+  flex-direction: column;
+  background: var(--_stagemap-studio-panel);
+  border: 1px solid var(--_stagemap-studio-line2);
+  border-top: 3px solid var(--_stagemap-studio-blue);
+  box-shadow: var(--_stagemap-studio-shadow);
+  z-index: 12;
+}
+
+.sms[data-sms-tray] .sms-inspector {
+  max-height: calc(100% - var(--_stagemap-studio-block-h) - var(--_stagemap-studio-tray-h) - 40px);
+}
+
+.sms .sms-insp-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid var(--_stagemap-studio-line);
+}
+
+.sms .sms-insp-meta {
+  min-width: 0;
+  flex: 1;
+}
+
+.sms .sms-insp-head h2 {
+  font: 650 16px / 1.25 var(--_stagemap-studio-font);
+  margin: 2px 0 0;
+  overflow-wrap: anywhere;
+}
+
+.sms .sms-insp-sub {
+  margin: 2px 0 0;
+  font: 12px / 1.2 var(--_stagemap-studio-mono);
+  color: var(--_stagemap-studio-muted);
+  overflow-wrap: anywhere;
+}
+
+.sms .sms-insp-acts {
+  display: flex;
+  gap: 6px;
+  flex: none;
+}
+
+.sms .sms-insp-form {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+
+.sms .sms-form-body {
+  overflow: auto;
+  padding: 4px 14px 12px;
+  min-height: 0;
+  flex: 1;
+}
+
+.sms .sms-form-foot {
+  padding: 9px 14px;
+  border-top: 1px solid var(--_stagemap-studio-line);
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+  background: var(--_stagemap-studio-panel2);
+  flex: none;
+}
+
+.sms .sms-fld {
+  display: flex;
+  flex-direction: column;
+  margin: 12px 0 0;
+  min-width: 0;
+}
+
+.sms .sms-fld > label,
+.sms .sms-fieldset > legend {
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--_stagemap-studio-muted);
+  padding: 0;
+  margin: 0;
+}
+
+.sms .sms-fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.sms .sms-fld-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 4px;
+  min-width: 0;
+}
+
+.sms .sms-fld-row > .sms-in {
+  flex: 1;
+  min-width: 0;
+}
+
+.sms .sms-mono {
+  font-family: var(--_stagemap-studio-mono);
+}
+
+.sms textarea.sms-in {
+  min-height: 64px;
+  resize: vertical;
+  line-height: 1.4;
+}
+
+.sms .sms-in[aria-invalid="true"] {
+  border-color: var(--_stagemap-studio-red);
+  background-image: linear-gradient(135deg, transparent 75%, var(--_stagemap-studio-red) 75%);
+  background-size: 10px 10px;
+  background-repeat: no-repeat;
+  background-position: right top;
+}
+
+.sms .sms-fld-hint {
+  font-size: 12px;
+  color: var(--_stagemap-studio-muted);
+  margin: 4px 0 0;
+}
+
+.sms .sms-err {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--_stagemap-studio-red);
+  margin: 4px 0 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.sms .sms-zig {
+  flex: none;
+  margin-top: 4px;
+}
+
+.sms .sms-prob-fixes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.sms .sms-seg {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.sms .sms-seg-opt {
+  position: relative;
+  display: inline-flex;
+  min-width: 0;
+}
+
+.sms .sms-seg-opt input {
+  position: absolute;
+  opacity: 0;
+  inset: 0;
+  margin: 0;
+  cursor: pointer;
+}
+
+.sms .sms-seg-face {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid var(--_stagemap-studio-line2);
+  border-radius: 3px;
+  padding: 5px 9px;
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--_stagemap-studio-panel);
+  min-height: 32px;
+  overflow-wrap: anywhere;
+}
+
+.sms .sms-seg-opt[data-sms-missing="true"] .sms-seg-face {
+  border-color: var(--_stagemap-studio-red);
+}
+
+.sms .sms-seg-opt input:hover + .sms-seg-face {
+  border-color: var(--_stagemap-studio-ink);
+}
+
+.sms .sms-seg-opt input:checked + .sms-seg-face {
+  background: var(--_stagemap-studio-blue);
+  border-color: var(--_stagemap-studio-blue);
+  color: var(--_stagemap-studio-blue-ink);
+}
+
+.sms .sms-seg-opt input:focus-visible + .sms-seg-face {
+  box-shadow: var(--_stagemap-studio-ring);
+}
+
+.sms .sms-glyph {
+  flex: none;
+}
+
+.sms .sms-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--_stagemap-studio-ink);
+  cursor: pointer;
+  min-height: 32px;
+}
+
+.sms .sms-toggle-in {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--_stagemap-studio-blue);
+  cursor: pointer;
+}
+
+.sms .sms-sec {
+  margin-top: 16px;
+  border-top: 1px solid var(--_stagemap-studio-line);
+  padding-top: 10px;
+}
+
+.sms .sms-sec-title {
+  margin: 0 0 6px;
+  font-size: 12px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--_stagemap-studio-muted);
+  font-weight: 650;
+}
+
+.sms .sms-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.sms .sms-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 8px;
+  border: 1px solid var(--_stagemap-studio-line);
+  border-radius: 3px;
+  background: var(--_stagemap-studio-panel);
+  min-width: 0;
+}
+
+.sms .sms-row-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.sms .sms-row-text {
+  font-size: 13px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.sms .sms-row-sub {
+  font-size: 12px;
+  color: var(--_stagemap-studio-muted);
+  overflow-wrap: anywhere;
+}
+
+.sms .sms-row-acts {
+  display: flex;
+  gap: 4px;
+  flex: none;
+}
+
+.sms .sms-add {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--_stagemap-studio-line);
+}
+
+.sms .sms-add-fields {
+  display: grid;
+  gap: 6px;
+}
+
+.sms .sms-add-fields .sms-fld {
+  margin: 0;
+}
+
+.sms .sms-add-act {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.sms .sms-act-wrap {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  max-width: 100%;
+}
+
+.sms .sms-act-reason {
+  font-size: 12px;
+  color: var(--_stagemap-studio-muted);
+  overflow-wrap: anywhere;
+}
+
+@media (forced-colors: active) {
+  .sms .sms-seg-opt[data-sms-missing="true"] .sms-seg-face {
+    border: 2px dashed CanvasText;
+  }
+
+  .sms .sms-seg-opt input:checked + .sms-seg-face {
+    border: 2px solid Highlight;
+    background: Highlight;
+    color: HighlightText;
+    forced-color-adjust: none;
+  }
+
+  .sms .sms-seg-opt input:focus-visible + .sms-seg-face {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+  }
+
+  .sms .sms-in[aria-invalid="true"] {
+    border: 2px dashed CanvasText;
+  }
+
+  .sms .sms-in[aria-invalid="true"]:focus-visible {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+  }
+}
+
+.sms .sms-empty {
+  color: var(--_stagemap-studio-muted);
+  font-size: 13px;
+  margin: 4px 0;
+}
+
+@media (max-width: 640px) {
+  .sms .sms-journal {
+    padding: 4px 6px 4px 10px;
+  }
+
+  .sms .sms-journal-lab {
+    display: none;
+  }
+
+  .sms .sms-journal-list {
+    overflow: hidden;
+  }
+
+  .sms .sms-journal-list .sms-ev:not(:last-child) {
+    display: none;
+  }
+
+  /* The newest entry shrinks to the row: its words are cut with an ellipsis, its "undone" word never is, and nothing
+     clips the focus ring. */
+  .sms .sms-ev {
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .sms .sms-ev-btn,
+  .sms .sms-ev-item {
+    min-width: 0;
+    max-width: 100%;
+    min-height: 44px;
+    align-items: center;
+  }
+
+  .sms .sms-ev-d {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .sms .sms-ev-n,
+  .sms .sms-ev-v,
+  .sms .sms-ev-undone {
+    flex: none;
+  }
+
+  .sms input,
+  .sms select,
+  .sms textarea {
+    font-size: 16px;
+  }
+
+  /* After the base rules, so the 44px target wins over their 32px. */
+  .sms .sms-seg-face,
+  .sms .sms-toggle {
+    min-height: 44px;
+  }
+
+  .sms .sms-start {
+    padding: 12px;
+  }
+
+  .sms .sms-start-in {
+    grid-template-columns: 1fr;
+  }
+
+  .sms .sms-start-lede {
+    border-right: 0;
+    border-bottom: 1px solid var(--_stagemap-studio-line);
+    padding: 18px 16px;
+  }
+
+  .sms .sms-start-lede h1 {
+    font-size: 24px;
+  }
+
+  .sms .sms-start-legend {
+    display: none;
+  }
+
+  .sms .sms-opt {
+    padding: 14px 16px;
+  }
+
+  .sms .sms-inspector {
+    position: absolute;
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: var(--_stagemap-studio-block-h);
+    width: auto;
+    max-height: 58dvh;
+    border-left: 0;
+    border-right: 0;
+    border-bottom: 0;
+    box-shadow: var(--_stagemap-studio-shadow);
+  }
+
+  /* One sheet at a time: while a room is open the inspector stays on the server's target but is covered (hidden and
+     inert; the page sets both). */
+  .sms[data-sms-covered] .sms-inspector {
+    display: none;
+  }
+}

@@ -16,6 +16,10 @@ The stage-map engine, in inst/kit/: stage-map.js, stage-map.css, stage-map.json 
 The widget binding, inst/htmlwidgets/stage_map.js:
   Copyright (c) 2026 Harsh Verma. MIT licence: see LICENSE. Plain, unminified source, written for this package.
 
+The studio's page, inst/studio/ (studio.js and every file under inst/studio/js/ and inst/studio/css/, including files
+added there later):
+  Copyright (c) 2026 Harsh Verma. MIT licence: see LICENSE. Plain, unminified source, written for this package.
+
 The demo app, inst/examples/shiny-demo/app.R:
   Copyright (c) 2026 Harsh Verma. MIT licence: see LICENSE. A made-up project, written for this package.
 

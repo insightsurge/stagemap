@@ -137,13 +137,23 @@ sm_trace(map, "req_ae")[, c("id", "stage", "direction", "distance")]
 
 A week before a review, a programmer is asked which study requirements have no test. When the links live in a slide and a spreadsheet, the answer means cross-checking by hand. With cards and links in R, the map and the checks read the same tables, so the answer is a function call and a highlighted card. The map and the checks help reviewers inspect links; qualification of the software stays with your own procedures.
 
+## The studio
+
+`stage_map_studio()` opens a Shiny app where you click a card, a stage, a lane or a link and change it in a form. The app keeps a journal with Undo, runs `sm_trace()`, `sm_orphans()` and `sm_missing()` on the map, shows what stops `stage_map()` and how to fix it, and writes the R code for every change. **Done** gives the map back to R.
+
+```r
+map <- stage_map_studio(map)
+```
+
 ## Exports
 
 | Job | Functions |
 | --- | --- |
 | Draw | `stage_map()`, `add_links()`, `add_zones()`, `add_steps()`, `add_variants()` (experimental) |
 | Ask | `sm_trace()`, `sm_orphans()`, `sm_missing()` |
+| Read back | `stage_map_tables()` (the tables a map holds), `stage_map_code()` (the R code that builds it) |
 | Shiny | `stage_map_output()`, `render_stage_map()`, `stage_map_proxy()`, `stage_map_select()`, `stage_map_highlight()`, `stage_map_show()` (experimental), `stage_map_hide()` (experimental), `stage_map_enable()` (experimental), `stage_map_disable()` (experimental) |
+| Studio | `stage_map_studio()` (experimental): change a map through forms in an app, ask it questions, check it, copy its R code, and take the map back to R |
 
 Read the [Get started](https://insightsurge.github.io/stagemap/articles/stagemap.html) article (`vignette("stagemap")`) for zones, steps and Shiny, or run the demo app with `shiny::runApp(system.file("examples", "shiny-demo", package = "stagemap"))`.
 
