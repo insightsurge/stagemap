@@ -223,6 +223,115 @@ describe("studio_step()", {
     expect_identical(studio_select_effect(s, s$target, s$doc, "picked"), list())
   })
 
+  it("resolves stale-map picks per drawn position, restores map selection on refusal, and keeps added rows clickable", {
+    # Example template is stale on links only: card ids match good$map, even after + Card adds a row at the end
+    ex <- studio_state_new()
+    pk_ex <- studio_pick(ex, "card", "round_dose")
+    expect_identical(pk_ex$state$target, list(kind = "card", uid = studio_uid_of(ex$doc, "cards", "round_dose")))
+    expect_null(pk_ex$state$notice)
+    expect_length(pk_ex$effects, 0L)
+
+    ex_add <- studio_step(ex, ev("add", list(table = "cards"), seq = 1L))$state
+    expect_lt(ex_add$good$rev, ex_add$rev)
+    pk_ex_after_add <- studio_pick(ex_add, "card", "round_dose")
+    expect_identical(
+      pk_ex_after_add$state$target,
+      list(kind = "card", uid = studio_uid_of(ex_add$doc, "cards", "round_dose"))
+    )
+    expect_null(pk_ex_after_add$state$notice)
+    expect_length(pk_ex_after_add$effects, 0L)
+
+    # Duplicate card id leaves drawn map stale: clicking duplicated "b" refuses and clears selection when target u1 is
+    # not drawn, while clicking unchanged card "c" still succeeds and puts selection back to "c" on a later refusal
+    s <- studio_state_new(small)
+    s_t <- studio_step(s, ev("target", list(kind = "card", uid = "u1"), seq = 1L))$state
+    res_dup <- studio_step(s_t, ev("edit", list(table = "cards", uid = "u1", field = "id", value = "b"), seq = 2L))
+    expect_length(res_dup$effects, 0L)
+    s_dup <- res_dup$state
+    expect_lt(s_dup$good$rev, s_dup$rev)
+    pk_dup <- studio_pick(s_dup, "card", "b")
+    expect_identical(pk_dup$state$target, s_dup$target)
+    expect_identical(pk_dup$state$notice$tone, "problem")
+    expect_identical(pk_dup$state$notice$room, "check")
+    expect_match(pk_dup$state$notice$text, "out of date")
+    expect_identical(pk_dup$effects, list(list(type = "select", kind = "none", id = NULL)))
+
+    pk_c <- studio_pick(s_dup, "card", "c")
+    expect_identical(pk_c$state$target, list(kind = "card", uid = "u3"))
+    expect_null(pk_c$state$notice)
+    expect_length(pk_c$effects, 0L)
+
+    pk_dup_on_c <- studio_pick(pk_c$state, "card", "b")
+    expect_identical(pk_dup_on_c$state$target, list(kind = "card", uid = "u3"))
+    expect_identical(pk_dup_on_c$state$notice$tone, "problem")
+    expect_identical(pk_dup_on_c$effects, list(list(type = "select", kind = "card", id = "c")))
+
+    # Unknown clicked id also restores the current drawn target, or clears when target is none
+    pk_ghost_c <- studio_pick(pk_c$state, "card", "ghost")
+    expect_identical(pk_ghost_c$state$target, list(kind = "card", uid = "u3"))
+    expect_identical(pk_ghost_c$effects, list(list(type = "select", kind = "card", id = "c")))
+    pk_ghost_none <- studio_pick(s, "card", "ghost")
+    expect_identical(pk_ghost_none$state$target, list(kind = "none", uid = NULL))
+    expect_identical(pk_ghost_none$effects, list(list(type = "select", kind = "none", id = NULL)))
+
+    # Swapping ids while broken must not target the wrong row either, and restores none for blank-id target u1
+    s_swap <- studio_step(
+      s_t,
+      ev("edit", list(table = "cards", uid = "u1", field = "id", value = ""), seq = 2L)
+    )$state
+    s_swap <- studio_step(
+      s_swap,
+      ev("edit", list(table = "cards", uid = "u2", field = "id", value = "a"), seq = 3L)
+    )$state
+    pk_swap <- studio_pick(s_swap, "card", "a")
+    expect_identical(pk_swap$state$target, s_swap$target)
+    expect_identical(pk_swap$state$notice$tone, "problem")
+    expect_identical(pk_swap$effects, list(list(type = "select", kind = "none", id = NULL)))
+
+    # An edit flushed after a pick updates its own row and journal entry without overwriting the picked target
+    pk_b <- studio_pick(s_t, "card", "b")$state
+    ed_a <- studio_step(
+      pk_b,
+      ev("edit", list(table = "cards", uid = "u1", field = "label", value = "Edited A"), seq = 2L, rev = pk_b$rev)
+    )$state
+    expect_identical(ed_a$target, list(kind = "card", uid = "u2"))
+    expect_identical(studio_row(ed_a$doc, "cards", "u1")$label, "Edited A")
+    expect_identical(ed_a$journal[[1L]]$target, list(kind = "card", uid = "u1"))
+  })
+
+  it("decides + Card stage and lane on the server from the current target", {
+    s <- studio_state_new(small)
+    # Target card u2 (stage check, lane docs), then switch to u4 (stage ship, lane code) before adding a card
+    s1 <- studio_step(s, ev("target", list(kind = "card", uid = "u2"), seq = 1L))$state
+    s2 <- studio_step(s1, ev("target", list(kind = "card", uid = "u4"), seq = 2L))$state
+    added_c <- studio_step(s2, ev("add", list(table = "cards"), seq = 3L))$state
+    row_c <- studio_row(added_c$doc, "cards", added_c$target$uid)
+    expect_identical(row_c$stage, "ship")
+    expect_identical(row_c$lane, "code")
+
+    # Target stage "check": new card lands in stage "check" and first lane
+    u_check <- studio_uid_of(s$doc, "stages", "check")
+    s_st <- studio_step(s, ev("target", list(kind = "stage", uid = u_check), seq = 1L))$state
+    added_st <- studio_step(s_st, ev("add", list(table = "cards"), seq = 2L))$state
+    row_st <- studio_row(added_st$doc, "cards", added_st$target$uid)
+    expect_identical(row_st$stage, "check")
+    expect_identical(row_st$lane, "docs")
+
+    # Target lane "code": new card lands in first stage and lane "code"
+    u_code <- studio_uid_of(s$doc, "lanes", "code")
+    s_ln <- studio_step(s, ev("target", list(kind = "lane", uid = u_code), seq = 1L))$state
+    added_ln <- studio_step(s_ln, ev("add", list(table = "cards"), seq = 2L))$state
+    row_ln <- studio_row(added_ln$doc, "cards", added_ln$target$uid)
+    expect_identical(row_ln$stage, "write")
+    expect_identical(row_ln$lane, "code")
+
+    # Explicit stage from "Add a card here" wins over the server target
+    added_exp <- studio_step(s2, ev("add", list(table = "cards", stage = u_check), seq = 3L))$state
+    row_exp <- studio_row(added_exp$doc, "cards", added_exp$target$uid)
+    expect_identical(row_exp$stage, "check")
+    expect_identical(row_exp$lane, "code")
+  })
+
   it("rebuilds check and good$serial on fix and undo, and blocks Done after undo", {
     s <- studio_state_new()
     s1 <- studio_step(s, ev("option", list(name = "title", value = "Edited"), seq = 1L))$state
@@ -572,5 +681,9 @@ describe("the eight state-core R files", {
     expect_error(studio_select_effect(s, s$target, s$doc, ""), "event_type")
     expect_error(studio_state_build(s$doc, -1L), "rev")
     expect_null(studio_target_table("none"))
+    expect_null(studio_drawn_uid(s, "lane", "docs"))
+    expect_null(studio_drawn_uid(s, "card", ""))
+    expect_error(studio_drawn_uid(list(1), "card", "a"), "state")
+    expect_error(studio_target_select_effect(list(1)), "state")
   })
 })

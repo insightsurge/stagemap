@@ -43,7 +43,13 @@ studio_ui <- function(id, options = list()) {
           hidden = NA
         )
       ),
-      tags$aside(class = "sms-inspector", id = ns("inspector"), `aria-label` = "Inspector", hidden = NA),
+      tags$aside(
+        class = "sms-inspector",
+        id = ns("inspector"),
+        `aria-label` = "Inspector",
+        hidden = NA,
+        inert = NA
+      ),
       studio_ui_block(ns),
       tags$div(
         class = "sms-tray",
@@ -258,6 +264,8 @@ studio_labels <- function() {
     undone = "undone",
     journal = "Journal",
     close = "Close",
+    close_inspector = "Close inspector",
+    empty_list = "None",
     start_kicker = "stagemap studio",
     start_heading = "Click the map to change it.",
     start_body_1 = paste(
