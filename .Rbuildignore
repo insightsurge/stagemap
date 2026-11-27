@@ -28,3 +28,4 @@
 ^tests/testthat/README\.md$
 ^site$
 ^\.gitleaksignore$
+^\.launchr$
