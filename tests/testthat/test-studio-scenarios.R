@@ -22,7 +22,7 @@ scenario_files <- c(
   start = "test-studio-start-browser.R",
   header = "test-studio-header-browser.R",
   journal = "test-studio-journal-browser.R",
-  inspector = "test-studio-inspector-browser.R",
+  inspector = "test-studio-view-browser.R",
   ask = "test-studio-ask-browser.R",
   check = "test-studio-check-browser.R",
   map = "test-studio-map-browser.R",

@@ -13,6 +13,7 @@
  */
 import { copyCode } from './js/copy.js';
 import { readBoot, readEvent, setText } from './js/dom.js';
+import { readFieldValue } from './js/form.js';
 import { createHold } from './js/hold.js';
 import { render as renderAsk } from './js/room-ask.js';
 import { render as renderCheck } from './js/room-check.js';
@@ -101,10 +102,12 @@ function mount(root) {
       }
     }
     for (const child of root.children) {
-      if (child.matches('.sms-skip, .sms-inspector, .sms-block')) {
+      if (child.matches('.sms-skip, .sms-block')) {
         child.inert = modal;
       }
     }
+    const insp = root.querySelector('.sms-inspector');
+    if (insp) insp.inert = modal || insp.hidden;
     const tray = root.querySelector('.sms-tray');
     if (tray) tray.inert = modal || root.dataset.smsTray === undefined;
   }
@@ -113,7 +116,15 @@ function mount(root) {
     if (inspectorOpener?.isConnected && !inspectorOpener.closest('[hidden]') && !inspectorOpener.closest('[inert]')) {
       inspectorOpener.focus();
     } else {
-      root.querySelector('.sms-title')?.focus();
+      const mapEl = document.getElementById(`${ns}map`);
+      const mapTarget = mapEl?.querySelector(
+        '[aria-pressed="true"], [aria-current="true"], [tabindex="0"], button:not([disabled])',
+      );
+      if (mapTarget && !mapTarget.closest('[hidden]') && !mapTarget.closest('[inert]')) {
+        mapTarget.focus();
+      } else {
+        root.querySelector('.sms-title')?.focus();
+      }
     }
     inspectorOpener = null;
   }
@@ -166,6 +177,7 @@ function mount(root) {
 
   const ctx = () => ({
     send: store.send,
+    flush: store.flush,
     labels: boot.labels,
     ack: store.ack,
     rev: store.rev,
@@ -190,11 +202,12 @@ function mount(root) {
     hintEl.hidden = false;
   }
 
-  /* The header is drawn on every message, so a field whose edit the server refused shows the server's value again
-     once it is acknowledged and has lost focus; the other sections only when they changed. */
+  /* The header and inspector are patched on every message, so a field whose edit the server refused shows the server's
+     value again once it is acknowledged and has lost focus; the other sections only when they changed. */
   function draw(view, changed) {
     for (const section of sections) {
-      if (section.name !== 'header' && !changed.includes(section.name)) continue;
+      const always = section.name === 'header' || section.name === 'inspector';
+      if (!always && !changed.includes(section.name)) continue;
       if (view[section.name] === undefined) continue;
       const el = section.target ? root.querySelector(section.target) : root;
       if (el) section.render(el, view[section.name], ctx());
@@ -207,13 +220,21 @@ function mount(root) {
     ) {
       syncStart(false, 'opened');
     }
-    if (pendingInspectorSeq > 0 && store.ack >= pendingInspectorSeq && !view.inspector) {
+    /* Clear any pending focus request once its answer has arrived, even when the inspector stayed unchanged. */
+    if (pendingInspectorSeq > 0 && store.ack >= pendingInspectorSeq) {
       pendingInspectorSeq = 0;
     }
   }
   store.subscribe(draw);
 
   root.addEventListener('pointerdown', () => (modality = 'pointer'), { capture: true, signal });
+  root.addEventListener(
+    'click',
+    (event) => {
+      if (event.target instanceof Element && !hold.isHeld(event.target)) hold.flush();
+    },
+    { capture: true, signal },
+  );
   root.addEventListener(
     'keydown',
     (event) => {
@@ -230,9 +251,10 @@ function mount(root) {
       boot.events.select,
       (event) => {
         const detail = event.detail ?? {};
-        if (detail.by === 'reader' && detail.id != null) {
-          if (detail.via === 'key' || modality === 'key') {
-            pendingInspectorSeq = 1;
+        if (detail.by === 'reader') {
+          hold.flush();
+          if (detail.id != null && (detail.via === 'key' || modality === 'key')) {
+            pendingInspectorSeq = Math.max(1, store.sent);
             inspectorOpener = document.activeElement instanceof Element ? document.activeElement : null;
           }
         }
@@ -289,10 +311,23 @@ function mount(root) {
         const menuTrigger = button.closest('.sms-menu')?.querySelector('[data-sms-menu]');
         if (button.closest('.sms-menu-pop')) closeMenus(true);
         const sent = readEvent(button);
-        const sentSeq = store.send(sent.type, sent.data);
+        const data = { ...sent.data };
+        if (button.dataset.smsCollect === 'true') {
+          const group = button.closest('[data-sms-group]');
+          if (group) {
+            for (const fld of group.querySelectorAll('[data-sms-field]')) {
+              const name = fld.dataset.smsField;
+              const val = readFieldValue(fld);
+              if (name !== undefined && val !== undefined) data[name] = val;
+            }
+          }
+        }
+        const sentSeq = store.send(sent.type, data);
         if (button.closest('.sms-outline') || button.closest('.sms-journal')) {
           pendingInspectorSeq = sentSeq;
           inspectorOpener = menuTrigger ?? button;
+        } else if (button.closest('.sms-inspector') && (sent.type === 'target' || sent.type === 'add')) {
+          pendingInspectorSeq = sentSeq;
         }
         store.track(button, sentSeq);
       }
@@ -307,9 +342,43 @@ function mount(root) {
     { signal },
   );
   root.addEventListener(
+    'change',
+    (event) => {
+      const target = event.target;
+      if (!(target instanceof Element) || !target.hasAttribute('data-sms-event')) return;
+      if (isTextField(target)) {
+        if (hold.isHeld(target)) hold.flush();
+        return;
+      }
+      const ev = readEvent(target);
+      if (!ev) return;
+      let value;
+      if (target instanceof HTMLInputElement && target.type === 'checkbox') {
+        value = Boolean(target.checked);
+      } else if (target instanceof HTMLInputElement && target.type === 'number') {
+        value = target.value === '' ? null : Number(target.value);
+      } else {
+        value = target.value;
+      }
+      const seq = store.send(ev.type, { ...ev.data, value });
+      if (target instanceof HTMLInputElement && target.type === 'radio') {
+        const group = target.closest('.sms-seg');
+        if (group) group.dataset.smsSeq = String(seq);
+      } else {
+        target.dataset.smsSeq = String(seq);
+      }
+    },
+    { signal },
+  );
+  root.addEventListener(
     'keydown',
     (event) => {
-      if (event.key === 'Enter' && isTextField(event.target) && hold.isHeld(event.target)) {
+      if (
+        event.key === 'Enter' &&
+        event.target instanceof HTMLInputElement &&
+        isTextField(event.target) &&
+        hold.isHeld(event.target)
+      ) {
         hold.flush();
         return;
       }
@@ -394,6 +463,8 @@ function mount(root) {
       /* Once focus has moved on, the field may show the server's value again. */
       later(() => {
         if (store.view.header) renderHeader(root, store.view.header, ctx());
+        const insp = root.querySelector('.sms-inspector');
+        if (insp && store.view.inspector) renderInspector(insp, store.view.inspector, ctx());
       }, 0);
     },
     { signal },

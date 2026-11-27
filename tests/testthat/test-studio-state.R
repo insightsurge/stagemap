@@ -223,6 +223,73 @@ describe("studio_step()", {
     expect_identical(studio_select_effect(s, s$target, s$doc, "picked"), list())
   })
 
+  it("resolves stale-map picks only when drawn ids still match, and refuses with a notice otherwise", {
+    # Example template is stale on links only: card ids match good$map, so picking a card still works
+    ex <- studio_state_new()
+    pk_ex <- studio_pick(ex, "card", "round_dose")
+    expect_identical(pk_ex$state$target, list(kind = "card", uid = studio_uid_of(ex$doc, "cards", "round_dose")))
+    expect_null(pk_ex$state$notice)
+
+    # Duplicate card id leaves drawn map stale with changed ids: no bogus select for "b", and clicking "b" refuses
+    s <- studio_state_new(small)
+    s_t <- studio_step(s, ev("target", list(kind = "card", uid = "u1"), seq = 1L))$state
+    res_dup <- studio_step(s_t, ev("edit", list(table = "cards", uid = "u1", field = "id", value = "b"), seq = 2L))
+    expect_length(res_dup$effects, 0L)
+    s_dup <- res_dup$state
+    expect_lt(s_dup$good$rev, s_dup$rev)
+    pk_dup <- studio_pick(s_dup, "card", "b")
+    expect_identical(pk_dup$state$target, s_dup$target)
+    expect_identical(pk_dup$state$notice$tone, "problem")
+    expect_identical(pk_dup$state$notice$room, "check")
+    expect_match(pk_dup$state$notice$text, "out of date")
+
+    # Swapping ids while broken must not target the wrong row either
+    s_swap <- studio_step(
+      s_dup,
+      ev("edit", list(table = "cards", uid = "u2", field = "id", value = "a"), seq = 2L)
+    )$state
+    s_swap <- studio_step(
+      s_swap,
+      ev("edit", list(table = "cards", uid = "u1", field = "id", value = ""), seq = 3L)
+    )$state
+    pk_swap <- studio_pick(s_swap, "card", "a")
+    expect_identical(pk_swap$state$target, s_swap$target)
+    expect_identical(pk_swap$state$notice$tone, "problem")
+  })
+
+  it("decides + Card stage and lane on the server from the current target", {
+    s <- studio_state_new(small)
+    # Target card u2 (stage check, lane docs), then switch to u4 (stage ship, lane code) before adding a card
+    s1 <- studio_step(s, ev("target", list(kind = "card", uid = "u2"), seq = 1L))$state
+    s2 <- studio_step(s1, ev("target", list(kind = "card", uid = "u4"), seq = 2L))$state
+    added_c <- studio_step(s2, ev("add", list(table = "cards"), seq = 3L))$state
+    row_c <- studio_row(added_c$doc, "cards", added_c$target$uid)
+    expect_identical(row_c$stage, "ship")
+    expect_identical(row_c$lane, "code")
+
+    # Target stage "check": new card lands in stage "check" and first lane
+    u_check <- studio_uid_of(s$doc, "stages", "check")
+    s_st <- studio_step(s, ev("target", list(kind = "stage", uid = u_check), seq = 1L))$state
+    added_st <- studio_step(s_st, ev("add", list(table = "cards"), seq = 2L))$state
+    row_st <- studio_row(added_st$doc, "cards", added_st$target$uid)
+    expect_identical(row_st$stage, "check")
+    expect_identical(row_st$lane, "docs")
+
+    # Target lane "code": new card lands in first stage and lane "code"
+    u_code <- studio_uid_of(s$doc, "lanes", "code")
+    s_ln <- studio_step(s, ev("target", list(kind = "lane", uid = u_code), seq = 1L))$state
+    added_ln <- studio_step(s_ln, ev("add", list(table = "cards"), seq = 2L))$state
+    row_ln <- studio_row(added_ln$doc, "cards", added_ln$target$uid)
+    expect_identical(row_ln$stage, "write")
+    expect_identical(row_ln$lane, "code")
+
+    # Explicit stage from "Add a card here" wins over the server target
+    added_exp <- studio_step(s2, ev("add", list(table = "cards", stage = u_check), seq = 3L))$state
+    row_exp <- studio_row(added_exp$doc, "cards", added_exp$target$uid)
+    expect_identical(row_exp$stage, "check")
+    expect_identical(row_exp$lane, "code")
+  })
+
   it("rebuilds check and good$serial on fix and undo, and blocks Done after undo", {
     s <- studio_state_new()
     s1 <- studio_step(s, ev("option", list(name = "title", value = "Edited"), seq = 1L))$state

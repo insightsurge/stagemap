@@ -73,6 +73,81 @@ describe("the studio leak count", {
     expect_studio_clean(app)
   })
 
+  it("keeps listener, observer, timer and node counts flat across 30 inspector targets, edits and add-form opens", {
+    app <- studio_driver("small")
+    target_js <- function(kind, uid) {
+      sprintf(
+        "{ const b = document.createElement('button');
+           b.type = 'button'; b.dataset.smsEvent = %s;
+           document.querySelector('.sms-outline').append(b); b.click(); b.remove(); }",
+        jsonlite::toJSON(
+          jsonlite::toJSON(
+            list(type = "target", data = list(kind = kind, uid = uid)),
+            auto_unbox = TRUE,
+            null = "null"
+          ),
+          auto_unbox = TRUE
+        )
+      )
+    }
+    # Warm-up across all 4 kinds (card u2, stage u5, lane u8, link u10) and an edit
+    studio_do(app, target_js("card", "u2"))
+    studio_do(
+      app,
+      paste(
+        studio_type_js(".sms-inspector [data-sms-field='sub'] input", "Warm"),
+        "document.querySelector('.sms-inspector [data-sms-field=\"sub\"] input').blur();"
+      )
+    )
+    studio_do(app, target_js("stage", "u5"))
+    studio_do(app, target_js("lane", "u8"))
+    studio_do(app, target_js("link", "u10"))
+    studio_do(app, studio_click_js(".sms-inspector .sms-insp-acts button"))
+    studio_wait_step(app)
+    app$wait_for_js("document.querySelector('.sms-toast').dataset.smsOn === undefined")
+
+    journal_nodes <- function() {
+      app$get_js("document.querySelectorAll('.sms-journal-list *').length")
+    }
+    before <- studio_counts(app)
+    before_journal <- journal_nodes()
+
+    targets <- list(c("card", "u2"), c("stage", "u5"), c("lane", "u8"), c("link", "u10"))
+    for (i in seq_len(30L)) {
+      t <- targets[[((i - 1L) %% length(targets)) + 1L]]
+      studio_do(app, target_js(t[[1L]], t[[2L]]))
+      # Open card add forms (Comes from & Goes to) and edit a field each round
+      if (!identical(t[[1L]], "card")) {
+        studio_do(app, target_js("card", "u2"))
+      }
+      studio_do(
+        app,
+        paste(
+          studio_type_js(".sms-inspector [data-sms-field='sub'] input", sprintf("Edit %d", i)),
+          "document.querySelector('.sms-inspector [data-sms-field=\"sub\"] input').blur();"
+        )
+      )
+      app$run_js(
+        "{ const s1 = document.querySelector('.sms-inspector [data-sms-list=\"in\"] [data-sms-field=\"from\"] select');
+           const s2 = document.querySelector('.sms-inspector [data-sms-list=\"out\"] [data-sms-field=\"to\"] select');
+           if (s1) { s1.focus(); s1.dispatchEvent(new Event('change', { bubbles: true })); }
+           if (s2) { s2.focus(); s2.dispatchEvent(new Event('change', { bubbles: true })); } }"
+      )
+      studio_do(app, studio_click_js(".sms-inspector .sms-insp-acts button"))
+    }
+
+    studio_wait_step(app)
+    app$wait_for_js("document.querySelector('.sms-toast').dataset.smsOn === undefined")
+    after <- studio_counts(app)
+    after_journal <- journal_nodes()
+
+    expect_identical(after$listeners, before$listeners)
+    expect_identical(after$observers, before$observers)
+    expect_identical(after$timers, before$timers)
+    expect_identical(after$nodes - after_journal, before$nodes - before_journal)
+    expect_studio_clean(app)
+  })
+
   it("[SMS-085] counts a synthetic listener, MutationObserver, pending timer and node when added and drops them when removed", {
     app <- studio_driver()
     base <- studio_counts(app)

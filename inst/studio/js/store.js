@@ -183,6 +183,9 @@ export function createStore(root, boot, tools) {
     get ack() {
       return ack;
     },
+    get sent() {
+      return sent;
+    },
     get rev() {
       return rev;
     },

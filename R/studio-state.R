@@ -215,6 +215,17 @@ studio_step_picked <- function(state, data) {
     good_tbl <- stage_map_tables(state$good$map)[[tbl_name]]
     id_text <- as_text(id)[[1L]]
     if (is.data.frame(good_tbl) && (id_text %in% as_text(good_tbl$id))) {
+      doc_tbl <- state$doc$tables[[tbl_name]]
+      good_ids <- as_text(good_tbl$id)
+      doc_ids <- if (is.data.frame(doc_tbl) && "id" %in% names(doc_tbl)) as_text(doc_tbl$id) else character()
+      if (!identical(state$good$rev, state$rev) && !identical(doc_ids, good_ids)) {
+        return(studio_next_notice(
+          state,
+          "The drawn map is out of date while the map has problems. Fix them in Check first.",
+          tone = "problem",
+          room = "check"
+        ))
+      }
       uid <- studio_uid_of(state$doc, tbl_name, id_text)
       if (!is.null(uid)) {
         state$target <- list(kind = kind, uid = uid)
@@ -222,6 +233,36 @@ studio_step_picked <- function(state, data) {
     }
   }
   state
+}
+
+# Fills missing `stage` and `lane` uids on an `add` event for `cards` from the server's current `target`.
+studio_add_defaults <- function(doc, target, data) {
+  studio_assert_doc(doc)
+  checkmate::assert_list(target, names = "unique")
+  checkmate::assert_list(data, names = "unique")
+  if (!identical(data$table, "cards")) {
+    return(data)
+  }
+  if (identical(target$kind, "card") && !is.null(target$uid)) {
+    card_row <- studio_row(doc, "cards", target$uid)
+    if (!is.null(card_row)) {
+      if (is.null(data$stage) && !is.na(card_row$stage) && nzchar(as_text(card_row$stage))) {
+        data$stage <- studio_uid_of(doc, "stages", as_text(card_row$stage))
+      }
+      if (is.null(data$lane) && !is.na(card_row$lane) && nzchar(as_text(card_row$lane))) {
+        data$lane <- studio_uid_of(doc, "lanes", as_text(card_row$lane))
+      }
+    }
+  } else if (identical(target$kind, "stage") && !is.null(target$uid)) {
+    if (is.null(data$stage) && !is.null(studio_row(doc, "stages", target$uid))) {
+      data$stage <- target$uid
+    }
+  } else if (identical(target$kind, "lane") && !is.null(target$uid)) {
+    if (is.null(data$lane) && !is.null(studio_row(doc, "lanes", target$uid))) {
+      data$lane <- target$uid
+    }
+  }
+  data
 }
 
 # Builds the `select` effect against `state$good$map`: on target change (except `picked`), when `good$serial` rises,
@@ -241,8 +282,18 @@ studio_select_effect <- function(state, old_target, old_doc, event_type, old_ser
     if (!(kind %in% c("card", "stage")) || is.null(id) || is.na(id) || !nzchar(trimws(as_text(id)))) {
       return(FALSE)
     }
-    tbl <- stage_map_tables(state$good$map)[[studio_target_table(kind)]]
-    is.data.frame(tbl) && (as_text(id) %in% as_text(tbl$id))
+    tbl_name <- studio_target_table(kind)
+    good_tbl <- stage_map_tables(state$good$map)[[tbl_name]]
+    good_ids <- if (is.data.frame(good_tbl)) as_text(good_tbl$id) else character()
+    if (!(as_text(id) %in% good_ids)) {
+      return(FALSE)
+    }
+    if (identical(state$good$rev, state$rev)) {
+      return(TRUE)
+    }
+    doc_tbl <- state$doc$tables[[tbl_name]]
+    doc_ids <- if (is.data.frame(doc_tbl) && "id" %in% names(doc_tbl)) as_text(doc_tbl$id) else character()
+    identical(doc_ids, good_ids)
   }
 
   target <- state$target
@@ -336,6 +387,9 @@ studio_step <- function(state, event) {
     }
     state <- opened
   } else if (checked$type %in% names(studio_events())) {
+    if (identical(checked$type, "add")) {
+      checked$data <- studio_add_defaults(state$doc, state$target, checked$data)
+    }
     from_doc <- NULL
     if (
       identical(checked$type, "edit") &&
