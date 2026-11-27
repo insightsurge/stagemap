@@ -1,6 +1,22 @@
 # Plain checks for the R code room: code lines, problem note, changed-line flags, token spans, last question call,
 # `.R` download text, and per-table CSV exports without `.studio_uid`.
 
+# The text of each line of a code view.
+expected_lines_of <- function(view) {
+  vapply(
+    view$lines,
+    function(line) paste(vapply(line$spans, function(sp) sp[[1L]], ""), collapse = ""),
+    ""
+  )
+}
+
+# The text of the lines a code view marks as changed, after the event `type` with `data` on `state`.
+changed_after <- function(state, type, data) {
+  after <- studio_step(state, list(seq = 1L, type = type, data = data, rev = state$rev))$state
+  view <- studio_room_code_view(after)
+  expected_lines_of(view)[vapply(view$lines, function(l) isTRUE(l$changed), logical(1))]
+}
+
 describe("studio_code_lines() and studio_code_file()", {
   it("matches stage_map_code() of the built map and evaluates back to an equal map", {
     map <- full_map(title = "Say \"hi\"")
@@ -132,18 +148,140 @@ describe("studio_room_code_view()", {
       )
     )$state
     view1 <- studio_room_code_view(edited)
-    edited_lines <- studio_code_lines(edited)
-    base_lines <- code_map(studio_doc_parts(edited$base))
-    expect_identical(
-      vapply(view1$lines, function(l) isTRUE(l$changed), logical(1)),
-      !(edited_lines %in% base_lines)
-    )
-    expect_true(any(vapply(view1$lines, function(l) isTRUE(l$changed), logical(1))))
+    flags1 <- vapply(view1$lines, function(l) isTRUE(l$changed), logical(1))
+    expect_identical(sum(flags1), 1L)
+    expect_match(expected_lines_of(view1)[flags1], "Updated", fixed = TRUE)
 
     # Undoing returns to base with zero changed lines
     undone <- studio_step(edited, list(seq = 2L, type = "undo", data = list(), rev = edited$rev))$state
     view2 <- studio_room_code_view(undone)
     expect_false(any(vapply(view2$lines, function(l) isTRUE(l$changed), logical(1))))
+  })
+
+  it("marks the lines an edit changed, and only those", {
+    state <- studio_state_new(full_map(title = "Original"))
+    expect_identical(
+      changed_after(state, "option", list(name = "title", value = "New title")),
+      "stage_map(cards, stages, lanes, title = \"New title\") |>"
+    )
+
+    one <- studio_state_new(slim())
+    expect_identical(
+      changed_after(one, "edit", list(table = "cards", uid = "u1", field = "label", value = "Updated")),
+      "cards <- data.frame(id = \"a\", label = \"Updated\", stage = \"s\", lane = \"l\")"
+    )
+    # An added card rewrites the cards table (now several lines), and nothing else
+    added <- changed_after(one, "add", list(table = "cards"))
+    expect_identical(
+      added,
+      c(
+        "cards <- data.frame(",
+        "  id = c(\"a\", \"card\"),",
+        "  label = c(\"A\", \"New card\"),",
+        "  stage = \"s\",",
+        "  lane = \"l\"",
+        ")"
+      )
+    )
+    # A removed card rewrites the cards table, and nothing else
+    two <- studio_state_new(small())
+    expect_identical(
+      changed_after(two, "remove", list(table = "cards", uid = "u2")),
+      "cards <- data.frame(id = \"a\", label = \"A\", stage = \"s\", lane = \"l\")"
+    )
+    # Removing a card also removes its links: the card table and the links table change, and no other line
+    full_removed <- changed_after(state, "remove", list(table = "cards", uid = "u4"))
+    expect_true(any(grepl("^  id = c\\(", full_removed)))
+    expect_true(any(startsWith(full_removed, "links <- data.frame(")))
+    expect_false(any(grepl("Archive", full_removed, fixed = TRUE)))
+    expect_false(any(startsWith(full_removed, "stage_map(")))
+  })
+
+  it("marks no question line as changed, and the `map <-` line only when its call changed", {
+    state <- studio_state_new(full_map(title = "Ask check"))
+    state$ask <- list(question = "trace", call = "sm_trace(map, \"a\")", rev = state$rev, stale = FALSE, error = NULL)
+    view <- studio_room_code_view(state)
+    shown <- expected_lines_of(view)
+    expect_true("# The last question" %in% shown)
+    expect_true(any(startsWith(shown, "map <- stage_map(")))
+    expect_false(any(vapply(view$lines, function(l) isTRUE(l$changed), logical(1))))
+
+    # A title change after the question was asked drops the question (it is stale), so the `stage_map(` line is the only
+    # change; with a question for the new revision the `map <-` line is marked and the question lines are not
+    edited <- studio_step(
+      state,
+      list(seq = 1L, type = "option", data = list(name = "title", value = "Other"), rev = state$rev)
+    )$state
+    edited$ask <- list(question = "trace", call = "sm_trace(map, \"a\")", rev = edited$rev, stale = FALSE, error = NULL)
+    view2 <- studio_room_code_view(edited)
+    shown2 <- expected_lines_of(view2)
+    flags2 <- vapply(view2$lines, function(l) isTRUE(l$changed), logical(1))
+    expect_identical(shown2[flags2], sub("^", "map <- ", "stage_map(cards, stages, lanes, title = \"Other\") |>"))
+    expect_false(flags2[match("# The last question", shown2)])
+    expect_false(flags2[length(flags2)])
+
+    # An edit elsewhere leaves the `map <-` line unmarked
+    label_edit <- studio_step(
+      state,
+      list(
+        seq = 1L,
+        type = "edit",
+        data = list(table = "cards", uid = "u1", field = "label", value = "Updated"),
+        rev = state$rev
+      )
+    )$state
+    label_edit$ask <- state$ask
+    label_edit$ask$rev <- label_edit$rev
+    view3 <- studio_room_code_view(label_edit)
+    flags3 <- vapply(view3$lines, function(l) isTRUE(l$changed), logical(1))
+    expect_identical(sum(flags3), 1L)
+    expect_match(expected_lines_of(view3)[flags3], "Updated", fixed = TRUE)
+  })
+
+  it("does not build the view again while the document, base and question are the same", {
+    state <- studio_state_new(full_map(title = "Cache"))
+    builds <- 0L
+    tokenise <- code_tokens
+    local_mocked_bindings(code_tokens = function(lines) {
+      builds <<- builds + 1L
+      tokenise(lines)
+    })
+    first <- studio_room_code_view(state)
+    expect_identical(builds, 1L)
+    picked <- studio_step(
+      state,
+      list(seq = 1L, type = "target", data = list(kind = "card", uid = "u1"), rev = state$rev)
+    )$state
+    expect_false(identical(picked$target, state$target))
+    expect_identical(studio_room_code_view(picked), first)
+    expect_identical(builds, 1L)
+
+    # A change to the document, or a question, builds it again
+    edited <- studio_step(
+      picked,
+      list(seq = 2L, type = "option", data = list(name = "title", value = "Other"), rev = picked$rev)
+    )$state
+    studio_room_code_view(edited)
+    expect_identical(builds, 2L)
+    edited$ask <- list(question = "trace", call = "sm_trace(map, \"a\")", rev = edited$rev, stale = FALSE, error = NULL)
+    studio_room_code_view(edited)
+    expect_identical(builds, 3L)
+  })
+
+  it("keeps the base's code lines in the state, and renews them when a map is opened", {
+    state <- studio_state_new(full_map(title = "Base"))
+    expect_identical(state$base_code, code_map(studio_doc_parts(state$base)))
+    edited <- studio_step(
+      state,
+      list(seq = 1L, type = "option", data = list(name = "title", value = "Other"), rev = state$rev)
+    )$state
+    expect_identical(edited$base_code, state$base_code)
+    opened <- studio_step(
+      edited,
+      list(seq = 2L, type = "open", data = list(template = "blank", confirm = TRUE), rev = edited$rev)
+    )$state
+    expect_identical(opened$base_code, code_map(studio_doc_parts(opened$base)))
+    expect_false(identical(opened$base_code, state$base_code))
   })
 
   it("sets problem and prepends it to copy text on a broken map", {
@@ -187,6 +325,41 @@ describe("studio_csv()", {
     back_cards <- utils::read.csv(text = csv_cards, stringsAsFactors = FALSE)
     expect_identical(back_cards$label[[1L]], "Caf\u00e9")
     expect_identical(back_cards$extra[[1L]], "x, y")
+  })
+
+  it("keeps non-ASCII text, quotes, commas and NA in a C locale", {
+    withr::local_locale(c(LC_CTYPE = "C"))
+    cafe <- rawToChar(as.raw(c(0x43, 0x61, 0x66, 0xc3, 0xa9)))
+    Encoding(cafe) <- "UTF-8"
+    quoted <- "Say \"hi\", then go"
+    state <- studio_state_new(full_map())
+    state$doc$tables$cards$label[[1L]] <- cafe
+    state$doc$tables$cards$label[[2L]] <- quoted
+    state$doc$tables$cards$owner[[3L]] <- NA
+    state$doc$tables$cards$size <- c(0.5, 2, NA, 4)
+    state$doc$tables$cards$flag <- c(TRUE, FALSE, NA, TRUE)
+    csv <- studio_csv(state, "cards")
+    expect_identical(Encoding(csv), "UTF-8")
+    expect_false(grepl("<U+", csv, fixed = TRUE))
+    expect_true(grepl(
+      rawToChar(as.raw(c(0x22, 0x43, 0x61, 0x66, 0xc3, 0xa9, 0x22))),
+      csv,
+      fixed = TRUE,
+      useBytes = TRUE
+    ))
+    rows <- strsplit(csv, "\n", fixed = TRUE)[[1L]]
+    expect_identical(
+      rows[[1L]],
+      "\"id\",\"label\",\"stage\",\"lane\",\"status\",\"zone\",\"owner\",\"size\",\"flag\""
+    )
+    expect_identical(rows[[2L]], "\"a\",\"Caf\u00e9\",\"write\",\"docs\",\"done\",NA,\"Ann\",0.5,TRUE")
+    expect_identical(
+      rows[[3L]],
+      "\"b\",\"Say \"\"hi\"\", then go\",\"check\",\"docs\",\"running\",\"sign\",\"Bo\",2,FALSE"
+    )
+    expect_identical(rows[[4L]], "\"c\",\"Publish\",\"check\",\"code\",\"waiting\",\"sign\",NA,NA,NA")
+    # The text that goes into the file keeps its bytes
+    expect_identical(charToRaw(enc2utf8(csv)), charToRaw(csv))
   })
 
   it("checks its arguments", {

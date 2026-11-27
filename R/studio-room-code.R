@@ -3,12 +3,15 @@
 
 studio_code_problem_text <- "stage_map() stops on this map: see Check."
 
-# Returns the R code lines for `state$doc`, plus `map <-` and `# The last question` with `state$ask$call` when an
-# active non-error question exists for the current revision.
-studio_code_lines <- function(state) {
+# The code lines for `state$doc` (`doc`), and the lines shown (`lines`): `doc` plus, when an active non-error question
+# exists for the current revision, `map <-` before the `stage_map(` line and the `# The last question` block with
+# `state$ask$call`. The question lines come after the document's own lines, so `lines[seq_along(doc)]` lines up
+# with `doc`.
+studio_code_parts <- function(state) {
   checkmate::assert_list(state, names = "unique")
   studio_assert_doc(state$doc, "state$doc")
-  lines <- code_map(studio_doc_parts(state$doc))
+  doc <- code_map(studio_doc_parts(state$doc))
+  lines <- doc
   ask <- state$ask
   has_call <- !is.null(ask) &&
     is.null(ask$error) &&
@@ -24,7 +27,13 @@ studio_code_lines <- function(state) {
     }
     lines <- c(lines, "", "# The last question", call_lines)
   }
-  lines
+  list(doc = doc, lines = lines)
+}
+
+# Returns the R code lines for `state$doc`, plus `map <-` and `# The last question` with `state$ask$call` when an
+# active non-error question exists for the current revision.
+studio_code_lines <- function(state) {
+  studio_code_parts(state)$lines
 }
 
 # Builds the code lines for copying or downloading, prepending the problem comment when `state$check$ok` is not TRUE.
@@ -63,12 +72,34 @@ studio_csv <- function(state, table) {
       }
     }
   }
-  lines <- character()
-  con <- textConnection("lines", open = "w", local = TRUE)
-  on.exit(close(con), add = TRUE)
-  utils::write.csv(tbl, con, row.names = FALSE)
-  paste0(paste(lines, collapse = "\n"), "\n")
+  studio_csv_text(tbl)
 }
+
+# `tbl` as CSV text, built by hand in UTF-8 so that non-ASCII text survives in any locale (write.csv() would turn it
+# into `<U+00E9>` escapes in a C locale). Text and the header are quoted with doubled quotes, numbers and logicals are
+# bare, and NA is bare.
+studio_csv_text <- function(tbl) {
+  swap <- function(x) gsub("\"", "\"\"", x, fixed = TRUE, useBytes = TRUE)
+  field <- function(x) {
+    missing <- is.na(x)
+    if (is.character(x) || is.factor(x)) {
+      out <- paste0("\"", swap(enc2utf8(as.character(x))), "\"")
+    } else {
+      out <- as.character(x)
+    }
+    out[missing] <- "NA"
+    out
+  }
+  cols <- lapply(tbl, field)
+  header <- paste0("\"", swap(enc2utf8(names(tbl))), "\"")
+  rows <- if (nrow(tbl) > 0L) do.call(paste, c(unname(cols), sep = ",")) else character()
+  out <- paste0(paste(c(paste(header, collapse = ","), rows), collapse = "\n"), "\n")
+  Encoding(out) <- "UTF-8"
+  out
+}
+
+# The last view built by studio_room_code_view() and the inputs it was built from.
+studio_code_view_last <- new.env(parent = emptyenv())
 
 # The `code` section of the studio view: tokenised lines marked against `state$base`, copy text, problem note, and
 # download descriptors for the `.R` script and each table the document has.
@@ -76,9 +107,25 @@ studio_room_code_view <- function(state) {
   checkmate::assert_list(state, names = "unique")
   studio_assert_doc(state$doc, "state$doc")
   studio_assert_doc(state$base, "state$base")
-  lines <- studio_code_lines(state)
-  base_lines <- code_map(studio_doc_parts(state$base))
-  changed <- !(lines %in% base_lines)
+  # The view is built on every store change, such as a pick of a card, and a large map takes long to tokenise: the
+  # last view is kept and reused while nothing it reads has changed.
+  key <- list(state$doc, state$base, state$base_code, state$ask, state$rev, isTRUE(state$check$ok))
+  if (identical(studio_code_view_last$key, key)) {
+    return(studio_code_view_last$view)
+  }
+  view <- studio_room_code_view_build(state)
+  studio_code_view_last$key <- key
+  studio_code_view_last$view <- view
+  view
+}
+
+# The `code` section of `state`, built from scratch.
+studio_room_code_view_build <- function(state) {
+  parts <- studio_code_parts(state)
+  lines <- parts$lines
+  base_lines <- state$base_code
+  # Only the document's own lines can be changed: the question lines and the `map <-` prefix were not edited.
+  changed <- c(!(parts$doc %in% base_lines), rep(FALSE, length(lines) - length(parts$doc)))
   tokens <- code_tokens(lines)
   line_items <- lapply(seq_along(lines), function(i) {
     spans <- lapply(tokens[[i]], function(tok) list(tok$text, tok$class))

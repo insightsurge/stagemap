@@ -285,7 +285,7 @@ function mount(root) {
             link.click();
           })
           .catch((error) => {
-            if (error instanceof LateError) shell.toast(boot.labels.copy_late, 'problem');
+            if (error instanceof LateError) shell.toast(boot.labels.download_late, 'problem');
             else console.error(error);
           })
           .finally(() => setBusy(download, false));

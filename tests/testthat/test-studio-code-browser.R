@@ -254,6 +254,45 @@ describe("the R code room", {
     expect_studio_clean(app)
   })
 
+  it("says it could not download, and is not busy, when the answer is held longer than a download waits", {
+    app <- studio_driver("small", copy_wait_ms = 300L)
+    studio_open_code(app)
+    studio_wait_step(app)
+    code_record_link(app, "studio-download_r", prevent = TRUE)
+    hold_studio_messages(app)
+    app$run_js(paste(studio_title_js("Too late"), studio_click_js("[data-sms-download='download_r']")))
+    app$wait_for_js("document.querySelector('.sms-toast-text')?.textContent.includes('did not answer in time')")
+    toast <- app$get_js("document.querySelector('.sms-toast-text').textContent")
+    expect_match(toast, "Could not download", fixed = TRUE)
+    expect_no_match(toast, "copy", ignore.case = TRUE)
+    expect_identical(app$get_js("window.__sms.linkClicks.length"), 0L)
+    expect_null(app$get_js("document.querySelector('[data-sms-download=\"download_r\"]').getAttribute('aria-busy')"))
+    release_studio_messages(app)
+    studio_wait_step(app)
+    expect_studio_clean(app)
+  })
+
+  it("sends seen each time the code room is opened", {
+    app <- studio_driver("small")
+    record_studio_events(app)
+    seen_count <- function() {
+      sum(vapply(
+        studio_sent(app),
+        function(ev) identical(ev$type, "seen") && identical(ev$data$what, "code"),
+        logical(1)
+      ))
+    }
+    studio_open_code(app)
+    studio_wait_step(app)
+    expect_identical(seen_count(), 1L)
+    click_now(app, "[data-sms-room='code']")
+    app$wait_for_js("document.querySelector('[data-sms-room-of=\"code\"]').hidden === true")
+    studio_open_code(app)
+    studio_wait_step(app)
+    expect_identical(seen_count(), 2L)
+    expect_studio_clean(app)
+  })
+
   it("[SMS-071] displays the last question call under the code and drops it after an edit", {
     app <- studio_driver("small")
     studio_open_code(app)
@@ -376,7 +415,6 @@ describe("the R code room", {
     expect_false(identical(dark_styles$changedShadow, styles$changedShadow))
 
     # Phone width: code room and its head fit 375px without widening the page; code scrolls inside its box
-    before_sw <- app$get_js("document.documentElement.scrollWidth")
     studio_emulate(app, "width", 375L)
     phone <- app$get_js(
       "(() => {
@@ -388,7 +426,8 @@ describe("the R code room", {
            headFits: head.scrollWidth <= head.clientWidth,
            boxFits: box.getBoundingClientRect().right <= window.innerWidth,
            codeScrolls: box.scrollWidth > box.clientWidth,
-           afterSw: document.documentElement.scrollWidth
+           rootSw: document.querySelector('.sms').scrollWidth,
+           rootRight: document.querySelector('.sms').getBoundingClientRect().right
          };
        })()"
     )
@@ -396,7 +435,10 @@ describe("the R code room", {
     expect_true(phone$headFits)
     expect_true(phone$boxFits)
     expect_true(phone$codeScrolls)
-    expect_lte(phone$afterSw, before_sw)
+    # The studio's own box: nothing inside it pokes past the phone's width (the page around it is the test app's, which
+    # prints the map state in a wide line, so the page's scrollWidth is not the studio's)
+    expect_lte(phone$rootSw, 375L)
+    expect_lte(phone$rootRight, 375L)
     expect_studio_clean(app)
   })
 })

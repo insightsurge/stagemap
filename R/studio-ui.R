@@ -264,6 +264,7 @@ studio_labels <- function() {
   list(
     copied = "Copied the R code.",
     copy_late = "Could not copy: the server did not answer in time. Try again.",
+    download_late = "Could not download: the server did not answer in time. Try again.",
     copy_manual = "Could not copy by itself. The code is selected: press Ctrl+C (Cmd+C on a Mac).",
     closed = "The map has gone back to R. You can close this tab.",
     problem = "Problem",
