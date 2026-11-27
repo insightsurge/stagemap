@@ -78,7 +78,10 @@ describe("the studio guide", {
     app$run_js(
       "document.querySelector('#studio-map').dispatchEvent(new CustomEvent('stagemap:hover', { bubbles: true, detail: { kind: 'card', id: 'round_dose' } }))"
     )
-    expect_false(grepl("^Next:", guide_state(app)$hint) && app$get_js("getComputedStyle(document.querySelector('.sms-hint-next')).display !== 'none'"))
+    expect_false(
+      grepl("^Next:", guide_state(app)$hint) &&
+        app$get_js("getComputedStyle(document.querySelector('.sms-hint-next')).display !== 'none'")
+    )
     app$run_js(
       "document.querySelector('#studio-map').dispatchEvent(new CustomEvent('stagemap:hover', { bubbles: true, detail: { kind: 'card', id: null } }))"
     )

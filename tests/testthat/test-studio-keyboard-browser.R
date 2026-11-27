@@ -27,7 +27,9 @@ focus_now <- function(app) {
 # fails when it is not reached, which is how a trap or a missing stop shows. Returns how many presses it took.
 tab_to <- function(app, selector, max = 40L, back = FALSE) {
   for (i in seq_len(max)) {
-    if (isTRUE(app$get_js(sprintf("document.activeElement.matches(%s)", jsonlite::toJSON(selector, auto_unbox = TRUE))))) {
+    if (
+      isTRUE(app$get_js(sprintf("document.activeElement.matches(%s)", jsonlite::toJSON(selector, auto_unbox = TRUE))))
+    ) {
       return(i - 1L)
     }
     studio_press(app, "Tab", modifiers = if (back) "shift" else character())
@@ -171,7 +173,10 @@ describe("the studio from the keyboard", {
     before <- app$get_js("document.activeElement.value")
     key("ArrowRight")
     studio_wait_step(app)
-    expect_false(identical(app$get_js("document.querySelector('.sms-inspector [data-sms-field=\"status\"] input:checked').value"), before))
+    expect_false(identical(
+      app$get_js("document.querySelector('.sms-inspector [data-sms-field=\"status\"] input:checked').value"),
+      before
+    ))
     expect_identical(app$get_js("document.activeElement.name !== undefined && document.activeElement.type"), "radio")
     expect_identical(app$get_js("document.querySelectorAll('.sms-ev').length"), 1L)
 
@@ -180,7 +185,9 @@ describe("the studio from the keyboard", {
     # A native select is changed by the browser's own keys, which differ by system; the page's part is what follows
     # the change, so the value is set on the control that Tab reached.
     to_before <- app$get_js("document.activeElement.value")
-    app$run_js("{ const s = document.activeElement; s.selectedIndex = (s.selectedIndex + 1) % s.options.length; s.dispatchEvent(new Event('change', { bubbles: true })); }")
+    app$run_js(
+      "{ const s = document.activeElement; s.selectedIndex = (s.selectedIndex + 1) % s.options.length; s.dispatchEvent(new Event('change', { bubbles: true })); }"
+    )
     expect_false(identical(app$get_js("document.activeElement.value"), to_before))
     tab_to(app, ".sms-inspector [data-sms-list='out'] [data-sms-action='Connect']")
     links_before <- studio_section(app, "header")$facts
@@ -276,7 +283,8 @@ describe("the studio from the keyboard", {
       app$get_js(
         "JSON.stringify({ menu: !document.querySelector('.sms-menu-pop').hidden, guide: !document.querySelector('.sms-try').hidden,
            room: !document.querySelector('[data-sms-room-of=\"code\"]').hidden, form: !document.querySelector('.sms-inspector').hidden })"
-      ) |> jsonlite::fromJSON()
+      ) |>
+        jsonlite::fromJSON()
     }
     expect_identical(unlist(open()), c(menu = TRUE, guide = TRUE, room = TRUE, form = TRUE))
     expect_identical(app$get_js("document.activeElement.getAttribute('role')"), "menuitem")
@@ -316,7 +324,12 @@ describe("the studio from the keyboard", {
     app$run_js("document.querySelector(\"[data-sms-menu='stages']\").focus()")
     studio_press(app, "Enter")
     expect_identical(app$get_js("document.activeElement.getAttribute('role')"), "menuitem")
-    expect_identical(app$get_js("[...document.querySelectorAll('#studio-menu-stages [role=menuitem]')].every((b) => b.tabIndex === -1)"), TRUE)
+    expect_identical(
+      app$get_js(
+        "[...document.querySelectorAll('#studio-menu-stages [role=menuitem]')].every((b) => b.tabIndex === -1)"
+      ),
+      TRUE
+    )
     studio_press(app, "ArrowDown")
     expect_identical(app$get_js("document.activeElement.dataset.smsUid !== undefined"), TRUE)
     studio_press(app, "End")
@@ -324,7 +337,10 @@ describe("the studio from the keyboard", {
     # Tab closes the menu and goes on from its button
     studio_press(app, "Tab")
     expect_true(app$get_js("document.querySelector('#studio-menu-stages').hidden"))
-    expect_identical(app$get_js("document.querySelector(\"[data-sms-menu='stages']\").getAttribute('aria-expanded')"), "false")
+    expect_identical(
+      app$get_js("document.querySelector(\"[data-sms-menu='stages']\").getAttribute('aria-expanded')"),
+      "false"
+    )
     expect_identical(app$get_js("document.activeElement.dataset.smsMenu"), "lanes")
     expect_studio_clean(app)
   })
@@ -360,7 +376,9 @@ describe("the studio from the keyboard", {
   it("[SMS-090] gives every control a name, and stops the slip, the tray and the toast under reduced motion", {
     app <- studio_driver("none")
     open_example_by_key(app)
-    app$run_js("document.querySelector('#studio-map [data-card=\"round_dose\"]').dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }))")
+    app$run_js(
+      "document.querySelector('#studio-map [data-card=\"round_dose\"]').dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }))"
+    )
     app$wait_for_js("document.querySelector('.sms-inspector').hidden === false")
     for (room in c("ask", "check", "code", "map")) {
       click_now(app, sprintf(".sms-block [data-sms-room='%s']", room))
@@ -389,7 +407,10 @@ describe("the studio from the keyboard", {
     }
     # And, without the preference, the slip does move
     studio_emulate(app, "prefers-reduced-motion", "no-preference")
-    expect_false(identical(app$get_js("getComputedStyle(document.querySelector('.sms-inspector')).animationName"), "none"))
+    expect_false(identical(
+      app$get_js("getComputedStyle(document.querySelector('.sms-inspector')).animationName"),
+      "none"
+    ))
     studio_wait_step(app)
     studio_wait_drawn(app)
     expect_studio_clean(app)

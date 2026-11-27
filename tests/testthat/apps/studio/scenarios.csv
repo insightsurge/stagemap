@@ -91,3 +91,4 @@ SMS-089,keyboard,CSV menu closes with its room,auto,"Open the CSV menu in the R 
 SMS-090,keyboard,Names and reduced motion,auto,"Open the form and every room, then emulate reduced motion.","Every control has a name, and the form, the tray and the toast have no transition or animation under reduced motion."
 SMS-091,phone,Tap opens a card form,auto,At 390px emulate touch and tap a card on the map.,"The card form opens, and no control is revealed only by hover."
 SMS-092,phone,Text contrast of the page tokens in both themes,auto,At 390px and 360px read the page colours in the light and the dark theme.,Every text colour meets 4.5:1 against the background it is used on.
+SMS-093,phone,Changed word stays in view on a long line,auto,"At 360px change the map, open the R code room and scroll a long line sideways.",The changed word of the line is written from the page labels and stays at the right edge of the code.

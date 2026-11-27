@@ -128,9 +128,24 @@ describe("studio_ui()", {
   it("carries every word the page writes itself, and none is blank", {
     labels <- studio_labels()
     needed <- c(
-      "guide_next", "guide_try", "guide_done", "guide_all_done", "changed", "ask_question", "ask_failed", "ask_stale",
-      "ask_clear", "ask_nothing", "ask_none", "legend_blue", "legend_red", "legend_mark", "start_close", "code_r",
-      "code_r_file", "code_csv"
+      "guide_next",
+      "guide_try",
+      "guide_done",
+      "guide_all_done",
+      "changed",
+      "ask_question",
+      "ask_failed",
+      "ask_stale",
+      "ask_clear",
+      "ask_nothing",
+      "ask_none",
+      "legend_blue",
+      "legend_red",
+      "legend_mark",
+      "start_close",
+      "code_r",
+      "code_r_file",
+      "code_csv"
     )
     expect_true(all(needed %in% names(labels)))
     expect_true(all(nzchar(unlist(labels))))

@@ -104,7 +104,11 @@ describe("the studio on a phone", {
       expect_no_sideways(app, paste(width, "with the Map room"))
       # The header's theme button switches the theme
       app$run_js("document.querySelector('.sms-phone-theme').click()")
-      expect_true(app$get_js(sprintf("%s.dataset.theme === 'dark' || %s.dataset.theme === 'light'", studio_root_js, studio_root_js)))
+      expect_true(app$get_js(sprintf(
+        "%s.dataset.theme === 'dark' || %s.dataset.theme === 'light'",
+        studio_root_js,
+        studio_root_js
+      )))
       expect_studio_clean(app)
     }
   })
@@ -119,19 +123,26 @@ describe("the studio on a phone", {
       s <- sheets(app)
       expect_identical(s$rooms, "check")
       expect_true(app$get_js("document.querySelector('[data-sms-room-of=\"ask\"]').inert"))
-      expect_identical(app$get_js("document.querySelector(\".sms-block [data-sms-room='ask']\").getAttribute('aria-expanded')"), "false")
+      expect_identical(
+        app$get_js("document.querySelector(\".sms-block [data-sms-room='ask']\").getAttribute('aria-expanded')"),
+        "false"
+      )
       expect_false(s$hint)
       expect_no_sideways(app, paste(width, "with a room"))
 
       # A pick closes the room and opens the form as a sheet at the foot
       app$run_js(pick_card_js("round_dose"))
-      app$wait_for_js("document.querySelector('.sms-inspector').hidden === false && document.querySelector('[data-sms-room-of=\"check\"]').hidden === true")
+      app$wait_for_js(
+        "document.querySelector('.sms-inspector').hidden === false && document.querySelector('[data-sms-room-of=\"check\"]').hidden === true"
+      )
       s <- sheets(app)
       expect_length(s$rooms, 0L)
       expect_true(s$form)
       expect_false(s$hint)
       app$wait_for_js("document.getAnimations().length === 0")
-      box <- app$get_js("(() => { const r = document.querySelector('.sms-inspector').getBoundingClientRect(); return { left: r.left, right: r.right, bottom: r.bottom, h: r.height, vh: window.innerHeight, block: document.querySelector('.sms-block').getBoundingClientRect().height }; })()")
+      box <- app$get_js(
+        "(() => { const r = document.querySelector('.sms-inspector').getBoundingClientRect(); return { left: r.left, right: r.right, bottom: r.bottom, h: r.height, vh: window.innerHeight, block: document.querySelector('.sms-block').getBoundingClientRect().height }; })()"
+      )
       expect_equal(box$left, 0)
       expect_equal(box$right, width)
       expect_lte(box$h, box$vh * 0.58 + 1)
@@ -164,7 +175,10 @@ describe("the studio on a phone", {
   it("[SMS-078] leaves one sheet when a pick and a room are asked for at once, and with answers held", {
     app <- phone_driver(390L)
     # At once: the pick's answer arrives after the room has opened, and the pick wins
-    studio_do(app, paste(pick_card_js("round_dose"), "document.querySelector(\".sms-block [data-sms-room='ask']\").click();"))
+    studio_do(
+      app,
+      paste(pick_card_js("round_dose"), "document.querySelector(\".sms-block [data-sms-room='ask']\").click();")
+    )
     s <- sheets(app)
     expect_true(s$form)
     expect_length(s$rooms, 0L)
@@ -207,7 +221,9 @@ describe("the studio on a phone", {
       studio_do(app, studio_click_js("[data-sms-action='+ Card']"))
       studio_do(app, studio_click_js("[data-sms-action='+ Stage']"))
       studio_do(app, studio_click_js(".sms-inspector .sms-insp-acts button"))
-      visible_entries <- app$get_js("[...document.querySelectorAll('.sms-ev')].filter((el) => getComputedStyle(el).display !== 'none').length")
+      visible_entries <- app$get_js(
+        "[...document.querySelectorAll('.sms-ev')].filter((el) => getComputedStyle(el).display !== 'none').length"
+      )
       expect_identical(visible_entries, 1L)
       expect_gte(heights(".sms-undo"), 44)
       # The focus ring of the entry has room in the ribbon
@@ -290,7 +306,9 @@ describe("the studio on a phone", {
       open_room(app, "code")
       app$wait_for_js("document.querySelector('.sms-code-csv [data-sms-menu]') !== null")
       click_now(app, ".sms-code-csv [data-sms-menu]")
-      pop <- app$get_js("(() => { const r = document.querySelector('#studio-menu-csv').getBoundingClientRect(); return { left: r.left, right: r.right, w: window.innerWidth }; })()")
+      pop <- app$get_js(
+        "(() => { const r = document.querySelector('#studio-menu-csv').getBoundingClientRect(); return { left: r.left, right: r.right, w: window.innerWidth }; })()"
+      )
       expect_gte(pop$left, 0)
       expect_lte(pop$right, pop$w)
       expect_no_sideways(app, paste(width, "CSV menu"))
@@ -298,7 +316,9 @@ describe("the studio on a phone", {
 
       # The guide's list is inside the screen too
       click_now(app, ".sms-try-btn")
-      list <- app$get_js("(() => { const r = document.querySelector('.sms-try').getBoundingClientRect(); return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, w: window.innerWidth, block: document.querySelector('.sms-block').getBoundingClientRect().top }; })()")
+      list <- app$get_js(
+        "(() => { const r = document.querySelector('.sms-try').getBoundingClientRect(); return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, w: window.innerWidth, block: document.querySelector('.sms-block').getBoundingClientRect().top }; })()"
+      )
       expect_gte(list$left, 0)
       expect_lte(list$right, list$w)
       expect_gte(list$top, 0)
@@ -339,13 +359,31 @@ describe("the studio on a phone", {
 
   it("[SMS-092] keeps the page's own text colours at 4.5:1 or more against their backgrounds, in both themes and widths", {
     pairs <- list(
-      c("ink", "panel"), c("ink", "field"), c("ink", "bg"), c("ink", "panel2"),
-      c("muted", "panel"), c("muted", "field"), c("muted", "panel2"), c("faint", "panel"),
-      c("blue", "panel"), c("blue", "field"), c("blue-ink", "blue"), c("blue", "blue-soft"),
-      c("red", "panel"), c("red", "red-soft"), c("good", "panel"), c("good", "good-soft"),
-      c("warn", "panel"), c("warn", "warn-soft"), c("panel", "ink"),
-      c("code-ink", "code-bg"), c("code-mute", "code-bg"), c("code-str", "code-bg"), c("code-fn", "code-bg"),
-      c("code-kw", "code-bg"), c("mark", "code-bg")
+      c("ink", "panel"),
+      c("ink", "field"),
+      c("ink", "bg"),
+      c("ink", "panel2"),
+      c("muted", "panel"),
+      c("muted", "field"),
+      c("muted", "panel2"),
+      c("faint", "panel"),
+      c("blue", "panel"),
+      c("blue", "field"),
+      c("blue-ink", "blue"),
+      c("blue", "blue-soft"),
+      c("red", "panel"),
+      c("red", "red-soft"),
+      c("good", "panel"),
+      c("good", "good-soft"),
+      c("warn", "panel"),
+      c("warn", "warn-soft"),
+      c("panel", "ink"),
+      c("code-ink", "code-bg"),
+      c("code-mute", "code-bg"),
+      c("code-str", "code-bg"),
+      c("code-fn", "code-bg"),
+      c("code-kw", "code-bg"),
+      c("mark", "code-bg")
     )
     ratio_js <- sprintf(
       "(() => {
@@ -374,5 +412,25 @@ describe("the studio on a phone", {
       }
       expect_studio_clean(app)
     }
+  })
+  it("[SMS-093] keeps the word for a changed line in view while a long line is scrolled, from the page's labels", {
+    app <- phone_driver(360L, "small")
+    studio_do(app, studio_click_js("[data-sms-action='+ Card']"))
+    studio_do(app, studio_click_js(".sms-inspector .sms-insp-acts button"))
+    open_room(app, "code")
+    mark <- app$get_js(
+      "(() => { const line = document.querySelector('.sms-l[data-sms-changed]');
+         const after = getComputedStyle(line, '::after');
+         const code = document.querySelector('.sms-code');
+         code.scrollLeft = 0;
+         return { word: line.dataset.smsChanged, content: after.content, position: after.position, right: after.right,
+                  scrolls: code.scrollWidth > code.clientWidth }; })()"
+    )
+    expect_identical(mark$word, "changed")
+    expect_identical(mark$content, "\"changed\"")
+    expect_identical(mark$position, "sticky")
+    expect_identical(mark$right, "10px")
+    expect_true(mark$scrolls)
+    expect_studio_clean(app)
   })
 })
