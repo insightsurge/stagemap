@@ -663,8 +663,9 @@
     display: none;
   }
 
+  /* minmax(0, 1fr): a plain 1fr never shrinks below its widest label, so a wide font pushed the dock past 360px. */
   .sms .sms-block {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .sms .sms-block .sms-brand,
@@ -680,8 +681,10 @@
     min-height: 44px;
   }
 
+  /* A centred cell value is as wide as its text; max-width lets its ellipsis work instead of pushing the dock wide. */
   .sms .sms-val {
     font-size: 14px;
+    max-width: 100%;
   }
 
   .sms .sms-lab {
