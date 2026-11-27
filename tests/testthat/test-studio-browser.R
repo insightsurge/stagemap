@@ -98,7 +98,8 @@ describe("Copy", {
     # Then the clipboard holds the code the room shows, written through a ClipboardItem
     expect_identical(path, "item")
     shown <- paste(vapply(studio_section(app, "code")$lines, `[[`, "", "text"), collapse = "\n")
-    expect_identical(app$get_js("navigator.clipboard.readText()"), shown)
+    # Windows' clipboard turns each newline into CRLF; what the page wrote is LF (the stubbed copies below show it)
+    expect_identical(gsub("\r\n", "\n", app$get_js("navigator.clipboard.readText()"), fixed = TRUE), shown)
     expect_identical(app$get_js("document.querySelector('.sms-toast-text').textContent"), "Copied the R code.")
     expect_studio_clean(app)
   })
