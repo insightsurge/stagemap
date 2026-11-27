@@ -3,11 +3,20 @@
 delayedAssign("small", full_map(title = "A map"))
 
 describe("studio_view()", {
-  it("has the header, the status, the notice and the code", {
+  it("returns every core section and every registered room section", {
     view <- studio_view(studio_state_new(small))
-    expect_named(view, c("header", "status", "notice", "code"))
-    expect_identical(view$header, list(title = "A map", facts = "4 cards in 3 stages and 2 lanes", template = NULL))
+    expect_named(
+      view,
+      c("header", "outline", "inspector", "journal", "start", "status", "notice", names(studio_rooms))
+    )
+    expect_identical(
+      view$header,
+      list(title = "A map", facts = "4 cards in 3 stages and 2 lanes, 3 links", template = "given")
+    )
     expect_identical(view$status, list(drawn_rev = 0L, problems = 0L, closed = FALSE))
+    expect_null(view$inspector)
+    expect_identical(view$journal, list(entries = list(), can_undo = FALSE))
+    expect_false(view$start$open)
     expect_null(view$notice)
   })
 
@@ -26,17 +35,105 @@ describe("studio_view()", {
 })
 
 describe("studio_facts()", {
-  it("counts cards, stages and lanes, in the singular for one", {
-    expect_identical(studio_facts(studio_template("blank")$map), "1 card in 1 stage and 1 lane")
+  it("counts cards, stages, lanes and links, in the singular for one", {
+    expect_identical(
+      studio_facts(studio_template("blank")$map),
+      "1 card in 1 stage and 1 lane, 0 links"
+    )
+    expect_identical(
+      studio_facts(studio_state_new(small)$doc),
+      "4 cards in 3 stages and 2 lanes, 3 links"
+    )
   })
 
-  it("checks the map", {
-    expect_error(studio_facts("map"), "map")
+  it("checks the input", {
+    expect_error(studio_facts("map"), "x")
+  })
+})
+
+describe("studio_view_outline()", {
+  it("lists menus with neutral counts, hover hints by kind/id, and target-aware add actions", {
+    s <- studio_state_new(small)
+    out0 <- studio_view_outline(s$doc, s$target)
+    expect_identical(vapply(out0$menus, `[[`, "", "id"), c("stages", "lanes"))
+    expect_length(out0$menus[[1L]]$items, 3L)
+    expect_length(out0$menus[[2L]]$items, 2L)
+    expect_length(out0$hints$card, 4L)
+    expect_identical(out0$hints$card[["b"]], "Card: Review")
+    expect_identical(out0$hints$stage[["ship"]], "Stage: Ship")
+    expect_identical(vapply(out0$menus[[1L]]$items, `[[`, integer(1), "count"), c(1L, 2L, 1L))
+    expect_identical(out0$actions[[1L]]$event$data, list(table = "cards"))
+
+    s_card <- studio_step(s, list(seq = 1L, type = "target", data = list(kind = "card", uid = "u2"), rev = 0L))$state
+    out_card <- studio_view_outline(s_card$doc, s_card$target)
+    expect_identical(
+      out_card$actions[[1L]]$event$data,
+      list(
+        table = "cards",
+        stage = studio_uid_of(s_card$doc, "stages", "check"),
+        lane = studio_uid_of(s_card$doc, "lanes", "docs")
+      )
+    )
+
+    stage_uid <- studio_uid_of(s$doc, "stages", "ship")
+    s_stage <- studio_step(
+      s,
+      list(seq = 1L, type = "target", data = list(kind = "stage", uid = stage_uid), rev = 0L)
+    )$state
+    out_stage <- studio_view_outline(s_stage$doc, s_stage$target)
+    expect_identical(out_stage$actions[[1L]]$event$data, list(table = "cards", stage = stage_uid))
+
+    # Blank labels fall back to id or "Untitled ...", and empty/blank-id tables yield empty menu/hint lists
+    doc_blank <- s$doc
+    doc_blank$tables$cards$label[[1L]] <- ""
+    doc_blank$tables$cards$label[[2L]] <- ""
+    doc_blank$tables$cards$id[[2L]] <- ""
+    doc_blank$tables$stages$label <- rep("", nrow(doc_blank$tables$stages))
+    doc_blank$tables$stages$id <- rep("", nrow(doc_blank$tables$stages))
+    out_blank <- studio_view_outline(doc_blank, s$target)
+    expect_identical(out_blank$hints$card[["a"]], "Card: a")
+    expect_length(out_blank$hints$card, 3L)
+    expect_identical(out_blank$menus[[1L]]$items[[1L]]$label, "Untitled stage")
+    expect_identical(out_blank$hints$stage, structure(list(), names = character()))
+
+    doc_empty <- s$doc
+    doc_empty$tables$cards <- doc_empty$tables$cards[0L, , drop = FALSE]
+    doc_empty$tables$stages <- doc_empty$tables$stages[0L, , drop = FALSE]
+    out_empty <- studio_view_outline(doc_empty, s$target)
+    expect_identical(out_empty$hints$card, structure(list(), names = character()))
+    expect_identical(out_empty$hints$stage, structure(list(), names = character()))
+    expect_identical(out_empty$menus[[1L]]$items, list())
+  })
+})
+
+describe("studio_view_inspector()", {
+  it("returns NULL for none, unknown kind or missing row, and the head with Close action for valid rows", {
+    s <- studio_state_new(small)
+    expect_null(studio_view_inspector(s$doc, s$target))
+    expect_null(studio_view_inspector(s$doc, list(kind = "zone", uid = "u1")))
+    expect_null(studio_view_inspector(s$doc, list(kind = "card", uid = "u999")))
+
+    doc_blank <- s$doc
+    doc_blank$tables$cards$label[[1L]] <- ""
+    blank_insp <- studio_view_inspector(doc_blank, list(kind = "card", uid = "u1"))
+    expect_identical(blank_insp$title, "a")
+
+    card_insp <- studio_view_inspector(s$doc, list(kind = "card", uid = "u1"))
+    expect_identical(card_insp$kind, "card")
+    expect_identical(card_insp$uid, "u1")
+    expect_identical(card_insp$sub, "a")
+    expect_identical(card_insp$actions[[1L]]$label, "Close")
+    expect_identical(card_insp$actions[[1L]]$event, list(type = "target", data = list(kind = "none", uid = NULL)))
+
+    lk_uid <- s$doc$tables$links$.studio_uid[[1L]]
+    link_insp <- studio_view_inspector(s$doc, list(kind = "link", uid = lk_uid))
+    expect_identical(link_insp$title, "a -> b")
+    expect_identical(link_insp$sub, "hand")
   })
 })
 
 describe("studio_view_journal()", {
-  it("keeps only the listed page fields (n, verb, text, state, target) on journal entries", {
+  it("keeps only the listed page fields on journal entries, caps at 50 and clears gone targets", {
     s <- studio_state_new(small)
     s <- studio_step(
       s,
@@ -52,20 +149,47 @@ describe("studio_view_journal()", {
     expect_named(entries[[1L]], c("n", "verb", "text", "state", "target"))
     expect_identical(entries[[1L]]$verb, "Edit")
     expect_identical(entries[[1L]]$state, "done")
+
+    s_rm <- studio_step(
+      s,
+      list(seq = 2L, type = "remove", data = list(table = "cards", uid = "u1"), rev = s$rev)
+    )$state
+    view_entries <- studio_view_journal(s_rm$journal, doc = s_rm$doc)
+    expect_null(view_entries[[1L]]$target)
+
+    many <- lapply(seq_len(60L), function(i) {
+      list(n = i, verb = "Edit", text = paste("Item", i), state = "done", target = NULL)
+    })
+    capped <- studio_view_journal(many)
+    expect_length(capped, 50L)
+    expect_identical(capped[[1L]]$n, 11L)
     expect_error(studio_view_journal("bad"), "journal")
   })
 })
 
-describe("studio_view_code()", {
-  it("is one line, a call that holds the title, written as R text", {
-    code <- studio_view_code("Say \"hi\"")
-    expect_identical(code$text, "stage_map(cards, title = \"Say \\\"hi\\\"\")")
-    expect_identical(code$lines, list(list(spans = list(list(code$text, "")), changed = FALSE)))
-    expect_null(code$problem)
-    expect_identical(code$downloads, list())
-  })
+describe("studio_view_start()", {
+  it("opens for example/blank when map was NULL, offers Your map when given, and switches to confirm on refusal", {
+    s_null <- studio_state_new()
+    st_null <- studio_view_start(s_null)
+    expect_true(st_null$open)
+    expect_identical(vapply(st_null$options, `[[`, "", "id"), c("example", "blank"))
 
-  it("checks the title", {
-    expect_error(studio_view_code(NULL), "title")
+    s_given <- studio_state_new(small)
+    st_given <- studio_view_start(s_given)
+    expect_false(st_given$open)
+    expect_identical(vapply(st_given$options, `[[`, "", "id"), c("example", "blank", "given"))
+
+    s_edit <- studio_step(
+      s_given,
+      list(seq = 1L, type = "option", data = list(name = "title", value = "Changed"), rev = 0L)
+    )$state
+    s_refused <- studio_step(
+      s_edit,
+      list(seq = 2L, type = "open", data = list(template = "blank", confirm = FALSE), rev = s_edit$rev)
+    )$state
+    st_conf <- studio_view_start(s_refused)
+    blank_opt <- st_conf$options[[2L]]
+    expect_identical(blank_opt$text, "Click again to replace your changes")
+    expect_true(blank_opt$event$data$confirm)
   })
 })

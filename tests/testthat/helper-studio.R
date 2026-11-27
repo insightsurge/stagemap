@@ -92,30 +92,36 @@ studio_count_shim <- function() {
   paste(
     "(() => {",
     "  if (window.__smsCounts) return;",
-    "  let listeners = 0;",
     "  let observers = 0;",
     "  const timers = new Set();",
     "  const targetMap = new WeakMap();",
+    "  const tracked = new Set();",
     "  const origAdd = EventTarget.prototype.addEventListener;",
     "  const origRemove = EventTarget.prototype.removeEventListener;",
     "  const getCapture = (options) =>",
     "    Boolean(typeof options === 'boolean' ? options : options && options.capture);",
     "  const getEntryMap = (target, type, capture, create) => {",
     "    let byType = targetMap.get(target);",
-    "    if (!byType) { if (!create) return null; byType = new Map(); targetMap.set(target, byType); }",
+    "    if (!byType) {",
+    "      if (!create) return null;",
+    "      byType = new Map();",
+    "      byType.__smsCount = 0;",
+    "      targetMap.set(target, byType);",
+    "      tracked.add(new WeakRef(target));",
+    "    }",
     "    let byCapture = byType.get(type);",
     "    if (!byCapture) { if (!create) return null; byCapture = new Map(); byType.set(type, byCapture); }",
     "    let byListener = byCapture.get(capture);",
     "    if (!byListener) { if (!create) return null; byListener = new Map(); byCapture.set(capture, byListener); }",
-    "    return byListener;",
+    "    return { byType, byListener };",
     "  };",
     "  const dropEntry = (target, type, capture, listener) => {",
-    "    const byListener = getEntryMap(target, type, capture, false);",
-    "    if (!byListener) return null;",
-    "    const entry = byListener.get(listener);",
+    "    const found = getEntryMap(target, type, capture, false);",
+    "    if (!found) return null;",
+    "    const entry = found.byListener.get(listener);",
     "    if (!entry) return null;",
-    "    byListener.delete(listener);",
-    "    listeners -= 1;",
+    "    found.byListener.delete(listener);",
+    "    found.byType.__smsCount -= 1;",
     "    return entry;",
     "  };",
     "  EventTarget.prototype.addEventListener = function (type, listener, options) {",
@@ -128,7 +134,7 @@ studio_count_shim <- function() {
     "    }",
     "    const keyType = String(type);",
     "    const capture = getCapture(options);",
-    "    const byListener = getEntryMap(this, keyType, capture, true);",
+    "    const { byType, byListener } = getEntryMap(this, keyType, capture, true);",
     "    if (!byListener.has(listener)) {",
     "      const target = this;",
     "      let actual = listener;",
@@ -141,7 +147,7 @@ studio_count_shim <- function() {
     "        entry.wrapped = actual;",
     "      }",
     "      byListener.set(listener, entry);",
-    "      listeners += 1;",
+    "      byType.__smsCount += 1;",
     "      if (opts && opts.signal) {",
     "        origAdd.call(opts.signal, 'abort', () => dropEntry(target, keyType, capture, listener), { once: true });",
     "      }",
@@ -210,8 +216,24 @@ studio_count_shim <- function() {
     "    return id;",
     "  };",
     "  window.clearInterval = function (id) { timers.delete(id); return origClearInterval(id); };",
+    "  const liveListeners = () => {",
+    "    let total = 0;",
+    "    for (const ref of [...tracked]) {",
+    "      const target = ref.deref();",
+    "      if (!target) { tracked.delete(ref); continue; }",
+    "      const byType = targetMap.get(target);",
+    "      const count = byType ? byType.__smsCount : 0;",
+    "      if (count === 0) {",
+    "        if (!(target instanceof Node) || !target.isConnected) tracked.delete(ref);",
+    "        continue;",
+    "      }",
+    "      if (target instanceof Node && !target.isConnected) continue;",
+    "      total += count;",
+    "    }",
+    "    return total;",
+    "  };",
     "  window.__smsCounts = () => ({",
-    "    listeners,",
+    "    listeners: liveListeners(),",
     "    observers,",
     "    timers: timers.size,",
     "    nodes: document.querySelectorAll('*').length",
@@ -507,14 +529,26 @@ studio_press <- function(app, key, modifiers = character(), code = key, key_code
   mod_bits <- c(alt = 1L, ctrl = 2L, meta = 4L, shift = 8L)
   mod_mask <- sum(mod_bits[modifiers])
   session <- app$get_chromote_session()
+  key_text <- if (identical(key, "Enter")) {
+    "\r"
+  } else if (identical(key, " ")) {
+    " "
+  } else {
+    ""
+  }
   for (type in c("keyDown", "keyUp")) {
-    session$Input$dispatchKeyEvent(
+    args <- list(
       type = type,
       key = key,
       code = code,
       modifiers = as.integer(mod_mask),
       windowsVirtualKeyCode = as.integer(key_code)
     )
+    if (identical(type, "keyDown") && nzchar(key_text)) {
+      args$text <- key_text
+      args$unmodifiedText <- key_text
+    }
+    do.call(session$Input$dispatchKeyEvent, args)
   }
   invisible(app)
 }
@@ -784,8 +818,8 @@ studio_console <- function(app) {
 
 # Expects the page to be clean: no console error, nothing busy, nothing inert that is shown (a closed room is
 # hidden as well as inert), and focus is inside the page (not inside a hidden or inert container). After Done
-# (`closed = TRUE`) the sheet, the tray and the title block are inert on purpose. Console lines that match the regular
-# expression `ignore` are left out (a test says why).
+# (`closed = TRUE`) the page siblings (except toast/closed) are inert on purpose; while the start modal is shown,
+# the background behind it is inert on purpose. Console lines that match `ignore` are left out (a test says why).
 expect_studio_clean <- function(app, closed = FALSE, ignore = NULL) {
   checkmate::assert_r6(app, "AppDriver")
   checkmate::assert_flag(closed)
@@ -798,14 +832,16 @@ expect_studio_clean <- function(app, closed = FALSE, ignore = NULL) {
   state <- app$get_js(sprintf(
     "(() => { const r = %s; const shown = (n) => !n.closest('[hidden]');
       const closed = %s;
+      const modal = Boolean(r.querySelector('.sms-start') && !r.querySelector('.sms-start').hidden);
       const a = document.activeElement;
       const focus_ok = a !== null && a.isConnected &&
         (a === document.body || (!a.closest('[hidden]') && (!a.closest('[inert]') || closed)));
       return { busy: r.hasAttribute('aria-busy') || r.querySelector('[aria-busy=\"true\"]') !== null,
                focus_ok,
                inert: [...r.querySelectorAll('[inert]')].filter((n) => shown(n) &&
-                 !(n.matches('.sms-tray') && (closed || r.dataset.smsTray === undefined)) &&
-                 !(closed && n.matches('.sms-sheet, .sms-block'))).map((n) => n.className) }; })()",
+                 !(n.matches('.sms-tray') && (closed || modal || r.dataset.smsTray === undefined)) &&
+                 !(closed && n.matches('.sms-skip, .sms-sheet, .sms-inspector, .sms-block')) &&
+                 !(modal && (n.matches('.sms-skip, .sms-inspector, .sms-block') || n.parentElement?.matches('.sms-sheet')))).map((n) => n.className) }; })()",
     studio_root_js,
     tolower(closed)
   ))

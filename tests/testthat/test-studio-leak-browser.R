@@ -16,7 +16,11 @@ describe("the studio leak count", {
     app$wait_for_js(sprintf("%s.dataset.theme === 'light'", studio_root_js))
     studio_wait_step(app)
 
+    journal_nodes <- function() {
+      app$get_js("document.querySelectorAll('.sms-journal-list *').length")
+    }
     before <- studio_counts(app)
+    before_journal <- journal_nodes()
     expect_gt(before$listeners, 0L)
     expect_gt(before$observers, 0L)
     expect_gt(before$nodes, 0L)
@@ -32,17 +36,40 @@ describe("the studio leak count", {
       app$wait_for_js(sprintf("%s.dataset.theme === 'dark'", studio_root_js))
       click_now(app, ".sms-theme")
       app$wait_for_js(sprintf("%s.dataset.theme === 'light'", studio_root_js))
+
+      # Map redraw round: add a card and undo it
+      since_add <- studio_stamp(app)
+      studio_do(app, studio_click_js("[data-sms-action='+ Card']"))
+      studio_wait_map(app, since_add)
+      since_undo <- studio_stamp(app)
+      studio_do(app, studio_click_js(".sms-undo"))
+      studio_wait_map(app, since_undo)
+
+      # Target round: pick a card and close inspector
+      app$run_js(
+        "document.querySelector('#studio-map [data-card=\"a\"]').dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }))"
+      )
+      app$wait_for_js("document.querySelector('.sms-inspector').hidden === false")
+      studio_do(app, studio_click_js(".sms-inspector .sms-insp-acts button"))
+
+      # Start card round: open from header and close
+      click_now(app, "[data-sms-start='open']")
+      app$wait_for_js("document.querySelector('.sms-start').hidden === false")
+      click_now(app, "[data-sms-start='close']")
+      app$wait_for_js("document.querySelector('.sms-start').hidden === true")
     }
 
     studio_wait_step(app)
     # Wait for the toast timer from any action to finish so pending timers settle to baseline.
     app$wait_for_js("document.querySelector('.sms-toast').dataset.smsOn === undefined")
     after <- studio_counts(app)
+    after_journal <- journal_nodes()
 
     expect_identical(after$listeners, before$listeners)
     expect_identical(after$observers, before$observers)
     expect_identical(after$timers, before$timers)
-    expect_identical(after$nodes, before$nodes)
+    expect_identical(after$nodes - after_journal, before$nodes - before_journal)
+    expect_lte(app$get_js("document.querySelectorAll('.sms-ev').length"), 50L)
     expect_studio_clean(app)
   })
 

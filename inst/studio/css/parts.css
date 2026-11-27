@@ -147,3 +147,415 @@
     padding: 5px 8px;
   }
 }
+
+/* Outline actions and stage/lane menus. */
+.sms .sms-outline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.sms .sms-menu {
+  position: relative;
+}
+
+.sms .sms-menu-pop {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  min-width: 196px;
+  max-height: 260px;
+  overflow: auto;
+  background: var(--_stagemap-studio-panel);
+  border: 1px solid var(--_stagemap-studio-line2);
+  box-shadow: var(--_stagemap-studio-shadow);
+  padding: 4px;
+  z-index: 25;
+}
+
+.sms .sms-menu-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  padding: 6px 10px;
+  font-size: 13px;
+  border-radius: 3px;
+}
+
+.sms .sms-menu-item:hover {
+  background: var(--_stagemap-studio-blue-soft);
+}
+
+.sms .sms-menu-count {
+  font: 600 12px var(--_stagemap-studio-mono);
+  color: var(--_stagemap-studio-muted);
+}
+
+/* Journal ribbon: one line above the map sheet, hidden until the first entry. */
+.sms .sms-journal {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 1100px;
+  min-height: 40px;
+  margin-bottom: 10px;
+  padding: 4px 10px;
+  background: var(--_stagemap-studio-panel);
+  border: 1px solid var(--_stagemap-studio-line);
+  border-radius: 2px;
+}
+
+.sms .sms-journal-lab {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--_stagemap-studio-muted);
+  flex: none;
+}
+
+.sms .sms-journal-list {
+  list-style: none;
+  margin: 0;
+  padding: 2px 0;
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  flex: 1;
+  min-width: 0;
+  scrollbar-width: thin;
+}
+
+.sms .sms-ev {
+  flex: none;
+  display: flex;
+  align-items: center;
+}
+
+.sms .sms-ev-btn,
+.sms .sms-ev-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 3px 9px;
+  background: var(--_stagemap-studio-panel2);
+  border: 1px solid var(--_stagemap-studio-line2);
+  border-left: 3px solid var(--_stagemap-studio-blue);
+  border-radius: 2px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.sms .sms-ev-btn:hover {
+  background: var(--_stagemap-studio-blue-soft);
+  border-color: var(--_stagemap-studio-blue);
+}
+
+.sms .sms-ev-n {
+  font: 700 12px var(--_stagemap-studio-mono);
+  color: var(--_stagemap-studio-blue);
+}
+
+.sms .sms-ev-v {
+  font: 700 12px var(--_stagemap-studio-mono);
+}
+
+.sms .sms-ev-d {
+  color: var(--_stagemap-studio-muted);
+}
+
+.sms .sms-ev[data-sms-state="undone"] .sms-ev-btn,
+.sms .sms-ev[data-sms-state="undone"] .sms-ev-item {
+  border-left-color: var(--_stagemap-studio-warn);
+  opacity: 0.8;
+}
+
+.sms .sms-ev[data-sms-state="undone"] .sms-ev-d {
+  text-decoration: line-through;
+}
+
+.sms .sms-ev[data-sms-state="undone"] .sms-ev-n {
+  color: var(--_stagemap-studio-warn);
+}
+
+.sms .sms-ev-undone {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--_stagemap-studio-warn);
+}
+
+.sms .sms-undo {
+  flex: none;
+}
+
+/* Start card overlay inside the drawing sheet. */
+.sms .sms-start {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: color-mix(in srgb, var(--_stagemap-studio-field) 82%, transparent);
+  overflow: auto;
+}
+
+.sms .sms-start-in {
+  width: min(760px, 100%);
+  background: var(--_stagemap-studio-panel);
+  border: 1px solid var(--_stagemap-studio-line2);
+  box-shadow: var(--_stagemap-studio-shadow);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+  position: relative;
+}
+
+.sms .sms-start-in::before {
+  content: "";
+  position: absolute;
+  left: -6px;
+  top: -6px;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--_stagemap-studio-blue);
+  border-right: 0;
+  border-bottom: 0;
+}
+
+.sms .sms-start-lede {
+  padding: 28px 26px;
+  border-right: 1px solid var(--_stagemap-studio-line);
+}
+
+.sms .sms-start-lede h1 {
+  font: 650 28px / 1.12 var(--_stagemap-studio-font);
+  letter-spacing: -0.015em;
+  margin: 8px 0 12px;
+}
+
+.sms .sms-start-lede p {
+  margin: 0 0 10px;
+  color: var(--_stagemap-studio-muted);
+}
+
+.sms .sms-start-legend {
+  display: grid;
+  gap: 7px;
+  margin-top: 18px;
+  font-size: 13px;
+}
+
+.sms .sms-start-legend div {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.sms .sms-start-right {
+  display: flex;
+  flex-direction: column;
+}
+
+.sms .sms-start-head {
+  display: flex;
+  justify-content: flex-end;
+  padding: 10px 14px 0;
+}
+
+.sms .sms-start-opts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.sms .sms-start-opts li {
+  border-bottom: 1px solid var(--_stagemap-studio-line);
+}
+
+.sms .sms-start-opts li:last-child {
+  border-bottom: 0;
+}
+
+.sms .sms-opt {
+  display: grid;
+  grid-template-columns: 34px 1fr auto;
+  gap: 2px 12px;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  padding: 16px 20px;
+  align-items: start;
+  border-radius: 0;
+}
+
+.sms .sms-opt:hover {
+  background: var(--_stagemap-studio-panel2);
+}
+
+.sms .sms-opt:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--_stagemap-studio-blue);
+}
+
+.sms .sms-opt-n {
+  font: 700 13px / 22px var(--_stagemap-studio-mono);
+  color: var(--_stagemap-studio-muted);
+  grid-row: 1 / 3;
+}
+
+.sms .sms-opt b {
+  font-size: 15px;
+}
+
+.sms .sms-opt small {
+  color: var(--_stagemap-studio-muted);
+  font-size: 13px;
+  grid-column: 2;
+}
+
+.sms .sms-opt-go {
+  grid-row: 1 / 3;
+  grid-column: 3;
+  align-self: center;
+  font-weight: 700;
+  color: var(--_stagemap-studio-blue);
+}
+
+/* Inspector slip. */
+.sms .sms-inspector {
+  position: absolute;
+  top: 22px;
+  right: 20px;
+  width: 300px;
+  max-height: calc(100% - var(--_stagemap-studio-block-h) - 44px);
+  display: flex;
+  flex-direction: column;
+  background: var(--_stagemap-studio-panel);
+  border: 1px solid var(--_stagemap-studio-line2);
+  border-top: 3px solid var(--_stagemap-studio-blue);
+  box-shadow: var(--_stagemap-studio-shadow);
+  z-index: 12;
+}
+
+.sms[data-sms-tray] .sms-inspector {
+  max-height: calc(100% - var(--_stagemap-studio-block-h) - var(--_stagemap-studio-tray-h) - 40px);
+}
+
+.sms .sms-insp-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid var(--_stagemap-studio-line);
+}
+
+.sms .sms-insp-meta {
+  min-width: 0;
+  flex: 1;
+}
+
+.sms .sms-insp-head h2 {
+  font: 650 16px / 1.25 var(--_stagemap-studio-font);
+  margin: 2px 0 0;
+  overflow-wrap: anywhere;
+}
+
+.sms .sms-insp-sub {
+  margin: 2px 0 0;
+  font: 12px / 1.2 var(--_stagemap-studio-mono);
+  color: var(--_stagemap-studio-muted);
+  overflow-wrap: anywhere;
+}
+
+.sms .sms-insp-acts {
+  display: flex;
+  gap: 6px;
+  flex: none;
+}
+
+.sms .sms-empty {
+  color: var(--_stagemap-studio-muted);
+  font-size: 13px;
+  margin: 4px 0;
+}
+
+@media (max-width: 640px) {
+  .sms .sms-journal {
+    padding: 4px 6px 4px 10px;
+  }
+
+  .sms .sms-journal-lab {
+    display: none;
+  }
+
+  .sms .sms-journal-list {
+    overflow: hidden;
+  }
+
+  .sms .sms-journal-list .sms-ev:not(:last-child) {
+    display: none;
+  }
+
+  .sms .sms-ev,
+  .sms .sms-ev-btn,
+  .sms .sms-ev-item {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .sms .sms-start {
+    padding: 12px;
+  }
+
+  .sms .sms-start-in {
+    grid-template-columns: 1fr;
+  }
+
+  .sms .sms-start-lede {
+    border-right: 0;
+    border-bottom: 1px solid var(--_stagemap-studio-line);
+    padding: 18px 16px;
+  }
+
+  .sms .sms-start-lede h1 {
+    font-size: 24px;
+  }
+
+  .sms .sms-start-legend {
+    display: none;
+  }
+
+  .sms .sms-opt {
+    padding: 14px 16px;
+  }
+
+  .sms .sms-inspector {
+    position: absolute;
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: var(--_stagemap-studio-block-h);
+    width: auto;
+    max-height: 58dvh;
+    border-left: 0;
+    border-right: 0;
+    border-bottom: 0;
+    box-shadow: var(--_stagemap-studio-shadow);
+  }
+
+  .sms[data-sms-tray] .sms-inspector {
+    bottom: calc(var(--_stagemap-studio-block-h) + var(--_stagemap-studio-tray-h));
+    max-height: calc(100dvh - var(--_stagemap-studio-block-h) - var(--_stagemap-studio-tray-h));
+    z-index: 15;
+  }
+}

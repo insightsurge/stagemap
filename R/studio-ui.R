@@ -34,7 +34,14 @@ studio_ui <- function(id, options = list()) {
           stage_map_output(ns("map"))
         ),
         tags$div(class = "sms-hint", `aria-live` = "polite", hidden = NA),
-        tags$section(class = "sms-start", id = ns("start"), `aria-label` = "Start", hidden = NA)
+        tags$section(
+          class = "sms-start",
+          id = ns("start"),
+          role = "dialog",
+          `aria-modal` = "true",
+          `aria-label` = "Start",
+          hidden = NA
+        )
       ),
       tags$aside(class = "sms-inspector", id = ns("inspector"), `aria-label` = "Inspector", hidden = NA),
       studio_ui_block(ns),
@@ -98,6 +105,7 @@ studio_ui_top <- function(ns) {
     tags$div(
       class = "sms-acts",
       tags$nav(class = "sms-outline", `aria-label` = "Change the map", hidden = NA),
+      tags$button(class = "sms-btn", type = "button", `data-sms-start` = "open", "Open map"),
       tags$button(class = "sms-btn sms-phone-theme", type = "button", `data-sms-theme` = "toggle", "Light or dark")
     )
   )
@@ -245,7 +253,23 @@ studio_labels <- function() {
     closed = "The map has gone back to R. You can close this tab.",
     problem = "Problem",
     line = "line",
-    lines = "lines"
+    lines = "lines",
+    undo = "Undo",
+    undone = "undone",
+    journal = "Journal",
+    close = "Close",
+    start_kicker = "stagemap studio",
+    start_heading = "Click the map to change it.",
+    start_body_1 = paste(
+      "A map puts things in stages and lanes and joins them with links that mean something.",
+      "Pick a card, a stage, a lane or a link and an inspector opens beside it."
+    ),
+    start_body_2 = "The R code follows every edit, and questions about the map are one sentence away.",
+    start_open = "Open",
+    start_confirm = "Confirm",
+    stamp_prefix = "The map shows the last version that worked:",
+    problem_one = "problem",
+    problem_many = "problems"
   )
 }
 
@@ -263,7 +287,16 @@ studio_dependency <- function() {
     unname(getNamespaceVersion("stagemap")),
     src = c(file = system.file("studio", package = "stagemap")),
     script = list(list(src = "studio.js", type = "module")),
-    stylesheet = c("css/tokens.css", "css/shell.css", "css/parts.css", "css/room-code.css"),
+    stylesheet = c(
+      "css/tokens.css",
+      "css/shell.css",
+      "css/parts.css",
+      "css/room-ask.css",
+      "css/room-check.css",
+      "css/room-code.css",
+      "css/room-map.css",
+      "css/room-tour.css"
+    ),
     all_files = TRUE
   )
 }

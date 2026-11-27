@@ -16,6 +16,7 @@ studio_server <- function(id, map = NULL, on_done = shiny::stopApp, options = li
   shiny::moduleServer(id, function(input, output, session) {
     first <- studio_state_new(map)
     store <- shiny::reactiveVal(first)
+    drawn_map <- shiny::reactiveVal(first$good$map)
     # What the server has told the page: the view of the last message, the count of messages, whether the page has
     # asked with `ready` yet, and the maps of Done waiting for their message to leave.
     outbox <- new.env(parent = emptyenv())
@@ -24,6 +25,16 @@ studio_server <- function(id, map = NULL, on_done = shiny::stopApp, options = li
     outbox$ready <- FALSE
     outbox$done <- list()
     proxy <- stage_map_proxy("map", session)
+
+    step <- function(fn) {
+      prev <- shiny::isolate(store())
+      result <- fn(prev)
+      store(result$state)
+      if (!identical(result$state$good$serial, prev$good$serial)) {
+        drawn_map(result$state$good$map)
+      }
+      studio_effects(result$effects, proxy, outbox)
+    }
 
     shiny::observeEvent(input$event, {
       event <- input$event
@@ -39,9 +50,20 @@ studio_server <- function(id, map = NULL, on_done = shiny::stopApp, options = li
         outbox$ready <- TRUE
         outbox$view <- NULL
       }
-      result <- studio_step(shiny::isolate(store()), event)
-      store(result$state)
-      studio_effects(result$effects, proxy, outbox)
+      step(function(state) studio_step(state, event))
+    })
+
+    shiny::observeEvent(input$map_pick, {
+      if (!outbox$ready) {
+        return()
+      }
+      pick <- input$map_pick
+      if (!is.list(pick) || !identical(pick$by, "reader")) {
+        return()
+      }
+      kind <- if (is.character(pick$kind) && length(pick$kind) == 1L && nzchar(pick$kind)) pick$kind else NULL
+      id <- if (is.character(pick$id) && length(pick$id) == 1L && nzchar(pick$id)) pick$id else NULL
+      step(function(state) studio_pick(state, kind, id))
     })
 
     shiny::observe({
@@ -69,7 +91,7 @@ studio_server <- function(id, map = NULL, on_done = shiny::stopApp, options = li
       )
     })
 
-    output$map <- render_stage_map(studio_display_map(first$good$map))
+    output$map <- render_stage_map(studio_display_map(drawn_map()))
   })
 }
 

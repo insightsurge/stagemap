@@ -1,7 +1,8 @@
 # The app the studio's browser tests drive: the studio module on its own page, with the map named by the environment
 # variable STAGEMAP_STUDIO_FIXTURE ("small", the default, "none", "large", or "steps") and Copy's wait from
 # STAGEMAP_STUDIO_COPY_WAIT (or STAGEMAP_STUDIO_COPY_WAIT_MS). Its `on_done` keeps the map it was given and shows its
-# class, title and card count as JSON in a text output beside the studio, so a test can read what Done returned.
+# class, title and card count as JSON in a text output beside the studio, so a test can read what Done returned, and
+# `map_state` exposes `input$map_state` as JSON for redraw-preservation checks.
 library(shiny)
 library(stagemap)
 
@@ -31,7 +32,8 @@ options <- list(copy_wait_ms = as.integer(copy_wait))
 ui <- function(request) {
   tagList(
     studio_ui("studio", options),
-    tags$pre(id = "done_seen", class = "test-done", textOutput("done", inline = TRUE))
+    tags$pre(id = "done_seen", class = "test-done", textOutput("done", inline = TRUE)),
+    tags$pre(id = "map_state_seen", class = "test-map-state", textOutput("map_state", inline = TRUE))
   )
 }
 
@@ -50,6 +52,10 @@ server <- function(input, output, session) {
       ),
       auto_unbox = TRUE
     ))
+  })
+  output$map_state <- renderText({
+    req(input[["studio-map_state"]])
+    as.character(jsonlite::toJSON(input[["studio-map_state"]], auto_unbox = FALSE))
   })
 }
 
