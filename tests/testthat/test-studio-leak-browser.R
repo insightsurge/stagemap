@@ -109,6 +109,8 @@ describe("the studio leak count", {
     journal_nodes <- function() {
       app$get_js("document.querySelectorAll('.sms-journal-list *').length")
     }
+    # A pending timer (the held-text timer or a toast timeout) is not a leak: count once none is pending.
+    app$wait_for_js("window.__smsCounts().timers === 0")
     before <- studio_counts(app)
     before_journal <- journal_nodes()
 
@@ -138,6 +140,7 @@ describe("the studio leak count", {
 
     studio_wait_step(app)
     app$wait_for_js("document.querySelector('.sms-toast').dataset.smsOn === undefined")
+    app$wait_for_js("window.__smsCounts().timers === 0")
     after <- studio_counts(app)
     after_journal <- journal_nodes()
 
