@@ -15,8 +15,10 @@ export function createShell(root, boot, tools) {
   const open = []; /* the names of the open rooms, the last opened last */
   let toastTimer = 0;
 
+  const buttonsOf = (name) =>
+    [...root.querySelectorAll('[data-sms-room]')].filter((button) => button.dataset.smsRoom === name);
   const buttonOf = (name) =>
-    [...root.querySelectorAll('[data-sms-room]')].find((button) => button.dataset.smsRoom === name);
+    root.querySelector(`.sms-block [data-sms-room="${CSS.escape(name)}"]`) ?? buttonsOf(name)[0];
   const roomOf = (button) => document.getElementById(button.getAttribute('aria-controls'));
 
   function openRoom(name) {
@@ -28,7 +30,7 @@ export function createShell(root, boot, tools) {
     }
     room.hidden = false;
     room.inert = false;
-    button.setAttribute('aria-expanded', 'true');
+    for (const btn of buttonsOf(name)) btn.setAttribute('aria-expanded', 'true');
     open.push(name);
     tray.inert = false;
     root.dataset.smsTray = open.join(' ');
@@ -51,14 +53,17 @@ export function createShell(root, boot, tools) {
     open.splice(index, 1);
     room.hidden = true;
     room.inert = true;
-    button.setAttribute('aria-expanded', 'false');
+    for (const btn of buttonsOf(name)) btn.setAttribute('aria-expanded', 'false');
     if (open.length === 0) {
       tray.inert = true;
       delete root.dataset.smsTray;
     } else {
       root.dataset.smsTray = open.join(' ');
     }
-    if (refocus && inside) button.focus();
+    if (refocus && inside) {
+      const visible = buttonsOf(name).find((btn) => getComputedStyle(btn).display !== 'none');
+      (visible ?? button)?.focus();
+    }
   }
 
   function toggleRoom(name) {

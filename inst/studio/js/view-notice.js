@@ -1,6 +1,6 @@
 /*
  * The `notice` section: shows each notice once as a toast, resetting when the server clears `notice` so repeated
- * refusals always announce again.
+ * refusals always announce again, and opening `notice.room` when named.
  */
 const seenNotice = new WeakMap();
 
@@ -13,4 +13,11 @@ export function render(el, notice, ctx) {
   if (notice.n === prev) return;
   seenNotice.set(el, notice.n);
   ctx.toast(notice.text, notice.tone, notice.undo ? 7000 : 4000);
+  if (notice.room) {
+    const roomEl = el.querySelector(`[data-sms-room-of="${CSS.escape(notice.room)}"]`);
+    const roomBtn = el.querySelector(`[data-sms-room="${CSS.escape(notice.room)}"]`);
+    if (roomEl?.hidden && roomBtn && !roomBtn.closest('[inert]')) {
+      roomBtn.click();
+    }
+  }
 }

@@ -44,6 +44,19 @@ describe("studio_ui()", {
     expect_true(all(vapply(boot$labels, function(label) nzchar(label), logical(1))))
   })
 
+  it("carries the words the Check room writes in the boot JSON, and a phone opener for the Map room", {
+    boot_text <- sub(".*<script type=\"application/json\" class=\"sms-boot\">(.*?)</script>.*", "\\1", html)
+    labels <- jsonlite::fromJSON(boot_text, simplifyVector = FALSE)$labels
+    expect_true(all(c("clean", "info", "error", "show", "fix_prefix", "r_message", "notes") %in% names(labels)))
+    expect_identical(labels$show, "Show")
+    opener <- regmatches(html, regexpr("<button[^>]*sms-phone-map[^>]*>[^<]*</button>", html))
+    expect_length(opener, 1L)
+    expect_match(opener, "data-sms-room=\"map\"", fixed = TRUE)
+    expect_match(opener, "aria-controls=\"studio-room-map\"", fixed = TRUE)
+    expect_match(opener, "aria-expanded=\"false\"", fixed = TRUE)
+    expect_match(opener, ">Map</button>", fixed = TRUE)
+  })
+
   it("takes the page's settings into the boot JSON", {
     page <- htmltools::renderTags(studio_ui("other", list(copy_wait_ms = 300, hold_ms = 0)))$html
     expect_match(page, "\"copy_wait_ms\":300,\"hold_ms\":0", fixed = TRUE)
