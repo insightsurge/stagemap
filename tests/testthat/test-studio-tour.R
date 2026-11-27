@@ -28,18 +28,27 @@ describe("studio_tours and studio_tour_tick()", {
     s <- studio_step(s, event("seen", list(what = "code"), seq = 3L))$state
     expect_identical(s$tour$done, c(TRUE, TRUE, TRUE, TRUE, FALSE, FALSE))
 
-    # Step 5: trace downstream (simulated in state$ask until PR 7)
-    s$ask <- list(question = "trace", error = NULL)
-    s <- studio_tour_tick(s)
-    expect_identical(s$tour$done, c(TRUE, TRUE, TRUE, TRUE, TRUE, FALSE))
-
-    # Step 6: fix the broken link
+    # Step 5: fix the broken link (questions refuse a map that does not build, so this comes before the trace)
     fault_id <- s$check$faults$id[[1L]]
     s <- studio_step(s, event("fix", list(fault = fault_id, fix = "use"), seq = 4L))$state
+    expect_identical(s$tour$done, c(TRUE, TRUE, TRUE, TRUE, TRUE, FALSE))
+
+    # Step 6: trace downstream of Doses scale with weight, through the Ask event. A trace from another card, or one
+    # upstream, does not tick it.
+    uid_log <- studio_uid_of(s$doc, "cards", "log_calls")
+    other <- studio_step(s, event("ask", list(question = "trace", ids = list(uid_log)), seq = 5L))$state
+    expect_false(other$tour$done[[6L]])
+    uid_scale <- studio_uid_of(s$doc, "cards", "scale_weight")
+    upstream <- studio_step(
+      s,
+      event("ask", list(question = "trace", ids = list(uid_scale), direction = "upstream"), seq = 5L)
+    )$state
+    expect_false(upstream$tour$done[[6L]])
+    s <- studio_step(s, event("ask", list(question = "trace", ids = list(uid_scale)), seq = 5L))$state
     expect_identical(s$tour$done, rep(TRUE, 6L))
 
     # Undo does not untick an already ticked step
-    s <- studio_step(s, event("undo", seq = 5L))$state
+    s <- studio_step(s, event("undo", seq = 6L))$state
     expect_identical(s$tour$done, rep(TRUE, 6L))
   })
 
@@ -52,5 +61,42 @@ describe("studio_tours and studio_tour_tick()", {
     expect_identical(studio_tour_tick(s), s)
 
     expect_error(studio_tour_tick("state"), "state")
+  })
+})
+
+describe("studio_tour_view()", {
+  it("is NULL without a guide or with an unknown one", {
+    s <- studio_state_new(full_map())
+    expect_null(studio_tour_view(s))
+    s$tour <- list(id = "missing", done = logical())
+    expect_null(studio_tour_view(s))
+    expect_error(studio_tour_view("state"), "state")
+  })
+
+  it("lists the steps with their state and the first one not done", {
+    s <- studio_state_new()
+    view <- studio_tour_view(s)
+    expect_named(view, c("title", "steps", "next"))
+    expect_identical(view$title, "Try the studio")
+    expect_length(view$steps, 6L)
+    expect_named(view$steps[[1L]], c("text", "done"))
+    expect_identical(vapply(view$steps, function(step) step$done, logical(1)), c(TRUE, rep(FALSE, 5L)))
+    expect_identical(view$steps[[1L]]$text, "Open the example map.")
+    expect_identical(view$`next`, 2L)
+
+    s$tour$done <- c(TRUE, TRUE, FALSE, TRUE, TRUE, TRUE)
+    expect_identical(studio_tour_view(s)$`next`, 3L)
+  })
+
+  it("has no next step once every step is done, and is a section of the view", {
+    s <- studio_state_new()
+    s$tour$done <- rep(TRUE, 6L)
+    view <- studio_tour_view(s)
+    expect_null(view$`next`)
+    expect_true("next" %in% names(view))
+    expect_true(all(vapply(view$steps, function(step) step$done, logical(1))))
+    expect_identical(studio_view(s)$tour, view)
+    expect_true("tour" %in% names(studio_view(studio_state_new(full_map()))))
+    expect_null(studio_view(studio_state_new(full_map()))$tour)
   })
 })

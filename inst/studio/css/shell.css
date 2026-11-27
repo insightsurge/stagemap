@@ -85,7 +85,8 @@
   padding-bottom: calc(var(--_stagemap-studio-tray-h) + 74px);
 }
 
-@media (min-width: 641px) {
+/* Wide: the inspector takes its own column. Below that it lies over the map instead of squeezing it. */
+@media (min-width: 1180px) {
   .sms[data-sms-inspector] .sms-sheet {
     padding-right: 340px;
   }
@@ -123,7 +124,6 @@
 }
 
 .sms .sms-title:focus-visible {
-  box-shadow: none;
   border-bottom-color: var(--_stagemap-studio-blue);
 }
 
@@ -209,6 +209,8 @@
 }
 
 .sms .sms-hint {
+  position: relative;
+  z-index: 6;
   max-width: 1100px;
   margin-top: 12px;
   padding: 8px 12px;
@@ -216,6 +218,13 @@
   border: 1px solid var(--_stagemap-studio-line2);
   border-left: 3px solid var(--_stagemap-studio-blue);
   font-size: 13px;
+}
+
+/* The bar stays in view at the foot of the sheet while the map is longer than the screen; an open tray covers that
+   foot, so then it sits where it falls. */
+.sms:not([data-sms-tray]) .sms-hint {
+  position: sticky;
+  bottom: 12px;
 }
 
 .sms .sms-paper [data-stagemap-visual] {
@@ -500,7 +509,43 @@
   opacity: 0.55;
 }
 
-/* Motion: the tray only, and none when the reader asks for less. */
+/* Motion: the tray and the inspector's slip only, and none when the reader asks for less. */
+@media (prefers-reduced-motion: no-preference) {
+  .sms .sms-inspector:not([hidden]) {
+    animation: sms-slip 0.24s var(--_stagemap-studio-ease);
+  }
+
+  @keyframes sms-slip {
+    from {
+      opacity: 0;
+      transform: translateX(18px);
+    }
+
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .sms .sms-inspector:not([hidden]) {
+      animation-name: sms-rise;
+    }
+
+    @keyframes sms-rise {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+
+      to {
+        opacity: 1;
+        transform: none;
+      }
+    }
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .sms *,
   .sms *::before,
@@ -511,6 +556,36 @@
     transition: none !important;
     /* biome-ignore lint/complexity/noImportantStyles: as above */
     scroll-behavior: auto !important;
+  }
+}
+
+@media (max-width: 1179px) {
+  .sms .sms-inspector {
+    box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.5);
+  }
+}
+
+/* Between a phone and a desk the title block keeps every room, with the short words and without the name. */
+@media (min-width: 641px) and (max-width: 1040px) {
+  .sms .sms-brand div {
+    display: none;
+  }
+
+  .sms .sms-cell,
+  .sms .sms-theme {
+    padding: 8px 12px;
+  }
+
+  .sms .sms-long {
+    display: none;
+  }
+
+  .sms .sms-short {
+    display: inline;
+  }
+
+  .sms .sms-done {
+    padding: 8px 14px;
   }
 }
 
@@ -539,9 +614,24 @@
     padding: 14px 12px 80px;
   }
 
+  /* The inspector is a bottom sheet: the map can scroll up above it. */
   .sms[data-sms-inspector] .sms-sheet {
     padding-right: 12px;
-    padding-bottom: 140px;
+    padding-bottom: calc(58dvh + 24px);
+  }
+
+  .sms[data-sms-covered] .sms-sheet {
+    padding-bottom: 80px;
+  }
+
+  .sms[data-sms-tray] .sms-sheet {
+    padding-bottom: calc(var(--_stagemap-studio-tray-h) + 24px);
+  }
+
+  /* One sheet at a time: the bar gives way to an open sheet. */
+  .sms[data-sms-inspector] .sms-hint,
+  .sms[data-sms-tray] .sms-hint {
+    display: none;
   }
 
   .sms .sms-top {

@@ -193,6 +193,26 @@ shinyApp(ui, server)
 
 Run the bundled demo app with `shiny::runApp(system.file("examples", "shiny-demo", package = "stagemap"))`.
 
+## Change a map in the studio
+
+`stage_map_studio()` opens an app where a map is changed through forms. Click a card, a stage, a lane or a link and a form opens beside the map; a journal above the map lists the changes and has **Undo** (on a phone it shows the newest one). The **Ask** room runs `sm_trace()`, `sm_orphans()` and `sm_missing()` and lights the answer on the map, **Check** shows what stops `stage_map()` and offers fixes, and **R code** shows the code that builds the map, with the changed lines marked. **Done** closes the studio and returns the map. Without a map, it opens on a small example with a guide, **Try it**, that lists six steps.
+
+```{r studio, eval = FALSE}
+map <- stage_map_studio(map)
+```
+
+The code the studio shows is what `stage_map_code()` writes, and the tables are what `stage_map_tables()` gives back, so a map from the studio can be read in R again.
+
+```{r studio-read-back}
+names(stage_map_tables(map))
+
+small <- stage_map(
+  data.frame(id = c("draft", "review"), label = c("Draft", "Review"), stage = c("write", "check"), lane = "Team"),
+  title = "Two cards"
+)
+stage_map_code(small)
+```
+
 ## Where to go next
 
 Read the [function reference](https://insightsurge.github.io/stagemap/reference/index.html) for every argument, Shiny input and proxy verb, or run `?stage_map` in R.

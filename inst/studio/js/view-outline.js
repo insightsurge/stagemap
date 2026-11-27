@@ -59,6 +59,7 @@ function syncMenu(el, ns, name, label, items) {
       btn = make('button', 'sms-menu-item');
       btn.type = 'button';
       btn.setAttribute('role', 'menuitem');
+      btn.tabIndex = -1; /* arrow keys move between items; Tab leaves the menu */
       btn.dataset.smsUid = item.uid;
       nameSpan = make('span', 'sms-menu-label', item.label);
       countSpan = make('span', 'sms-menu-count', String(item.count ?? 0));

@@ -7,7 +7,6 @@ import { make, setText, syncChildren } from './dom.js';
 import { render as renderForm } from './form.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
-const STALE_TEXT = 'Map changed since: ask again';
 const CLEAR_EVENT = JSON.stringify({ type: 'ask_clear', data: {} });
 const prevAnswers = new WeakMap();
 
@@ -27,12 +26,12 @@ function makeZigzag() {
   return svg;
 }
 
-function syncSwitch(wrap, questions, ns, forceSelect) {
+function syncSwitch(wrap, questions, ns, forceSelect, labels) {
   let fieldset = wrap.querySelector(':scope > fieldset.sms-ask-switch');
   let seg;
   if (!fieldset) {
     fieldset = make('fieldset', 'sms-fieldset sms-ask-switch');
-    const legend = make('legend', 'sms-ask-sr', 'Question');
+    const legend = make('legend', 'sms-ask-sr', labels.ask_question);
     seg = make('div', 'sms-seg');
     fieldset.append(legend, seg);
   } else {
@@ -215,12 +214,12 @@ function getAnnouncer(slot) {
   return live;
 }
 
-function announcement(answer) {
-  const said = answer.error ? `Could not run question. ${String(answer.error.head ?? '')}` : String(answer.head ?? '');
-  return answer.stale ? `${said}. ${STALE_TEXT}` : said;
+function announcement(answer, labels) {
+  const said = answer.error ? `${labels.ask_failed}. ${String(answer.error.head ?? '')}` : String(answer.head ?? '');
+  return answer.stale ? `${said}. ${labels.ask_stale}` : said;
 }
 
-function syncAnswer(slot, answer, wrap) {
+function syncAnswer(slot, answer, wrap, labels) {
   const live = getAnnouncer(slot);
   if (!answer) {
     const hadFocus = slot.contains(document.activeElement);
@@ -248,9 +247,9 @@ function syncAnswer(slot, answer, wrap) {
     meta.setAttribute('aria-hidden', 'true'); /* the status region above the box says it */
     titleEl = make('p', 'sms-ask-ans-title');
     meta.append(titleEl);
-    clearBtn = make('button', 'sms-btn', 'Clear');
+    clearBtn = make('button', 'sms-btn', labels.ask_clear);
     clearBtn.type = 'button';
-    clearBtn.dataset.smsAction = 'Clear';
+    clearBtn.dataset.smsAction = labels.ask_clear;
     clearBtn.setAttribute('data-sms-event', CLEAR_EVENT);
     head.append(meta, clearBtn);
     box.append(head);
@@ -259,18 +258,18 @@ function syncAnswer(slot, answer, wrap) {
     head = box.querySelector(':scope > .sms-ask-ans-head');
     meta = head.querySelector(':scope > .sms-ask-ans-meta');
     titleEl = meta.querySelector(':scope > .sms-ask-ans-title');
-    clearBtn = head.querySelector(':scope > button[data-sms-action="Clear"]');
+    clearBtn = head.querySelector(':scope > button[data-sms-event]');
   }
 
   if (answer.stale) box.dataset.smsStale = 'true';
   else delete box.dataset.smsStale;
 
-  setText(live, announcement(answer));
-  setText(titleEl, answer.error ? 'Could not run question' : String(answer.head ?? ''));
+  setText(live, announcement(answer, labels));
+  setText(titleEl, answer.error ? labels.ask_failed : String(answer.head ?? ''));
   let staleEl = meta.querySelector(':scope > .sms-ask-stale');
   if (answer.stale) {
-    if (!staleEl) staleEl = make('p', 'sms-ask-stale', STALE_TEXT);
-    else setText(staleEl, STALE_TEXT);
+    if (!staleEl) staleEl = make('p', 'sms-ask-stale', labels.ask_stale);
+    else setText(staleEl, labels.ask_stale);
     syncChildren(meta, [titleEl, staleEl]);
   } else {
     syncChildren(meta, [titleEl]);
@@ -361,8 +360,8 @@ function syncAnswer(slot, answer, wrap) {
     bodyParts.push(tableWrap);
   } else {
     let empty = box.querySelector(':scope > p.sms-empty');
-    if (!empty) empty = make('p', 'sms-empty', 'Nothing to list.');
-    else setText(empty, 'Nothing to list.');
+    if (!empty) empty = make('p', 'sms-empty', labels.ask_nothing);
+    else setText(empty, labels.ask_nothing);
     bodyParts.push(empty);
   }
 
@@ -376,7 +375,7 @@ export function render(el, ask, ctx) {
   const questions = ask?.questions ?? [];
   if (questions.length === 0) {
     prevAnswers.delete(el);
-    el.replaceChildren(make('p', 'sms-empty', 'No questions available.'));
+    el.replaceChildren(make('p', 'sms-empty', ctx.labels.ask_none));
     return;
   }
 
@@ -396,13 +395,13 @@ export function render(el, ask, ctx) {
     el.replaceChildren(wrap);
   }
 
-  const switcher = syncSwitch(wrap, questions, ns, forceSelect);
+  const switcher = syncSwitch(wrap, questions, ns, forceSelect, ctx.labels);
   const panels = syncPanels(wrap, questions, ctx, ns, openExternal && ask.answer?.question === 'trace');
 
   let ansSlot = wrap.querySelector(':scope > .sms-ask-ans-slot');
   if (!ansSlot) ansSlot = make('div', 'sms-ask-ans-slot');
   syncChildren(wrap, [switcher, panels, ansSlot]);
-  syncAnswer(ansSlot, ask.answer ?? null, wrap);
+  syncAnswer(ansSlot, ask.answer ?? null, wrap, ctx.labels);
 
   if (openExternal && roomEl?.hidden) {
     root?.querySelector('[data-sms-room="ask"]')?.click();

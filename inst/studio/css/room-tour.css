@@ -1,1 +1,133 @@
-/* Guide tour styles. */
+/*
+ * The guide: the hint bar under the map says what the pointer is over, or else the next step, and its "Try it" button
+ * opens the list of steps. A step that is done has a tick and the word "done"; the next one is bold and ringed, so
+ * neither rests on colour alone.
+ */
+.sms .sms-hint {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 42px;
+}
+
+.sms .sms-hint-text,
+.sms .sms-hint-next {
+  margin: 0;
+  min-width: 0;
+  flex: 1;
+}
+
+.sms .sms-hint:not([data-sms-hover]) .sms-hint-text,
+.sms .sms-hint[data-sms-hover] .sms-hint-next {
+  display: none;
+}
+
+.sms .sms-try-btn {
+  flex: none;
+  white-space: nowrap;
+}
+
+.sms .sms-try {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  width: min(360px, 100%);
+  z-index: 6;
+  padding: 12px 14px 10px;
+  background: var(--_stagemap-studio-panel);
+  border: 1px solid var(--_stagemap-studio-line2);
+  box-shadow: var(--_stagemap-studio-shadow);
+}
+
+.sms .sms-try h2 {
+  margin: 0 0 6px;
+  font-size: 14px;
+}
+
+.sms .sms-try ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: sms-step;
+}
+
+.sms .sms-try-step {
+  counter-increment: sms-step;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 4px 8px;
+  padding: 6px 0;
+  border-top: 1px solid var(--_stagemap-studio-line);
+  font-size: 13px;
+}
+
+.sms .sms-try-step::before {
+  content: counter(sms-step);
+  grid-row: 1 / 3;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--_stagemap-studio-line2);
+  border-radius: 50%;
+  font: 700 12px / 20px var(--_stagemap-studio-mono);
+  text-align: center;
+  color: var(--_stagemap-studio-muted);
+}
+
+.sms .sms-try-step[data-sms-next] {
+  font-weight: 650;
+}
+
+.sms .sms-try-step[data-sms-next]::before {
+  border: 2px solid var(--_stagemap-studio-blue);
+  color: var(--_stagemap-studio-blue);
+  line-height: 18px;
+}
+
+.sms .sms-try-step[data-sms-done]::before {
+  content: "\2713" / "";
+  border-color: var(--_stagemap-studio-good);
+  background: var(--_stagemap-studio-good);
+  color: var(--_stagemap-studio-panel);
+}
+
+.sms .sms-try-step[data-sms-done] {
+  color: var(--_stagemap-studio-muted);
+}
+
+.sms .sms-try-done {
+  grid-column: 2;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--_stagemap-studio-good);
+}
+
+@media (forced-colors: active) {
+  .sms .sms-try {
+    border: 1px solid CanvasText;
+  }
+
+  .sms .sms-try-step[data-sms-next]::before {
+    border-color: Highlight;
+  }
+}
+
+@media (max-width: 640px) {
+  .sms .sms-hint {
+    gap: 8px;
+    padding: 6px 10px;
+    font-size: 12.5px;
+  }
+
+  .sms .sms-try {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    width: auto;
+    bottom: calc(var(--_stagemap-studio-block-h) + 58px);
+    max-height: 60dvh;
+    overflow: auto;
+  }
+}

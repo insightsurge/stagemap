@@ -41,9 +41,9 @@ function buildSkeleton(el, labels) {
   const legend = make('div', 'sms-start-legend');
   legend.setAttribute('aria-hidden', 'true');
   legend.append(
-    legendItem('var(--_stagemap-studio-blue)', 'M1 5h32', 'blue pencil edits'),
-    legendItem('var(--_stagemap-studio-red)', 'M1 8l4-6 4 6 4-6 4 6 4-6 4 6 4-6', 'red pencil flags a problem'),
-    legendItem('var(--_stagemap-studio-mark)', '', 'yellow marks an answer', true),
+    legendItem('var(--_stagemap-studio-blue)', 'M1 5h32', labels.legend_blue),
+    legendItem('var(--_stagemap-studio-red)', 'M1 8l4-6 4 6 4-6 4 6 4-6 4 6 4-6', labels.legend_red),
+    legendItem('var(--_stagemap-studio-mark)', '', labels.legend_mark, true),
   );
   lede.append(kicker, heading, p1, p2, legend);
 
@@ -52,7 +52,7 @@ function buildSkeleton(el, labels) {
   const closeBtn = make('button', 'sms-btn', labels.close);
   closeBtn.type = 'button';
   closeBtn.dataset.smsStart = 'close';
-  closeBtn.setAttribute('aria-label', `${labels.close} start card`);
+  closeBtn.setAttribute('aria-label', labels.start_close);
   head.append(closeBtn);
 
   const opts = make('ul', 'sms-start-opts');

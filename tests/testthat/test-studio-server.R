@@ -34,7 +34,20 @@ describe("studio_server()", {
       expect_identical(message[c("n", "ack", "rev")], list(n = 1L, ack = 1L, rev = 0L))
       expect_named(
         message$sections,
-        c("header", "outline", "inspector", "journal", "start", "status", "notice", "ask", "check", "code", "map")
+        c(
+          "header",
+          "outline",
+          "inspector",
+          "journal",
+          "start",
+          "status",
+          "notice",
+          "ask",
+          "check",
+          "code",
+          "map",
+          "tour"
+        )
       )
       expect_identical(message$sections$header$title, "A map")
     })
@@ -102,7 +115,20 @@ describe("studio_server()", {
       session$setInputs(event = event(2L, "ready"))
       expect_named(
         log$messages[[2]]$sections,
-        c("header", "outline", "inspector", "journal", "start", "status", "notice", "ask", "check", "code", "map")
+        c(
+          "header",
+          "outline",
+          "inspector",
+          "journal",
+          "start",
+          "status",
+          "notice",
+          "ask",
+          "check",
+          "code",
+          "map",
+          "tour"
+        )
       )
     })
   })

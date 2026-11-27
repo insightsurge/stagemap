@@ -17,16 +17,40 @@ error.}
 \code{FALSE} returns the app without running it, for \code{\link[shiny:runApp]{shiny::runApp()}} or a test.}
 }
 \value{
-With \code{run = TRUE}, the map from \strong{Done} (a \code{\link[=stage_map]{stage_map()}} widget, with the title set in the studio),
+With \code{run = TRUE}, the map from \strong{Done} (a \code{\link[=stage_map]{stage_map()}} widget, with the changes made in the studio),
 invisibly, or \code{NULL} invisibly when the studio's page was closed without \strong{Done}. With \code{run = FALSE}, the app, a
 \code{shiny.appobj}.
 }
 \description{
 \ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#experimental}{\figure{lifecycle-experimental.svg}{options: alt='[Experimental]'}}}{\strong{[Experimental]}} \code{stage_map_studio()} opens the stagemap studio, a 'Shiny' app that shows a map
-on a drawing sheet, with its title above it and the R code that makes it one click away. Click \strong{Done} to close the
-studio and return the map to R; closing its page without \strong{Done} returns \code{NULL}. The studio runs in this R
-session; what it shows comes from the server, so \strong{Copy} copies the code for the latest change, also when the click
-comes before the server has answered.
+on a drawing sheet and changes it through forms. Click a card, a stage, a lane or a link on the map, or choose one
+from the \strong{Stages} and \strong{Lanes} menus, and a form opens for it; there you edit its fields, connect cards, reorder
+stages and lanes and remove things. The studio edits through forms and does not drag. The map's title is above the
+map, and a journal above it lists the changes made since the map was opened, with \strong{Undo}. On a phone the journal
+shows the newest change.
+}
+\details{
+The rooms along the bottom each answer a question about the map:
+\itemize{
+\item \strong{Map} sets the arguments of \code{\link[=stage_map]{stage_map()}} that shape the drawing: the layout (grid, levels or dates; the last
+two are experimental), the cards per cell, bundled links and the legend.
+\item \strong{Ask} runs \code{\link[=sm_trace]{sm_trace()}}, \code{\link[=sm_orphans]{sm_orphans()}} or \code{\link[=sm_missing]{sm_missing()}} on the map, lights the cards of the answer on the map
+and shows the call as R code. An edit marks the answer as out of date.
+\item \strong{Check} shows what R says when \code{\link[=stage_map]{stage_map()}} stops on the map, and one card for each place at fault (a blank id
+or label, an id given twice, a link or card that points at nothing) with the fixes it offers. While the map does
+not build, the map shows the last version that worked, and \strong{Done} is refused.
+\item \strong{R code} shows the code that builds the map, with the lines changed since the map was opened marked, and
+\strong{Copy}, a \code{.R} download and a CSV download for each table. \strong{Copy} copies the code for the latest change, also
+when the click comes before the server has answered.
+}
+
+On the built-in example, a guide called \strong{Try it} lists six steps and ticks each one when it is done. A card's zone
+and status and a link's kind can be chosen in their forms. The tables of kinds, zones, custom statuses, steps and
+changes, and the variants, are carried through the studio and written into the code, but have no form. Click
+\strong{Done} to close the studio and return the map to R; closing its page without \strong{Done} returns \code{NULL}.
+The studio runs in this R session, and it can be used from the keyboard and on a phone-sized screen.
+
+Experimental means the studio's names, arguments and layout can still change before the first release.
 }
 \examples{
 if (rlang::is_installed("shiny")) {

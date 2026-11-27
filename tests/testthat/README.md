@@ -94,5 +94,12 @@ that makes a change and fires the action without waiting in between, then checks
 - **Scenarios** (`apps/studio/scenarios.csv`): lists every studio user action (`SMS-001` onwards, `auto` or `manual`).
   `test-studio-scenarios.R` verifies the table's structure and checks that each `auto` scenario ID appears in an `it()`
   description of its area's browser test file.
-- **Leak count** (`test-studio-leak-browser.R`): runs 30 rounds of shell actions and compares `studio_counts()`
+- **Leak count** (`test-studio-leak-browser.R`): runs 30 rounds of each kind of action (the shell, targets and forms,
+  layout and fixes, code, Ask, and the guide with the rooms and the phone width) and compares `studio_counts()`
   (listeners, active observers, pending timers, DOM nodes) against the warm-up reading.
+- **Guide, keyboard and phone** (`test-studio-guide-browser.R`, `test-studio-keyboard-browser.R`,
+  `test-studio-phone-browser.R`): the guide ticks on real actions; the keyboard file uses key events for what
+  it tests (`studio_press()`; SMS-086 alone is pointer-free and checks that itself) and asserts where focus is; the
+  phone file runs at 390px and 360px, with one touch tap and the contrast of the page's own colour tokens in both
+  themes. `studio_emulate(app, "width", px)`
+  sets the width; wait for `document.getAnimations().length === 0` before measuring a box that slides in.

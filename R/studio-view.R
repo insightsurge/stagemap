@@ -7,7 +7,8 @@ studio_rooms <- list(
   ask = list(view = studio_room_ask_view),
   check = list(view = studio_room_check_view),
   code = list(view = studio_room_code_view),
-  map = list(view = studio_room_map_view)
+  map = list(view = studio_room_map_view),
+  tour = list(view = studio_tour_view)
 )
 
 # The view of `state`: every core section and every registered room section.

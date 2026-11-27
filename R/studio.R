@@ -1,10 +1,31 @@
 #' Change a stage map in an app, then take it back to R
 #'
 #' `r lifecycle::badge("experimental")` `stage_map_studio()` opens the stagemap studio, a 'Shiny' app that shows a map
-#' on a drawing sheet, with its title above it and the R code that makes it one click away. Click **Done** to close the
-#' studio and return the map to R; closing its page without **Done** returns `NULL`. The studio runs in this R
-#' session; what it shows comes from the server, so **Copy** copies the code for the latest change, also when the click
-#' comes before the server has answered.
+#' on a drawing sheet and changes it through forms. Click a card, a stage, a lane or a link on the map, or choose one
+#' from the **Stages** and **Lanes** menus, and a form opens for it; there you edit its fields, connect cards, reorder
+#' stages and lanes and remove things. The studio edits through forms and does not drag. The map's title is above the
+#' map, and a journal above it lists the changes made since the map was opened, with **Undo**. On a phone the journal
+#' shows the newest change.
+#'
+#' The rooms along the bottom each answer a question about the map:
+#' * **Map** sets the arguments of [stage_map()] that shape the drawing: the layout (grid, levels or dates; the last
+#'   two are experimental), the cards per cell, bundled links and the legend.
+#' * **Ask** runs [sm_trace()], [sm_orphans()] or [sm_missing()] on the map, lights the cards of the answer on the map
+#'   and shows the call as R code. An edit marks the answer as out of date.
+#' * **Check** shows what R says when [stage_map()] stops on the map, and one card for each place at fault (a blank id
+#'   or label, an id given twice, a link or card that points at nothing) with the fixes it offers. While the map does
+#'   not build, the map shows the last version that worked, and **Done** is refused.
+#' * **R code** shows the code that builds the map, with the lines changed since the map was opened marked, and
+#'   **Copy**, a `.R` download and a CSV download for each table. **Copy** copies the code for the latest change, also
+#'   when the click comes before the server has answered.
+#'
+#' On the built-in example, a guide called **Try it** lists six steps and ticks each one when it is done. A card's zone
+#' and status and a link's kind can be chosen in their forms. The tables of kinds, zones, custom statuses, steps and
+#' changes, and the variants, are carried through the studio and written into the code, but have no form. Click
+#' **Done** to close the studio and return the map to R; closing its page without **Done** returns `NULL`.
+#' The studio runs in this R session, and it can be used from the keyboard and on a phone-sized screen.
+#'
+#' Experimental means the studio's names, arguments and layout can still change before the first release.
 #'
 #' @param map A [stage_map()] widget to open the studio on, or `NULL` (the default) to open on the built-in example map
 #'   with the start card.
@@ -12,7 +33,7 @@
 #'   error.
 #' @param run `TRUE` (the default) runs the studio and waits for it to close; it needs an interactive R session.
 #'   `FALSE` returns the app without running it, for [shiny::runApp()] or a test.
-#' @returns With `run = TRUE`, the map from **Done** (a [stage_map()] widget, with the title set in the studio),
+#' @returns With `run = TRUE`, the map from **Done** (a [stage_map()] widget, with the changes made in the studio),
 #'   invisibly, or `NULL` invisibly when the studio's page was closed without **Done**. With `run = FALSE`, the app, a
 #'   `shiny.appobj`.
 #' @examples
