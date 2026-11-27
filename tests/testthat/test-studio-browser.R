@@ -6,33 +6,8 @@ skip_without_chrome()
 # expect_studio_clean(). The clipboard is the page's own only in the test that grants it; the others replace it with
 # recorders (stub_studio_clipboard()), which show what Copy wrote and which way it went.
 
-title_js <- function(text) studio_type_js(".sms-title", text)
-
-# Types `text` as the title and leaves the field, so the text goes out at once; returns the seq of that send.
-title_sent <- function(app, text) {
-  app$get_js(sprintf(
-    "(() => { %s; document.querySelector('.sms-title').blur(); return Number(%s.dataset.smsSent); })()",
-    title_js(text),
-    studio_root_js
-  ))
-}
-
-# The contrast ratio between two colours of the toast (its border and its background, or its mark and its background),
-# as the browser computes them, in the theme the page has.
-toast_contrast_js <- "(() => {
-  const rgb = (c) => c.match(/[\\d.]+/g).slice(0, 3).map(Number);
-  const lum = (c) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
-    return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
-  const ratio = (a, b) => { const [x, y] = [lum(rgb(a)), lum(rgb(b))].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
-  const box = document.querySelector('.sms-toast');
-  box.dataset.smsTone = 'problem'; box.dataset.smsOn = '';
-  const s = getComputedStyle(box);
-  return { edge: ratio(s.borderLeftColor, s.backgroundColor),
-           mark: ratio(getComputedStyle(box.querySelector('.sms-toast-mark')).color, s.backgroundColor) };
-})()"
-
 describe("the studio page", {
-  it("opens, draws the map and the server's first message, and is not busy", {
+  it("[SMS-001] opens, draws the map and the server's first message, and is not busy", {
     app <- studio_driver()
     state <- app$get_js(sprintf(
       "(() => { const r = %s; return { ack: r.dataset.smsAck, n: r.dataset.smsN, rev: r.dataset.smsRev,
@@ -53,7 +28,7 @@ describe("the studio page", {
     expect_studio_clean(app)
   })
 
-  it("opens on the example map when it is given none", {
+  it("[SMS-002] opens on the example map when it is given none", {
     app <- studio_driver("none")
     expect_identical(app$get_js("document.querySelectorAll('[data-card]').length"), 13L)
     expect_identical(app$get_js("document.querySelector('.sms-title').value"), "Dose calculator validation")
@@ -62,12 +37,12 @@ describe("the studio page", {
 })
 
 describe("typing a title", {
-  it("is held, then sent once, and the field is not overwritten while it has focus", {
+  it("[SMS-003] is held, then sent once, and the field is not overwritten while it has focus", {
     # Given a page that records what it sends
     app <- studio_driver()
     record_studio_events(app)
     # When a title is typed, one character at a time
-    app$run_js(title_js("Plan B"))
+    app$run_js(studio_title_js("Plan B"))
     held <- app$get_js("document.querySelector('.sms-title').dataset.smsSeq")
     studio_wait_step(app)
     # Then it was held, and went out once, with the whole title
@@ -92,9 +67,9 @@ describe("typing a title", {
     expect_studio_clean(app)
   })
 
-  it("puts the server's title back when a blank title is refused, and says why", {
+  it("[SMS-004] puts the server's title back when a blank title is refused, and says why", {
     app <- studio_driver()
-    studio_do(app, paste(title_js(""), "document.querySelector('.sms-title').blur();"))
+    studio_do(app, paste(studio_title_js(""), "document.querySelector('.sms-title').blur();"))
     app$wait_for_js("document.querySelector('.sms-title').value === 'A small piece of work'")
     expect_match(app$get_js("document.querySelector('.sms-toast-text').textContent"), "cannot be blank")
     expect_identical(app$get_js("document.querySelector('.sms-toast').dataset.smsTone"), "problem")
@@ -107,7 +82,7 @@ describe("typing a title", {
 })
 
 describe("Copy", {
-  it("copies at once what the code room shows when the page is in step (the page's own clipboard)", {
+  it("[SMS-005] copies at once what the code room shows when the page is in step (the page's own clipboard)", {
     # Given the page's own clipboard, allowed for this page, and a focused page
     app <- studio_driver()
     session <- app$get_chromote_session()
@@ -128,12 +103,12 @@ describe("Copy", {
     expect_studio_clean(app)
   })
 
-  it("copies the title typed just before it, when both happen at once", {
+  it("[SMS-006] copies the title typed just before it, when both happen at once", {
     app <- studio_driver()
     studio_open_code(app)
     stub_studio_clipboard(app)
     # When a title is typed and Copy clicked in one go, before the server has seen the title
-    app$run_js(paste(title_js("Typed then copied"), studio_copy_js))
+    app$run_js(paste(studio_title_js("Typed then copied"), studio_copy_js))
     # Then the copy has the typed title
     expect_identical(studio_wait_copy(app), "item")
     copied <- studio_copied(app)
@@ -147,7 +122,7 @@ describe("Copy", {
     expect_studio_clean(app)
   })
 
-  it("stays busy while the server's answer is held, then copies the new text", {
+  it("[SMS-007] stays busy while the server's answer is held, then copies the new text", {
     app <- studio_driver()
     studio_open_code(app)
     stub_studio_clipboard(app)
@@ -155,7 +130,7 @@ describe("Copy", {
     # When a title is typed and Copy clicked at once, and the server's answers are held
     # (the count of clipboard writes begun is read in the same call, as the click returns)
     started <- app$get_js(paste(
-      title_js("Held answer"),
+      studio_title_js("Held answer"),
       studio_copy_js,
       "({ begun: window.__sms.begun, sent: Number(document.querySelector('.sms').dataset.smsSent) })"
     ))
@@ -179,7 +154,7 @@ describe("Copy", {
     expect_studio_clean(app)
   })
 
-  it("uses writeText() without ClipboardItem, the copy command when that is refused, and asks for Ctrl+C last", {
+  it("[SMS-008] uses writeText() without ClipboardItem, the copy command when that is refused, and asks for Ctrl+C last", {
     app <- studio_driver()
     studio_open_code(app)
     shown <- app$get_js("document.querySelector('.sms-code').textContent")
@@ -204,12 +179,12 @@ describe("Copy", {
     expect_studio_clean(app)
   })
 
-  it("says it could not copy, and is not busy, when the answer is held longer than Copy waits", {
+  it("[SMS-009] says it could not copy, and is not busy, when the answer is held longer than Copy waits", {
     app <- studio_driver(copy_wait_ms = 300L)
     studio_open_code(app)
     stub_studio_clipboard(app)
     hold_studio_messages(app)
-    app$run_js(paste(title_js("Too late"), studio_copy_js))
+    app$run_js(paste(studio_title_js("Too late"), studio_copy_js))
     expect_identical(studio_wait_copy(app), "late")
     expect_length(studio_copied(app), 0L)
     expect_match(app$get_js("document.querySelector('.sms-toast-text').textContent"), "did not answer in time")
@@ -221,9 +196,9 @@ describe("Copy", {
 })
 
 describe("Done", {
-  it("returns the map with the title typed just before it, when both happen at once, and shows the closed state", {
+  it("[SMS-010] returns the map with the title typed just before it, when both happen at once, and shows the closed state", {
     app <- studio_driver()
-    app$run_js(paste(title_js("Done at once"), studio_click_js(".sms-done")))
+    app$run_js(paste(studio_title_js("Done at once"), studio_click_js(".sms-done")))
     app$wait_for_js(sprintf(
       "%s.dataset.smsClosed !== undefined && document.getElementById('done').textContent !== ''",
       studio_root_js
@@ -231,6 +206,7 @@ describe("Done", {
     done <- jsonlite::fromJSON(app$get_js("document.getElementById('done').textContent"))
     expect_true("stagemap_widget" %in% done$class)
     expect_identical(done$title, "Done at once")
+    expect_identical(done$cards, 4L)
     expect_match(app$get_js("document.querySelector('.sms-closed').textContent"), "gone back to R", fixed = TRUE)
     expect_true(app$get_js("document.querySelector('.sms-block').inert"))
     studio_wait_step(app)
@@ -239,12 +215,12 @@ describe("Done", {
 })
 
 describe("Done with the server's answers held", {
-  it("stays busy and does not close the page until its own answer is drawn", {
+  it("[SMS-011] stays busy and does not close the page until its own answer is drawn", {
     app <- studio_driver()
     hold_studio_messages(app)
     # When a title is typed and Done clicked at once, and the server's answers are held
     sent <- app$get_js(paste(
-      title_js("Held Done"),
+      studio_title_js("Held Done"),
       studio_click_js(".sms-done"),
       sprintf("Number(%s.dataset.smsSent)", studio_root_js)
     ))
@@ -265,7 +241,7 @@ describe("Done with the server's answers held", {
 })
 
 describe("the rooms", {
-  it("open and close by their button and by Escape, give focus back to the button, and are inert when closed", {
+  it("[SMS-012] open and close by their button and by Escape, give focus back to the button, and are inert when closed", {
     app <- studio_driver()
     room <- "document.querySelector('[data-sms-room-of=\"code\"]')"
     button <- "document.querySelector('[data-sms-room=\"code\"]')"
@@ -311,7 +287,7 @@ describe("the rooms", {
 })
 
 describe("the theme and motion", {
-  it("changes a card's colour in dark, and leaves no transition on the tray when motion is reduced", {
+  it("[SMS-013] changes a card's colour in dark, and leaves no transition on the tray when motion is reduced", {
     app <- studio_driver()
     # The card's own colour hook (what its face is painted with) and its text colour
     card <- "(() => { const s = getComputedStyle(document.querySelector('[data-card]'));
@@ -341,13 +317,13 @@ describe("the theme and motion", {
 })
 
 describe("answers that arrive late", {
-  it("cannot undo a newer answer: the one for the older event arrives after the one for the newer", {
+  it("[SMS-014] cannot undo a newer answer: the one for the older event arrives after the one for the newer", {
     # Given two titles sent one after the other, with the server's answers held
     app <- studio_driver()
     hold_studio_messages(app)
-    first <- title_sent(app, "Older title")
+    first <- studio_title_sent(app, "Older title")
     studio_wait_held(app, first)
-    second <- title_sent(app, "Newer title")
+    second <- studio_title_sent(app, "Newer title")
     studio_wait_held(app, second)
     # When the answers are let through, the newer one first
     release_studio_messages(app, reverse = TRUE)
@@ -363,7 +339,7 @@ describe("answers that arrive late", {
 })
 
 describe("a reconnect", {
-  it("sends ready first and, after Shiny has set up the session, what was done while the connection was down", {
+  it("[SMS-015] sends ready first and, after Shiny has set up the session, what was done while the connection was down", {
     # Given a page that notes what it sends over the websocket, in the order it leaves
     app <- studio_driver()
     studio_open_code(app)
@@ -371,7 +347,7 @@ describe("a reconnect", {
     record_studio_wire(app)
     drop_studio_connection(app)
     # When a title is typed, Copy clicked and Done clicked while it is down, and the page then reconnects
-    app$run_js(paste(title_js("Typed while down"), studio_copy_js, studio_click_js(".sms-done")))
+    app$run_js(paste(studio_title_js("Typed while down"), studio_copy_js, studio_click_js(".sms-done")))
     expect_identical(app$get_js("window.__sms.wire.length"), 0L)
     reconnect_studio(app)
     app$wait_for_js(sprintf(
@@ -399,9 +375,12 @@ describe("a reconnect", {
 })
 
 describe("the focus ring and the toast", {
-  it("keep a visible outline in forced-colors mode", {
+  it("[SMS-016] keep a visible outline in forced-colors mode", {
     app <- studio_driver()
     studio_emulate(app, "forced-colors", "active")
+    studio_emulate(app, "prefers-reduced-motion", "reduce")
+    expect_true(app$get_js("matchMedia('(forced-colors: active)').matches"))
+    expect_true(app$get_js("matchMedia('(prefers-reduced-motion: reduce)').matches"))
     studio_press(app, "Tab", code = "Tab", key_code = 9L)
     for (selector in c(".sms-skip", ".sms-title", "[data-sms-room='code']", ".sms-theme", ".sms-done")) {
       app$run_js(sprintf("document.querySelector(%s).focus()", jsonlite::toJSON(selector, auto_unbox = TRUE)))
@@ -416,12 +395,12 @@ describe("the focus ring and the toast", {
     expect_studio_clean(app)
   })
 
-  it("draw a problem's edge and mark with 3:1 against the toast, in light and in dark", {
+  it("[SMS-017] draw a problem's edge and mark with 3:1 against the toast, in light and in dark", {
     app <- studio_driver()
-    light <- app$get_js(toast_contrast_js)
+    light <- app$get_js(studio_toast_contrast_js)
     click_now(app, ".sms-theme")
     app$wait_for_js(sprintf("%s.dataset.theme === 'dark'", studio_root_js))
-    dark <- app$get_js(toast_contrast_js)
+    dark <- app$get_js(studio_toast_contrast_js)
     expect_gte(light$edge, 3)
     expect_gte(light$mark, 3)
     expect_gte(dark$edge, 3)
@@ -430,9 +409,9 @@ describe("the focus ring and the toast", {
 })
 
 describe("a page reload", {
-  it("starts a fresh session on the given map and draws it with no error", {
+  it("[SMS-018] starts a fresh session on the given map and draws it with no error", {
     app <- studio_driver()
-    studio_do(app, paste(title_js("Changed before the reload"), "document.querySelector('.sms-title').blur();"))
+    studio_do(app, paste(studio_title_js("Changed before the reload"), "document.querySelector('.sms-title').blur();"))
     app$run_js("window.__smsBefore = true; location.reload();")
     app$wait_for_js("window.__smsBefore === undefined")
     studio_wait_drawn(app)

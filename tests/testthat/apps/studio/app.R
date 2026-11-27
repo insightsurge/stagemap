@@ -1,7 +1,7 @@
 # The app the studio's browser tests drive: the studio module on its own page, with the map named by the environment
-# variable STAGEMAP_STUDIO_FIXTURE ("small", the default, or "none" for the built-in example map) and Copy's wait
-# from STAGEMAP_STUDIO_COPY_WAIT_MS. Its `on_done` keeps the map it was given and shows its title and class as JSON in
-# a text output beside the studio, so a test can read what Done returned.
+# variable STAGEMAP_STUDIO_FIXTURE ("small", the default, "none", "large", or "steps") and Copy's wait from
+# STAGEMAP_STUDIO_COPY_WAIT (or STAGEMAP_STUDIO_COPY_WAIT_MS). Its `on_done` keeps the map it was given and shows its
+# class, title and card count as JSON in a text output beside the studio, so a test can read what Done returned.
 library(shiny)
 library(stagemap)
 
@@ -9,25 +9,24 @@ library(stagemap)
 studio_ui <- utils::getFromNamespace("studio_ui", "stagemap")
 studio_server <- utils::getFromNamespace("studio_server", "stagemap")
 
-small_map <- function() {
-  stage_map(
-    data.frame(
-      id = c("a", "b", "c", "d"),
-      label = c("Draft", "Review", "Publish", "Archive"),
-      stage = c("write", "check", "check", "ship"),
-      lane = c("docs", "docs", "code", "code"),
-      status = c("done", "running", "waiting", "waiting")
-    ),
-    data.frame(id = c("write", "check", "ship"), label = c("Write", "Check", "Ship")),
-    data.frame(id = c("docs", "code"), label = c("Docs", "Code")),
-    title = "A small piece of work"
-  ) |>
-    add_links(data.frame(from = c("a", "b", "c"), to = c("b", "c", "d")))
-}
+fixtures <- new.env(parent = globalenv())
+sys.source("../../helper-stage_map.R", envir = fixtures)
+sys.source("../../helper-studio.R", envir = fixtures)
 
 fixture <- Sys.getenv("STAGEMAP_STUDIO_FIXTURE", "small")
-map <- switch(fixture, small = small_map(), none = NULL, stop("Unknown fixture: ", fixture))
-options <- list(copy_wait_ms = as.integer(Sys.getenv("STAGEMAP_STUDIO_COPY_WAIT_MS", "5000")))
+map <- switch(
+  fixture,
+  small = fixtures$studio_small(),
+  large = fixtures$studio_large(),
+  steps = fixtures$studio_steps(),
+  none = NULL,
+  stop("Unknown fixture: ", fixture)
+)
+copy_wait <- Sys.getenv("STAGEMAP_STUDIO_COPY_WAIT", "")
+if (!nzchar(copy_wait)) {
+  copy_wait <- Sys.getenv("STAGEMAP_STUDIO_COPY_WAIT_MS", "5000")
+}
+options <- list(copy_wait_ms = as.integer(copy_wait))
 
 ui <- function(request) {
   tagList(
@@ -41,8 +40,14 @@ server <- function(input, output, session) {
   studio_server("studio", map, on_done = function(map) done(map), options = options)
   output$done <- renderText({
     req(done())
+    returned <- done()
+    cards <- stage_map_tables(returned)$cards
     as.character(jsonlite::toJSON(
-      list(class = class(done()), title = done()$stagemap$data$options$title),
+      list(
+        class = class(returned),
+        title = returned$stagemap$data$options$title,
+        cards = nrow(cards)
+      ),
       auto_unbox = TRUE
     ))
   })

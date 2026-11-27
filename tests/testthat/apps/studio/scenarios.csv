@@ -1,0 +1,86 @@
+id,area,title,kind,steps,expected
+SMS-001,shell,Initial draw on given map,auto,Open the studio on the small fixture.,Page shows ack 1 rev 0 map title facts 4 cards in 3 stages and 2 lanes and is not busy.
+SMS-002,shell,Initial draw with no map,auto,Open the studio with map NULL.,Page draws the example map (13 cards) titled Dose calculator validation and is not busy.
+SMS-003,shell,Title typing held and no-echo,auto,Type a title character by character then deliver a message while focused.,Field holds Infinity seq until flush sends once; focused input keeps typed text while block shows message title.
+SMS-004,shell,Blank title refused,auto,Clear the title field and blur it.,Server refuses blank title puts server title back keeps rev 0 and shows problem toast with mark and word.
+SMS-005,shell,Copy in step with real clipboard,auto,Open R code room and click Copy with clipboard permissions granted.,Clipboard holds displayed code via ClipboardItem and toast confirms copy.
+SMS-006,shell,Copy at once after typing,auto,Type a new title and click Copy in one JS call without waiting.,Clipboard receives generated R code for the new title rather than stale code or bare title text.
+SMS-007,shell,Copy stays busy while messages held,auto,Hold server messages then type a title and click Copy at once then release.,ClipboardItem write begins inside click button stays busy until ack then writes new code.
+SMS-008,shell,Copy fallbacks without ClipboardItem,auto,Stub missing ClipboardItem then refused writeText then refused execCommand.,Copy falls back through writeText to execCommand to manual selection with Ctrl+C prompt.
+SMS-009,shell,Copy timeout when server is late,auto,Set short copy wait hold server messages type title and click Copy.,Button clears busy state sets late status and shows timeout problem toast.
+SMS-010,shell,Done at once after typing,auto,Type a new title and click Done in one JS call without waiting.,Returned map has the typed title page enters closed inert state and shows closed message.
+SMS-011,shell,Done stays busy while messages held,auto,Hold server messages type title and click Done at once then release.,Done stays busy and page stays open until closed message is delivered.
+SMS-012,shell,Room open close and Escape focus,auto,Open R code room then close via button then Escape from inside room and from title.,Room toggles hidden and inert moves focus to heading on open and returns focus appropriately on close.
+SMS-013,shell,Theme switch and reduced motion,auto,Toggle dark then light theme then emulate prefers-reduced-motion reduce.,Card colour tokens and localStorage update with theme and tray transition duration drops to 0s.
+SMS-014,shell,Out-of-order answers cannot regress,auto,Hold two title updates and release them in reverse order.,Page keeps newer title code rev and ack without going backwards.
+SMS-015,shell,Reconnect sends ready first then queued work,auto,Drop websocket type title click Copy and Done then reconnect.,Client sends init then ready then option then done in seq order and completes Copy and Done.
+SMS-016,shell,Forced-colors focus ring visible,auto,Emulate forced-colors active and focus main shell controls.,Each focused control keeps visible focus outline style and non-zero width.
+SMS-017,shell,Toast problem contrast in light and dark,auto,Show problem toast in light and dark themes.,Toast problem border edge and mark each meet 3:1 contrast against background.
+SMS-018,shell,Page reload starts fresh session,auto,Edit title wait for step then reload the page.,Reloaded session starts at ack 1 with original fixture title and no errors.
+SMS-019,shell,Reduced motion by eye,manual,Enable OS reduced motion and open inspector rooms and play steps.,Slip tray and map steps change without sliding or card glide animation.
+SMS-020,shell,Copy in Safari by hand,manual,Open studio in Safari edit title and click Copy.,Clipboard contains the updated R code after real mouse click.
+SMS-021,shell,Copy in Firefox by hand,manual,Open studio in Firefox edit title and click Copy.,Clipboard contains the updated R code after real mouse click.
+SMS-022,start,Start card opens when map is NULL,auto,Open studio with no map.,Start card overlay appears over an inert single-card map with template options.
+SMS-023,start,Open worked example from start card,auto,Click the worked example option on the start card.,Studio loads example map opens guide and marks the seeded broken link on the stamp.
+SMS-024,start,Open blank one-card map from start card,auto,Click the one-card start option on the start card.,Studio loads clean one-card map with no guide and dismisses start card.
+SMS-025,start,Open template confirms when edits exist,auto,Make an edit then click a start option once then confirm.,First click asks confirmation without discarding edits; second confirmed click resets journal and base.
+SMS-026,header,Facts count updates on structural edits,auto,Add a card then remove a card and observe header facts.,Facts summary text updates card stage and lane counts accurately.
+SMS-027,header,Add card at once and with messages held,auto,Type a title and click + Card in one call then repeat with messages held.,Held title flushes first new card gets free id and inspector focus and button clears busy only after ack.
+SMS-028,header,Add stage creates new stage,auto,Click + Stage in the header actions.,New stage appears on map with free id and opens in stage inspector.
+SMS-029,header,Add lane creates new lane,auto,Click + Lane in the header actions.,New lane appears on map with free id and opens in lane inspector.
+SMS-030,header,Stages outline menu navigates and closes,auto,Open Stages menu pick a stage then reopen and press Escape.,Picking opens stage inspector and selects stage; Escape closes menu and returns focus to button.
+SMS-031,header,Lanes outline menu navigates and closes,auto,Open Lanes menu pick a lane then reopen and press Escape.,Picking opens lane inspector; Escape closes menu and returns focus to button.
+SMS-032,journal,Journal hidden until first change,auto,Open studio make two distinct changes and read journal ribbon.,Journal starts hidden then displays numbered entries in chronological order.
+SMS-033,journal,Same-cell edits coalesce and reverting drops entry,auto,Edit card label twice then restore original label.,Two edits on same cell form one journal entry; restoring original value removes the entry.
+SMS-034,journal,Undo at once after held edit,auto,Hold a text edit and click Undo in one call.,Edit flushes first then Undo reverts it and marks the entry undone with text label.
+SMS-035,journal,Undo stays busy while messages held,auto,Hold server messages click Undo then release.,Undo button stays busy and aria-disabled until its ack arrives.
+SMS-036,journal,Click journal entry targets item,auto,Click an earlier card entry in the journal ribbon.,Inspector opens that card and selects it on the map.
+SMS-037,inspector,Open and close card inspector,auto,Click a card on the map then click it again or press Escape.,Inspector opens card form on click and closes cleanly on second click or Escape.
+SMS-038,inspector,Edit card label and status without echo,auto,Edit card label while focused and switch status radio.,Map and code update; focused input keeps caret and value while status radio changes card status.
+SMS-039,inspector,Rename card id cascades across links and steps,auto,Change a card id in card inspector.,Links and step changes referencing that card update to the new id with no broken joins.
+SMS-040,inspector,Pick another card while text is held,auto,Type card label and click another card on the map in one turn without waiting.,Held label edit flushes to the first card before inspector switches to the second card.
+SMS-041,inspector,Redraw keeps selected card stage and player step,auto,Select a card or stage and advance step player then trigger a redraw.,Map keeps selected card chosen stage and current step after redraw.
+SMS-042,inspector,Add link from card inspector,auto,Fill connect form in card inspector and click Add.,New link draws on map and appears in generated R code.
+SMS-043,inspector,Inspect link change kind and swap ends,auto,Open a link from card inspector change its kind and click Swap ends.,Link kind and direction update on map and in R code.
+SMS-044,inspector,Remove card or link at once and held,auto,Type in inspector and click Remove in one call then repeat with messages held.,Held text flushes first card and its links are deleted and button stays busy until ack.
+SMS-045,inspector,Edit stage fields and cascade id rename,auto,Edit stage label id note and date in stage inspector.,Stage updates on map and card stage references update when stage id changes.
+SMS-046,inspector,Move stage earlier or later,auto,Click Earlier or Later in stage inspector.,Adjacent stages swap order on map and in generated code.
+SMS-047,inspector,Add card inside stage from stage inspector,auto,Click Add a card here in stage inspector.,New card is created in that stage and becomes the active inspector target.
+SMS-048,inspector,Refuse removing non-empty stage or lane,auto,Click Remove on a stage with cards then on an empty stage.,Non-empty stage removal is refused with reason; empty stage removal succeeds.
+SMS-049,inspector,Edit and reorder lane,auto,Rename lane id and click Higher or Lower in lane inspector.,Lane order and card lane references update on map and in R code.
+SMS-050,inspector,Faulty field shows problem and inline fix,auto,Inspect an item with a broken join or duplicate id.,Field displays problem message and fix buttons that repair it when clicked.
+SMS-051,ask,Run Trace at once and with messages held,auto,Change trace options and click Run in one call then repeat held.,Call executes with updated options lights traced cards and links and button stays busy until ack.
+SMS-052,ask,Run Loose ends at once and with messages held,auto,Open Ask select Loose ends and click Run then repeat held.,Answer table matches sm_orphans output and button stays busy until ack.
+SMS-053,ask,Run Gaps at once and with messages held,auto,Change Gaps parameters and click Run in one call then repeat held.,Answer table matches sm_missing output and button stays busy until ack.
+SMS-054,ask,Click answer row targets card,auto,Click a row action in Ask answer table.,Inspector opens that card and selects it on the map.
+SMS-055,ask,Trace from here opens Ask and runs trace,auto,Click Trace from here in card inspector.,Ask room opens with card selected and displays downstream trace results.
+SMS-056,ask,Edit marks answer stale and Clear unlights map,auto,Edit a card after running Ask then click Clear answer.,Answer shows stale notice and clears map highlights; Clear removes answer completely.
+SMS-057,ask,Ask disabled on broken map,auto,Introduce a broken join then open Ask room and run a question.,Ask refuses to run on invalid map and points to Check room.
+SMS-058,check,Broken map keeps last good map with stamp,auto,Introduce a duplicate id or broken join.,Last valid map stays drawn while red paper stamp states problem count.
+SMS-059,check,Check room lists R errors and fault cards,auto,Open Check room while map has a broken link or duplicate id.,Room shows R error message lines and fault cards with fix actions.
+SMS-060,check,Apply a fix at once and with messages held,auto,Type in a field and click Apply fix in one call then repeat held.,Held edit flushes fix repairs fault map rebuilds cleanly and stamp clears after ack.
+SMS-061,check,Check room reports clean after fixes,auto,Fix all faults and inspect Check room.,Check room shows clean status and zero faults.
+SMS-062,check,Done refused on broken map,auto,Click Done while map has a fault.,Done refuses to close and shows notice pointing to Check room.
+SMS-063,check,Broken map code view shows problem note,auto,Open R code room while map has a fault.,Code room renders current tables with problem note above code and comment in copy text.
+SMS-064,map,Switch layout between Grid Levels and Dates,auto,Open Map room and select Levels with Target then Grid.,Map redraws with chosen layout and R code reflects non-default layout and target.
+SMS-065,map,Dates layout warns or disables without stage dates,auto,Check Dates option before and after adding a stage date.,Dates notes missing stage dates until at least one stage has a valid date.
+SMS-066,map,Change cards per cell density,auto,Change cell_columns in Map room between 1 2 and Auto.,Map redraws grid columns and R code updates cell_columns argument.
+SMS-067,map,Toggle bundle links option,auto,Toggle Bundle links in Map room.,Map redraws bundled links and R code updates bundle_links argument.
+SMS-068,map,Toggle legend visibility,auto,Toggle Legend in Map room.,Map hides or shows legend and R code updates legend argument.
+SMS-069,code,Code room renders tokens and line numbers,auto,Open R code room on small fixture.,Lines show syntax token spans matching stage_map_code output.
+SMS-070,code,Changed lines marked against opening base,auto,Modify a card or option and open R code room.,Changed lines carry data-sms-changed and visible changed label.
+SMS-071,code,Last Ask call shown below map code,auto,Run an Ask question then open R code room.,R code room includes the last question call below the map code.
+SMS-072,code,Download .R at once and with messages held,auto,Type a title and click Download .R in one call then repeat held.,Download waits for ack and writes R script containing the newly typed title.
+SMS-073,code,Download CSV at once and with messages held,auto,Edit a card and click table CSV download in one call then repeat held.,Download waits for ack and writes CSV rows containing the newly edited value.
+SMS-074,guide,Example template opens with six-step guide,auto,Open worked example from start card.,Hint bar shows next step and guide tracks 6 steps with 0/6 completed initially.
+SMS-075,guide,Guide steps tick on server proofs and stay ticked,auto,Complete worked example steps across inspector code ask and check.,Each step ticks on server once satisfied and stays ticked on later edits.
+SMS-076,guide,Guide popover opens and closes on Escape,auto,Open guide popover from hint bar then press Escape.,Popover opens with step list and Escape closes it returning focus to trigger.
+SMS-077,phone,Phone dock and header controls under 640px,auto,Emulate viewport width 375px.,Title block shows four dock buttons and theme and Map controls move to header.
+SMS-078,phone,Phone opens one room and bottom-sheet inspector,auto,At 375px width open Ask then open Check then open a card.,Opening second room closes first room and card inspector renders as bottom sheet.
+SMS-079,phone,Phone target sizes and compact journal,auto,At 375px width make two edits and inspect buttons and journal.,Dock and action buttons meet 44px height and journal shows newest entry and Undo.
+SMS-080,phone,Real phone touch walk,manual,Open studio on a physical phone and open sheets rooms and map.,Touch scrolling tap targets and bottom sheets work without horizontal overflow.
+SMS-081,keyboard,Tab order flows through studio without traps,auto,Tab through skip link header map inspector title block and open room.,Focus visits interactive regions in skeleton order with visible focus rings.
+SMS-082,keyboard,Keyboard pick and Undo and Escape rules,auto,Pick card via keyboard press Ctrl+Z outside input and press Escape.,Keyboard pick focuses inspector heading; Ctrl+Z undoes; Escape closes topmost layer.
+SMS-083,keyboard,Keyboard-only full studio walk,manual,Complete a full edit trace check and Done flow using only keyboard.,Every studio action is reachable and operable without a pointer.
+SMS-084,keyboard,Screen reader announcement walk,manual,Navigate studio with VoiceOver or NVDA across rooms forms and errors.,Landmarks live regions radio groups problem descriptions and status words read clearly.
+SMS-085,leak,Shell actions leave listener observer timer and node counts flat,auto,Run warm-up then 30 rounds of title edits code room toggles and theme switches.,Listener observer pending timer and DOM node counts return to baseline after settling.
