@@ -28,10 +28,10 @@ describe("the studio page", {
     expect_studio_clean(app)
   })
 
-  it("[SMS-002] opens on a map of one card when it is given none", {
+  it("[SMS-002] opens on the example map when it is given none", {
     app <- studio_driver("none")
-    expect_identical(app$get_js("document.querySelectorAll('[data-card]').length"), 1L)
-    expect_identical(app$get_js("document.querySelector('.sms-title').value"), "")
+    expect_identical(app$get_js("document.querySelectorAll('[data-card]').length"), 13L)
+    expect_identical(app$get_js("document.querySelector('.sms-title').value"), "Dose calculator validation")
     expect_studio_clean(app)
   })
 })

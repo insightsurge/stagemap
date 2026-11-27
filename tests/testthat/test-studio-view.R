@@ -27,11 +27,32 @@ describe("studio_view()", {
 
 describe("studio_facts()", {
   it("counts cards, stages and lanes, in the singular for one", {
-    expect_identical(studio_facts(studio_first_map()), "1 card in 1 stage and 1 lane")
+    expect_identical(studio_facts(studio_template("blank")$map), "1 card in 1 stage and 1 lane")
   })
 
   it("checks the map", {
     expect_error(studio_facts("map"), "map")
+  })
+})
+
+describe("studio_view_journal()", {
+  it("keeps only the listed page fields (n, verb, text, state, target) on journal entries", {
+    s <- studio_state_new(small)
+    s <- studio_step(
+      s,
+      list(
+        seq = 1L,
+        type = "edit",
+        data = list(table = "cards", uid = "u1", field = "label", value = "Edited"),
+        rev = 0L
+      )
+    )$state
+    entries <- studio_view_journal(s$journal)
+    expect_length(entries, 1L)
+    expect_named(entries[[1L]], c("n", "verb", "text", "state", "target"))
+    expect_identical(entries[[1L]]$verb, "Edit")
+    expect_identical(entries[[1L]]$state, "done")
+    expect_error(studio_view_journal("bad"), "journal")
   })
 })
 

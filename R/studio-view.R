@@ -6,11 +6,12 @@
 # The view of `state`: the sections `header`, `status`, `notice` and `code`.
 studio_view <- function(state) {
   checkmate::assert_list(state, names = "unique")
+  title <- state$doc$args$title %||% ""
   list(
-    header = list(title = state$title, facts = studio_facts(state$map), template = NULL),
-    status = list(drawn_rev = state$rev, problems = 0L, closed = state$closed),
+    header = list(title = title, facts = studio_facts(state$good$map), template = NULL),
+    status = list(drawn_rev = state$good$rev, problems = nrow(state$check$faults), closed = state$closed),
     notice = state$notice,
-    code = studio_view_code(state$title)
+    code = studio_view_code(title)
   )
 }
 
@@ -28,6 +29,14 @@ studio_facts <- function(map) {
     count("stages", "stage", "stages"),
     count("lanes", "lane", "lanes")
   )
+}
+
+# Projects `journal` entries to the fields the page receives (`n`, `verb`, `text`, `state`, `target`).
+studio_view_journal <- function(journal) {
+  checkmate::assert_list(journal)
+  lapply(journal, function(entry) {
+    entry[c("n", "verb", "text", "state", "target")]
+  })
 }
 
 # The code section. A stand-in that the code room's generated code replaces: one line, a call that holds the title, so

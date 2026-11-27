@@ -1,6 +1,6 @@
 id,area,title,kind,steps,expected
 SMS-001,shell,Initial draw on given map,auto,Open the studio on the small fixture.,Page shows ack 1 rev 0 map title facts 4 cards in 3 stages and 2 lanes and is not busy.
-SMS-002,shell,Initial draw with no map,auto,Open the studio with map NULL.,Page draws a one-card map with a blank title and is not busy.
+SMS-002,shell,Initial draw with no map,auto,Open the studio with map NULL.,Page draws the example map (13 cards) titled Dose calculator validation and is not busy.
 SMS-003,shell,Title typing held and no-echo,auto,Type a title character by character then deliver a message while focused.,Field holds Infinity seq until flush sends once; focused input keeps typed text while block shows message title.
 SMS-004,shell,Blank title refused,auto,Clear the title field and blur it.,Server refuses blank title puts server title back keeps rev 0 and shows problem toast with mark and word.
 SMS-005,shell,Copy in step with real clipboard,auto,Open R code room and click Copy with clipboard permissions granted.,Clipboard holds displayed code via ClipboardItem and toast confirms copy.

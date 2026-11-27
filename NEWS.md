@@ -23,3 +23,4 @@
 * `stage_map_studio()`, experimental, opens a map in a 'Shiny' app with its title above it and its R code in a room along the bottom; **Copy** copies the code for the latest change, also when it is clicked before the server has answered, and **Done** returns the map with the title set in the studio. Closing the page without **Done** returns `NULL`. `run = FALSE` returns the app (#88).
 * `stage_map_tables()` gives back the tables a map was built from, as a named list of data frames with every column (#87).
 * `stage_map_code()` writes the R code that builds a map again: the tables as `data.frame()` calls, then the pipeline, with only the arguments that differ from their defaults (#87).
+* When `map` is `NULL`, `stage_map_studio()` opens on a built-in example map (with a broken link for checking) and records changes in a document and journal that replays them (#90).

@@ -7,7 +7,8 @@
 stage_map_studio(map = NULL, ..., run = TRUE)
 }
 \arguments{
-\item{map}{A \code{\link[=stage_map]{stage_map()}} widget to open the studio on, or \code{NULL} (the default) for a map of one card.}
+\item{map}{A \code{\link[=stage_map]{stage_map()}} widget to open the studio on, or \code{NULL} (the default) to open on the built-in example map
+with the start card.}
 
 \item{...}{Must stay empty. It makes every argument after it a named argument, and a typo in an argument's name an
 error.}
