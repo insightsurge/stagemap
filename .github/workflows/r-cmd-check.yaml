@@ -31,6 +31,6 @@ jobs:
       ci-report: true   # the CI report comment on pull requests: true posts it, false leaves it out
       # One entry per run, as system/R version, comma separated. System: ubuntu, windows, macos.
       # R version: release, devel, oldrel-1, or a number such as 4.1. R 4.1 on macos may fail: it has no ready-built packages.
-      platforms: ubuntu/release, ubuntu/oldrel-1
+      platforms: macos/release, windows/release, ubuntu/devel, ubuntu/release, ubuntu/oldrel-1, ubuntu/4.1
       timeout-minutes: 0   # longest a job may run, in minutes; 0 keeps launchR's default: 60 on Mac, 120 elsewhere
       test-time-limit: 180   # longest test run allowed in seconds, on ubuntu with R release; 0 turns it off
