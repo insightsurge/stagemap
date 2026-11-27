@@ -31,6 +31,37 @@ describe("studio_args()", {
   })
 })
 
+describe("studio_args() against the views", {
+  state <- studio_state_new()
+  field_names <- function(view) vapply(view$fields, function(field) field$name, character(1))
+  placed <- function(what, where) {
+    tbl <- studio_args()
+    tbl$name[tbl$what == what & tbl$where == where]
+  }
+
+  it("lists the title as the header's and the options as the Map room's fields, and no others", {
+    expect_setequal(placed("arg", "header"), "title")
+    expect_true(all(placed("arg", "header") %in% names(studio_view(state)$header)))
+
+    # The layouts show different fields, so the Map room is read in each of its layouts.
+    shown <- character()
+    for (layout in c("grid", "levels", "dates")) {
+      state$doc$args$layout <- layout
+      shown <- union(shown, field_names(studio_room_map_view(state)))
+    }
+    expect_setequal(shown, placed("arg", "map"))
+  })
+
+  it("lists every offered column as a field of the matching inspector, and no others", {
+    kinds <- c(cards = "card", stages = "stage", lanes = "lane", links = "link")
+    for (table in names(kinds)) {
+      uid <- state$doc$tables[[table]]$.studio_uid[[1L]]
+      view <- studio_view_inspector(state$doc, list(kind = kinds[[table]], uid = uid))
+      expect_setequal(field_names(view), placed(table, "inspector"))
+    }
+  })
+})
+
 describe("studio_arg_where()", {
   it("returns the placement or NULL, and checks its arguments", {
     expect_identical(studio_arg_where("arg", "title"), "header")

@@ -14,6 +14,18 @@
   border: 0;
 }
 
+/* In the phone's dock the word gives way to the glyph and the number; it stays for a screen reader. */
+@media (max-width: 640px) {
+  .sms .sms-check-w {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
 .sms [data-sms-room="check"][data-sms-state="bad"] .sms-val {
   color: var(--_stagemap-studio-red);
 }

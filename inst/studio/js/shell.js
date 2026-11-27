@@ -6,11 +6,13 @@
  * open at a time.
  */
 import { setText } from './dom.js';
+import { syncInspectorInert } from './view-inspector.js';
 
 const TOAST_MS = 4000;
 
 export function createShell(root, boot, tools) {
-  const { later, cancel } = tools;
+  const { later, cancel, signal } = tools;
+  const phone = window.matchMedia('(max-width: 640px)');
   const tray = root.querySelector('.sms-tray');
   const open = []; /* the names of the open rooms, the last opened last */
   let toastTimer = 0;
@@ -21,11 +23,18 @@ export function createShell(root, boot, tools) {
     root.querySelector(`.sms-block [data-sms-room="${CSS.escape(name)}"]`) ?? buttonsOf(name)[0];
   const roomOf = (button) => document.getElementById(button.getAttribute('aria-controls'));
 
+  /* On a phone one sheet is open at a time: an open room covers the inspector, which keeps the server's target. */
+  function syncSheets() {
+    if (phone.matches && open.length > 0) root.dataset.smsCovered = '';
+    else delete root.dataset.smsCovered;
+    syncInspectorInert(root);
+  }
+
   function openRoom(name) {
     const button = buttonOf(name);
     const room = button && roomOf(button);
     if (!room || open.includes(name)) return;
-    if (window.matchMedia('(max-width: 640px)').matches) {
+    if (phone.matches) {
       for (const other of [...open]) closeRoom(other, false);
     }
     room.hidden = false;
@@ -34,6 +43,7 @@ export function createShell(root, boot, tools) {
     open.push(name);
     tray.inert = false;
     root.dataset.smsTray = open.join(' ');
+    syncSheets();
     /* Sent on every open: the server forgets it when the map is opened again or the page reconnects. */
     if (name === 'code' && root.dataset.smsClosed === undefined) {
       tools.send?.('seen', { what: 'code' });
@@ -51,6 +61,11 @@ export function createShell(root, boot, tools) {
     /* Read before the room is hidden, which moves focus away: only focus that was inside the room goes back. */
     const inside = room.contains(document.activeElement);
     open.splice(index, 1);
+    /* A menu left open in the room (the CSV menu) closes with it. */
+    for (const pop of room.querySelectorAll('.sms-menu-pop:not([hidden])')) {
+      pop.hidden = true;
+      pop.closest('.sms-menu')?.querySelector('[data-sms-menu]')?.setAttribute('aria-expanded', 'false');
+    }
     room.hidden = true;
     room.inert = true;
     for (const btn of buttonsOf(name)) btn.setAttribute('aria-expanded', 'false');
@@ -60,6 +75,7 @@ export function createShell(root, boot, tools) {
     } else {
       root.dataset.smsTray = open.join(' ');
     }
+    syncSheets();
     if (refocus && inside) {
       const visible = buttonsOf(name).find((btn) => getComputedStyle(btn).display !== 'none');
       (visible ?? button)?.focus();
@@ -98,5 +114,15 @@ export function createShell(root, boot, tools) {
     }, ms);
   }
 
-  return { openRoom, closeRoom, toggleRoom, closeTopmost, closeAllRooms, toast };
+  /* Reaching a phone's width with several rooms open leaves the last one. */
+  phone.addEventListener(
+    'change',
+    () => {
+      if (phone.matches) for (const name of open.slice(0, -1)) closeRoom(name, false);
+      syncSheets();
+    },
+    { signal },
+  );
+
+  return { openRoom, closeRoom, toggleRoom, closeTopmost, closeAllRooms, toast, isPhone: () => phone.matches };
 }

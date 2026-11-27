@@ -5,7 +5,7 @@
  */
 import { make, setText, syncChildren } from './dom.js';
 
-function syncDownloads(root, downloads) {
+function syncDownloads(root, downloads, ctx) {
   const room = root.querySelector('[data-sms-room-of="code"]');
   const head = room?.querySelector('.sms-room-head');
   const closeBtn = head?.querySelector('[data-sms-close="code"]');
@@ -23,10 +23,10 @@ function syncDownloads(root, downloads) {
   let rBtn = head.querySelector('[data-sms-download="download_r"]');
   if (rItem) {
     if (!rBtn) {
-      rBtn = make('button', 'sms-btn', '.R');
+      rBtn = make('button', 'sms-btn', ctx.labels.code_r);
       rBtn.type = 'button';
       rBtn.dataset.smsDownload = rItem.id;
-      rBtn.setAttribute('aria-label', `.R file (${rItem.label})`);
+      rBtn.setAttribute('aria-label', `${ctx.labels.code_r_file} (${rItem.label})`);
     }
     if (rBtn.nextElementSibling !== closeBtn) {
       head.insertBefore(rBtn, closeBtn);
@@ -41,7 +41,7 @@ function syncDownloads(root, downloads) {
     if (!csvWrap) {
       csvWrap = make('div', 'sms-menu sms-code-csv');
       const triggerWrap = make('span', 'sms-menu-trigger');
-      const trigger = make('button', 'sms-btn', 'CSV');
+      const trigger = make('button', 'sms-btn', ctx.labels.code_csv);
       trigger.type = 'button';
       trigger.dataset.smsMenu = 'csv';
       trigger.setAttribute('aria-haspopup', 'menu');
@@ -65,6 +65,7 @@ function syncDownloads(root, downloads) {
         btn = make('button', 'sms-menu-item', item.label);
         btn.type = 'button';
         btn.setAttribute('role', 'menuitem');
+        btn.tabIndex = -1; /* arrow keys move between items; Tab leaves the menu */
         btn.dataset.smsDownload = item.id;
       } else {
         setText(btn, item.label);
@@ -92,7 +93,7 @@ export function render(root, code, ctx) {
   box.replaceChildren(
     ...lines.map((line) => {
       const node = make('span', 'sms-l');
-      if (line.changed) node.dataset.smsChanged = '';
+      if (line.changed) node.dataset.smsChanged = ctx.labels.changed;
       for (const [text, kind] of line.spans ?? []) {
         node.append(kind ? make('span', `sms-tok-${kind}`, text) : document.createTextNode(text));
       }
@@ -103,5 +104,5 @@ export function render(root, code, ctx) {
   setText(root.querySelector('.sms-code-sum'), count);
   setText(root.querySelector('.sms-code-count'), count);
   setText(note, code.problem ?? '');
-  syncDownloads(root, code.downloads);
+  syncDownloads(root, code.downloads, ctx);
 }

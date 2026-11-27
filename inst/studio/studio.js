@@ -19,12 +19,12 @@ import { render as renderAsk } from './js/room-ask.js';
 import { render as renderCheck } from './js/room-check.js';
 import { render as renderCode } from './js/room-code.js';
 import { render as renderMap } from './js/room-map.js';
-import { render as renderTour } from './js/room-tour.js';
+import { closeGuide, render as renderTour, toggleGuide } from './js/room-tour.js';
 import { createShell } from './js/shell.js';
 import { createStore, LateError } from './js/store.js';
 import { createTheme } from './js/theme.js';
 import { render as renderHeader } from './js/view-header.js';
-import { render as renderInspector } from './js/view-inspector.js';
+import { render as renderInspector, syncInspectorInert } from './js/view-inspector.js';
 import { render as renderJournal } from './js/view-journal.js';
 import { render as renderNotice } from './js/view-notice.js';
 import { render as renderOutline } from './js/view-outline.js';
@@ -79,7 +79,7 @@ function mount(root) {
   let hold = null;
   const store = createStore(root, boot, { flush: () => hold?.flush(), later, cancel, signal });
   hold = createHold(boot, store.send, { later, cancel });
-  const shell = createShell(root, boot, { later, cancel, send: store.send });
+  const shell = createShell(root, boot, { later, cancel, send: store.send, signal });
   const theme = createTheme(root, { signal });
 
   let modality = 'pointer';
@@ -106,8 +106,7 @@ function mount(root) {
         child.inert = modal;
       }
     }
-    const insp = root.querySelector('.sms-inspector');
-    if (insp) insp.inert = modal || insp.hidden;
+    syncInspectorInert(root, modal);
     const tray = root.querySelector('.sms-tray');
     if (tray) tray.inert = modal || root.dataset.smsTray === undefined;
   }
@@ -184,6 +183,7 @@ function mount(root) {
     rev: store.rev,
     toast: shell.toast,
     closeAllRooms: shell.closeAllRooms,
+    isPhone: shell.isPhone,
     shouldFocusInspector,
     restoreInspectorFocus,
     syncStart,
@@ -194,13 +194,14 @@ function mount(root) {
     if (!hintEl) return;
     const hints = store.view.outline?.hints;
     const text = detail && detail.id != null ? hints?.[detail.kind]?.[String(detail.id)] : null;
-    if (!text) {
-      hintEl.hidden = true;
-      setText(hintEl, '');
-      return;
+    setText(hintEl.querySelector('.sms-hint-text'), text ?? '');
+    if (text) {
+      hintEl.dataset.smsHover = '';
+      hintEl.hidden = false;
+    } else {
+      delete hintEl.dataset.smsHover;
+      hintEl.hidden = hintEl.dataset.smsTour === undefined;
     }
-    setText(hintEl, text);
-    hintEl.hidden = false;
   }
 
   /* The header and inspector are patched on every message, so a field whose edit the server refused shows the server's
@@ -291,6 +292,7 @@ function mount(root) {
           .finally(() => setBusy(download, false));
         return;
       }
+      if (target?.closest('[data-sms-try]')) return toggleGuide(root);
       const room = target?.closest('[data-sms-room]');
       if (room) return shell.toggleRoom(room.dataset.smsRoom);
       const close = target?.closest('[data-sms-close]');
@@ -406,6 +408,11 @@ function mount(root) {
       }
 
       const menuPop = event.target instanceof Element ? event.target.closest('.sms-menu-pop') : null;
+      if (menuPop && event.key === 'Tab') {
+        /* Tab leaves a menu: it closes, and the key goes on from its button. */
+        closeMenus(true);
+        return;
+      }
       if (menuPop && ['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
         const items = [...menuPop.querySelectorAll('[role="menuitem"]')];
         if (items.length > 0) {
@@ -446,7 +453,7 @@ function mount(root) {
           event.preventDefault();
           return;
         }
-        if (syncStart(false, 'cancel') || shell.closeTopmost()) {
+        if (syncStart(false, 'cancel') || closeGuide(root) || shell.closeTopmost()) {
           event.preventDefault();
           return;
         }

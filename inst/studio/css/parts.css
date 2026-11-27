@@ -184,6 +184,30 @@
   z-index: 25;
 }
 
+/* On a phone a pop-up is as wide as its row, so it can never reach past the screen. */
+@media (max-width: 640px) {
+  .sms .sms-outline,
+  .sms .sms-room-head {
+    position: relative;
+  }
+
+  .sms .sms-outline .sms-menu,
+  .sms .sms-room-head .sms-menu {
+    position: static;
+  }
+
+  .sms .sms-menu-pop {
+    left: 0;
+    right: 0;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .sms .sms-menu-item {
+    min-height: 44px;
+  }
+}
+
 .sms .sms-menu-item {
   display: flex;
   justify-content: space-between;
@@ -240,6 +264,12 @@
   flex: 1;
   min-width: 0;
   scrollbar-width: thin;
+}
+
+/* Room for the focus ring, which the scroller would clip. */
+.sms .sms-journal-list {
+  padding: 6px;
+  margin: -4px;
 }
 
 .sms .sms-ev {
@@ -824,13 +854,38 @@
     display: none;
   }
 
-  .sms .sms-ev,
+  /* The newest entry shrinks to the row: its words are cut with an ellipsis, its "undone" word never is, and nothing
+     clips the focus ring. */
+  .sms .sms-ev {
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 100%;
+  }
+
   .sms .sms-ev-btn,
   .sms .sms-ev-item {
     min-width: 0;
     max-width: 100%;
+    min-height: 44px;
+    align-items: center;
+  }
+
+  .sms .sms-ev-d {
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+
+  .sms .sms-ev-n,
+  .sms .sms-ev-v,
+  .sms .sms-ev-undone {
+    flex: none;
+  }
+
+  .sms input,
+  .sms select,
+  .sms textarea {
+    font-size: 16px;
   }
 
   .sms .sms-start {
@@ -873,9 +928,9 @@
     box-shadow: var(--_stagemap-studio-shadow);
   }
 
-  .sms[data-sms-tray] .sms-inspector {
-    bottom: calc(var(--_stagemap-studio-block-h) + var(--_stagemap-studio-tray-h));
-    max-height: calc(100dvh - var(--_stagemap-studio-block-h) - var(--_stagemap-studio-tray-h));
-    z-index: 15;
+  /* One sheet at a time: while a room is open the inspector stays on the server's target but is covered (hidden and
+     inert; the page sets both). */
+  .sms[data-sms-covered] .sms-inspector {
+    display: none;
   }
 }

@@ -73,7 +73,11 @@ function updateSummaryButton(root, check, ctx) {
     valEl.replaceChildren(makeCheckIcon(), document.createTextNode(ctx.labels.clean));
   } else {
     btn.dataset.smsState = 'bad';
-    valEl.replaceChildren(makeZigzag(), document.createTextNode(`${count} ${problemWord(count, ctx)}`));
+    valEl.replaceChildren(
+      makeZigzag(),
+      make('span', 'sms-check-n', String(count)),
+      make('span', 'sms-check-w', ` ${problemWord(count, ctx)}`),
+    );
   }
 }
 

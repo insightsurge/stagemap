@@ -1,6 +1,6 @@
 /*
  * The R code room: numbered lines on a dark code sheet, in both themes. A changed line is marked with the yellow
- * pencil and the word "changed", so the mark does not rest on colour alone; token kinds use the studio's private
+ * pencil and the word for it (from the page's labels), so the mark does not rest on colour alone; token kinds use the studio's private
  * tokens and differ by weight or style as well as colour.
  */
 .sms .sms-code {
@@ -38,15 +38,21 @@
 }
 
 .sms .sms-code .sms-l[data-sms-changed] {
-  padding-right: 76px;
   background: color-mix(in srgb, var(--_stagemap-studio-mark) 20%, transparent);
   box-shadow: inset 3px 0 0 var(--_stagemap-studio-mark);
 }
 
+/* The word comes from the page's labels (the line's attribute). It follows the line's text and stays at the right edge of
+   the code while a long line is scrolled, so it is never off screen. */
 .sms .sms-code .sms-l[data-sms-changed]::after {
-  content: "changed";
-  position: absolute;
+  content: attr(data-sms-changed);
+  position: sticky;
   right: 10px;
+  display: inline-block;
+  margin-left: 16px;
+  padding: 0 6px;
+  background: var(--_stagemap-studio-code-bg);
+  border-left: 3px solid var(--_stagemap-studio-mark);
   font: 600 12px var(--_stagemap-studio-mono);
   color: var(--_stagemap-studio-mark);
 }

@@ -5,6 +5,17 @@
 import { make, setText } from './dom.js';
 import { render as renderForm } from './form.js';
 
+/* Whether the inspector can be reached: not while the page is closed, the start card is the modal, or (on a phone, one
+   sheet at a time) a room covers it. `modal` is the start card's state when the caller knows it before the DOM does. */
+export function syncInspectorInert(root, modal = null) {
+  const el = root.querySelector('.sms-inspector');
+  if (!el) return;
+  const startOpen = modal ?? !root.querySelector('.sms-start')?.hidden;
+  el.inert = Boolean(
+    el.hidden || startOpen || root.dataset.smsClosed !== undefined || root.dataset.smsCovered !== undefined,
+  );
+}
+
 const CLOSE_EVENT = JSON.stringify({ type: 'target', data: { kind: 'none', uid: null } });
 
 function ensureSkeleton(el, ns, labels) {
@@ -54,10 +65,10 @@ export function render(el, inspector, ctx) {
 
   const prevUid = el.dataset.smsUid ?? '';
   const hadFocus = el.contains(document.activeElement);
-  const startOpen = !root?.querySelector('.sms-start')?.hidden;
-  const closed = root?.dataset.smsClosed !== undefined;
   el.hidden = false;
-  el.inert = Boolean(closed || startOpen);
+  /* On a phone one sheet is open at a time: a new pick closes the rooms. */
+  if (prevUid !== inspector.uid && ctx.isPhone?.()) ctx.closeAllRooms?.();
+  syncInspectorInert(root);
   if (root) root.dataset.smsInspector = inspector.kind;
   el.dataset.smsUid = inspector.uid;
 

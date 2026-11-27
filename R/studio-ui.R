@@ -33,7 +33,7 @@ studio_ui <- function(id, options = list()) {
           tags$p(class = "sms-stamp", role = "status"),
           stage_map_output(ns("map"))
         ),
-        tags$div(class = "sms-hint", `aria-live` = "polite", hidden = NA),
+        studio_ui_hint(ns),
         tags$section(
           class = "sms-start",
           id = ns("start"),
@@ -131,6 +131,37 @@ studio_ui_top <- function(ns) {
         "Map"
       ),
       tags$button(class = "sms-btn sms-phone-theme", type = "button", `data-sms-theme` = "toggle", "Light or dark")
+    )
+  )
+}
+
+# The bar under the map: what the pointer is over (`.sms-hint-text`), or else the guide's next step (`.sms-hint-next`)
+# with the "Try it" button and the list of steps it opens. The page fills them from the `tour` section and the engine's
+# hover event; both lines are polite status regions.
+studio_ui_hint <- function(ns) {
+  checkmate::assert_function(ns)
+  tags <- htmltools::tags
+  tags$div(
+    class = "sms-hint",
+    hidden = NA,
+    tags$p(class = "sms-hint-text", `aria-live` = "polite"),
+    tags$p(class = "sms-hint-next", `aria-live` = "polite"),
+    tags$button(
+      class = "sms-btn sms-try-btn",
+      type = "button",
+      `data-sms-try` = "toggle",
+      `aria-expanded` = "false",
+      `aria-controls` = ns("try"),
+      hidden = NA
+    ),
+    tags$div(
+      class = "sms-try",
+      id = ns("try"),
+      role = "group",
+      `aria-labelledby` = ns("try-title"),
+      hidden = NA,
+      tags$h2(id = ns("try-title"), tabindex = "-1"),
+      tags$ol()
     )
   )
 }
@@ -303,7 +334,25 @@ studio_labels <- function() {
     show = "Show",
     fix_prefix = "Fix:",
     r_message = "R check message",
-    notes = "Notes"
+    notes = "Notes",
+    guide_next = "Next:",
+    guide_try = "Try it",
+    guide_done = "done",
+    guide_all_done = "Every step is done.",
+    changed = "changed",
+    ask_question = "Question",
+    ask_failed = "Could not run question",
+    ask_stale = "Map changed since: ask again",
+    ask_clear = "Clear",
+    ask_nothing = "Nothing to list.",
+    ask_none = "No questions available.",
+    legend_blue = "blue pencil edits",
+    legend_red = "red pencil flags a problem",
+    legend_mark = "yellow marks an answer",
+    start_close = "Close start card",
+    code_r = ".R",
+    code_r_file = ".R file",
+    code_csv = "CSV"
   )
 }
 
