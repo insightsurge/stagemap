@@ -53,8 +53,12 @@ const sections = [
 const isTextField = (node) =>
   node instanceof HTMLTextAreaElement || (node instanceof HTMLInputElement && /^(text|search|)$/.test(node.type));
 
+/* Ctrl+Z belongs to the field while text is being typed; a radio, a checkbox, a select or a button has no text to undo. */
 const isUndoBlocked = (node) =>
-  node instanceof Element && (node.matches('input, textarea, select') || node.isContentEditable);
+  node instanceof Element &&
+  (node.matches('textarea') ||
+    node.isContentEditable ||
+    (node instanceof HTMLInputElement && !/^(radio|checkbox|button|submit|reset)$/.test(node.type)));
 
 function mount(root) {
   const ns = root.dataset.smsNs;
@@ -293,6 +297,15 @@ function mount(root) {
         return;
       }
       if (target?.closest('[data-sms-try]')) return toggleGuide(root);
+      if (target?.closest('.sms-skip')) {
+        /* The link's own jump leaves focus on the page; focus goes to the map's first stop, so the next Tab follows it. */
+        const stop = document.getElementById(`${ns}map`)?.querySelector('[tabindex="0"], button:not([disabled])');
+        if (stop) {
+          event.preventDefault();
+          stop.focus();
+        }
+        return;
+      }
       const room = target?.closest('[data-sms-room]');
       if (room) return shell.toggleRoom(room.dataset.smsRoom);
       const close = target?.closest('[data-sms-close]');

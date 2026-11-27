@@ -124,7 +124,6 @@
 }
 
 .sms .sms-title:focus-visible {
-  box-shadow: none;
   border-bottom-color: var(--_stagemap-studio-blue);
 }
 
@@ -210,8 +209,7 @@
 }
 
 .sms .sms-hint {
-  position: sticky;
-  bottom: 12px;
+  position: relative;
   z-index: 6;
   max-width: 1100px;
   margin-top: 12px;
@@ -222,8 +220,11 @@
   font-size: 13px;
 }
 
-.sms[data-sms-tray] .sms-hint {
-  bottom: calc(var(--_stagemap-studio-tray-h) + 12px);
+/* The bar stays in view at the foot of the sheet while the map is longer than the screen; an open tray covers that
+   foot, so then it sits where it falls. */
+.sms:not([data-sms-tray]) .sms-hint {
+  position: sticky;
+  bottom: 12px;
 }
 
 .sms .sms-paper [data-stagemap-visual] {
@@ -543,6 +544,30 @@
 @media (max-width: 1179px) {
   .sms .sms-inspector {
     box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.5);
+  }
+}
+
+/* Between a phone and a desk the title block keeps every room, with the short words and without the name. */
+@media (min-width: 641px) and (max-width: 1040px) {
+  .sms .sms-brand div {
+    display: none;
+  }
+
+  .sms .sms-cell,
+  .sms .sms-theme {
+    padding: 8px 12px;
+  }
+
+  .sms .sms-long {
+    display: none;
+  }
+
+  .sms .sms-short {
+    display: inline;
+  }
+
+  .sms .sms-done {
+    padding: 8px 14px;
   }
 }
 
