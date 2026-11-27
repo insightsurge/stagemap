@@ -377,12 +377,14 @@ describe("studio_step()", {
     expect_identical(res$effects, list(list(type = "highlight", ids = character(), links = NULL)))
   })
 
-  it("acknowledges ask and ask_clear with Not available yet and records seen", {
+  it("hands ask and ask_clear to the Ask room and records seen", {
     s <- studio_state_new(small)
     a <- studio_step(s, ev("ask", list(question = "orphans"), seq = 1L))
-    expect_match(a$state$notice$text, "Not available yet")
+    expect_identical(a$state$ask$question, "orphans")
+    expect_null(a$state$ask$error)
     ac <- studio_step(a$state, ev("ask_clear", seq = 2L))
-    expect_match(ac$state$notice$text, "Not available yet")
+    expect_null(ac$state$ask)
+    expect_identical(ac$effects, list(list(type = "highlight", ids = character(), links = NULL)))
     sn <- studio_step(ac$state, ev("seen", list(what = "code"), seq = 3L))
     expect_identical(sn$state$seen, "code")
     expect_match(studio_step(sn$state, ev("seen", list(what = ""), seq = 4L))$state$notice$text, "Unknown")
