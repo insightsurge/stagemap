@@ -974,30 +974,29 @@ describe("keyboard-only inspector flow and layout at narrow and phone widths", {
       expect_gte(ctrl$height, 44)
     }
 
-    # 375px with open room: inspector sits above the room
+    # 375px with an open room: one sheet at a time, so the room covers the form (hidden and inert) until it closes
     studio_open_code(app)
-    app$wait_for_js(
-      "(() => { const t = getComputedStyle(document.querySelector('.sms-tray')).transform;
-         return t === 'none' || t === 'matrix(1, 0, 0, 1, 0, 0)'; })()"
-    )
+    app$wait_for_js("document.getAnimations().length === 0")
     phone <- app$get_js(
       "(() => {
          const insp = document.querySelector('.sms-inspector');
-         const ir = insp.getBoundingClientRect();
          const rr = document.querySelector('[data-sms-room-of=\"code\"]').getBoundingClientRect();
-         const btn = insp.querySelector('[data-sms-action=\"Close\"]');
-         const br = btn.getBoundingClientRect();
-         const hit = document.elementFromPoint(br.left + br.width / 2, br.top + br.height / 2);
-         return { inspBottom: ir.bottom, roomTop: rr.top, hitClose: btn.contains(hit) };
+         return { display: getComputedStyle(insp).display, inert: insp.inert, roomTop: rr.top, vh: window.innerHeight,
+                  target: insp.dataset.smsUid !== undefined };
        })()"
     )
-    expect_lte(phone$inspBottom, phone$roomTop + 1)
-    expect_true(phone$hitClose)
+    expect_identical(phone$display, "none")
+    expect_true(phone$inert)
+    expect_true(phone$target)
+    expect_lt(phone$roomTop, phone$vh)
+    click_now(app, "[data-sms-close='code']")
+    app$wait_for_js("document.getAnimations().length === 0")
+    expect_identical(app$get_js("getComputedStyle(document.querySelector('.sms-inspector')).display"), "flex")
+    expect_false(app$get_js("document.querySelector('.sms-inspector').inert"))
 
     # Done makes inspector and skip link inert
     app$set_window_size(width = 1280L, height = 800L, wait = FALSE)
     app$wait_for_js("window.innerWidth === 1280")
-    click_now(app, "[data-sms-close='code']")
     app$run_js(studio_click_js(".sms-done"))
     app$wait_for_js(sprintf("%s.dataset.smsClosed !== undefined", studio_root_js))
     expect_true(app$get_js("document.querySelector('.sms-inspector').inert"))

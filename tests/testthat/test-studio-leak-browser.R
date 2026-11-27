@@ -358,4 +358,50 @@ describe("the studio leak count", {
     expect_identical(after$nodes, before$nodes)
     expect_studio_clean(app)
   })
+  it("keeps listener, observer, timer and node counts flat across 30 rounds of the guide, hints, rooms and phone width", {
+    app <- studio_driver("none")
+    click_now(app, ".sms-start [data-sms-open='example']")
+    app$wait_for_js("document.querySelector('.sms-start').hidden === true")
+    studio_wait_step(app)
+    hover_js <- function(id) {
+      sprintf(
+        "document.querySelector('#studio-map').dispatchEvent(new CustomEvent('stagemap:hover', { bubbles: true, detail: { kind: 'card', id: %s } }))",
+        jsonlite::toJSON(id, auto_unbox = TRUE, null = "null")
+      )
+    }
+    round <- function() {
+      click_now(app, ".sms-try-btn")
+      app$run_js(hover_js("round_dose"))
+      app$run_js(hover_js(NULL))
+      click_now(app, ".sms-try-btn")
+      for (room in c("ask", "check", "code", "map")) {
+        click_now(app, sprintf(".sms-block [data-sms-room='%s']", room))
+        click_now(app, sprintf("[data-sms-close='%s']", room))
+      }
+      studio_emulate(app, "width", 390L)
+      click_now(app, ".sms-block [data-sms-room='ask']")
+      click_now(app, ".sms-block [data-sms-room='check']")
+      click_now(app, "[data-sms-close='check']")
+      studio_emulate(app, "width", 1280L)
+    }
+    round()
+    studio_wait_step(app)
+    app$wait_for_js("document.querySelector('.sms-toast').dataset.smsOn === undefined")
+    app$wait_for_js("window.__smsCounts().timers === 0")
+    before <- studio_counts(app)
+
+    for (i in seq_len(30L)) {
+      round()
+    }
+
+    studio_wait_step(app)
+    app$wait_for_js("document.querySelector('.sms-toast').dataset.smsOn === undefined")
+    app$wait_for_js("window.__smsCounts().timers === 0")
+    after <- studio_counts(app)
+    expect_identical(after$listeners, before$listeners)
+    expect_identical(after$observers, before$observers)
+    expect_identical(after$timers, before$timers)
+    expect_identical(after$nodes, before$nodes)
+    expect_studio_clean(app)
+  })
 })
