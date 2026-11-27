@@ -492,14 +492,29 @@ studio_fixes <- function(doc, fault) {
             }
             list(list(op = "set", table = fault$table, uid = fault$uid, field = fault$field, value = new_val))
           }
-          fixes$use <- list(
-            label = sprintf("Use \"%s\"", best),
-            verb = "Fix",
-            text = sprintf("Use %s \"%s\"", to_word, best),
-            key = NA_character_,
-            target = NULL,
-            ops = use_ops
-          )
+          # A change names a card once per step: a fix that would repeat a (step, card) pair would turn a located
+          # fault into a build error no fault places.
+          repeats_pair <- FALSE
+          if (identical(fault$table, "changes") && fault$field %in% c("card", "step")) {
+            chg <- doc$tables$changes
+            idx <- match(fault$uid, chg$.studio_uid)
+            other <- !is.na(idx) & seq_len(nrow(chg)) != idx
+            new_step <- if (identical(fault$field, "step")) best else as_text(chg$step[[idx]])
+            new_card <- if (identical(fault$field, "card")) best else as_text(chg$card[[idx]])
+            repeats_pair <- any(
+              other & as_text(chg$step) %in% new_step & as_text(chg$card) %in% new_card
+            )
+          }
+          if (!repeats_pair) {
+            fixes$use <- list(
+              label = sprintf("Use \"%s\"", best),
+              verb = "Fix",
+              text = sprintf("Use %s \"%s\"", to_word, best),
+              key = NA_character_,
+              target = NULL,
+              ops = use_ops
+            )
+          }
         }
       }
     }

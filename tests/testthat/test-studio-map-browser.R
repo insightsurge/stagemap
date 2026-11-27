@@ -22,6 +22,23 @@ set_select_js <- function(selector, value) {
   )
 }
 
+# The value of the Map room's field `name` as the page shows it: a select's value, a toggle's state or the checked
+# radio's value.
+map_field_value <- function(app, name) {
+  app$get_js(sprintf(
+    "(() => {
+       const f = document.querySelector('[data-sms-room-of=\"map\"] [data-sms-field=\"%s\"]');
+       if (!f) return null;
+       const sel = f.querySelector('select');
+       if (sel) return sel.value;
+       const box = f.querySelector('input[type=\"checkbox\"]');
+       if (box) return box.checked;
+       return f.querySelector('input[type=\"radio\"]:checked')?.value ?? null;
+     })()",
+    name
+  ))
+}
+
 expect_map_drawn_clean <- function(app) {
   info <- app$get_js(
     "(() => {
@@ -58,27 +75,32 @@ describe("the Map room", {
     studio_do(app, set_select_js("[data-sms-room-of='map'] [data-sms-field='cell_columns'] select", "2"))
     studio_wait_map(app, s1)
     expect_match(app$get_js("document.querySelector('.sms-code').textContent"), "cell_columns = 2", fixed = TRUE)
+    expect_identical(map_field_value(app, "cell_columns"), "2")
 
     s2 <- studio_stamp(app)
     studio_do(app, set_select_js("[data-sms-room-of='map'] [data-sms-field='cell_columns'] select", "auto"))
     studio_wait_map(app, s2)
     expect_match(app$get_js("document.querySelector('.sms-code').textContent"), "cell_columns = \"auto\"", fixed = TRUE)
+    expect_identical(map_field_value(app, "cell_columns"), "auto")
 
     s3 <- studio_stamp(app)
     studio_do(app, set_select_js("[data-sms-room-of='map'] [data-sms-field='cell_columns'] select", "1"))
     studio_wait_map(app, s3)
     expect_false(grepl("cell_columns", app$get_js("document.querySelector('.sms-code').textContent"), fixed = TRUE))
+    expect_identical(map_field_value(app, "cell_columns"), "1")
 
     # Bundle links toggle
     s4 <- studio_stamp(app)
     studio_do(app, studio_click_js("[data-sms-room-of='map'] [data-sms-field='bundle_links'] input"))
     studio_wait_map(app, s4)
     expect_match(app$get_js("document.querySelector('.sms-code').textContent"), "bundle_links = TRUE", fixed = TRUE)
+    expect_true(map_field_value(app, "bundle_links"))
 
     s5 <- studio_stamp(app)
     studio_do(app, studio_click_js("[data-sms-room-of='map'] [data-sms-field='bundle_links'] input"))
     studio_wait_map(app, s5)
     expect_false(grepl("bundle_links", app$get_js("document.querySelector('.sms-code').textContent"), fixed = TRUE))
+    expect_false(map_field_value(app, "bundle_links"))
 
     # Legend toggle changes the drawn legend DOM and R code
     legend_visible <- function() {
@@ -90,12 +112,15 @@ describe("the Map room", {
     studio_wait_map(app, s6)
     expect_false(legend_visible())
     expect_match(app$get_js("document.querySelector('.sms-code').textContent"), "legend = FALSE", fixed = TRUE)
+    expect_false(map_field_value(app, "legend"))
 
     s7 <- studio_stamp(app)
     studio_do(app, studio_click_js("[data-sms-room-of='map'] [data-sms-field='legend'] input"))
     studio_wait_map(app, s7)
     expect_true(legend_visible())
     expect_false(grepl("legend =", app$get_js("document.querySelector('.sms-code').textContent"), fixed = TRUE))
+    expect_true(map_field_value(app, "legend"))
+    expect_identical(map_field_value(app, "layout"), "grid")
     expect_studio_clean(app)
   })
 
@@ -123,6 +148,7 @@ describe("the Map room", {
       app$get_js("document.querySelector('#studio-map [data-card=\"b\"]').getAttribute('aria-pressed')"),
       "true"
     )
+    expect_identical(map_field_value(app, "layout"), "levels")
 
     # Target selection in levels
     s_tgt <- studio_stamp(app)
@@ -130,6 +156,7 @@ describe("the Map room", {
     studio_wait_map(app, s_tgt)
     expect_map_drawn_clean(app)
     expect_match(app$get_js("document.querySelector('.sms-code').textContent"), "target = \"c\"", fixed = TRUE)
+    expect_identical(map_field_value(app, "target"), "c")
 
     # Dates layout shows hint until a stage has a date
     s_dt <- studio_stamp(app)
@@ -267,6 +294,8 @@ describe("the Map room", {
       app$get_js("getComputedStyle(document.querySelector('.sms-block [data-sms-room=\"map\"]')).display"),
       "none"
     )
+    expect_identical(app$get_js("document.querySelectorAll('.sms-phone-map').length"), 1L)
+    expect_identical(app$get_js("document.querySelector('.sms-phone-map').textContent"), "Map")
     expect_true(app$get_js("getComputedStyle(document.querySelector('.sms-phone-map')).display !== 'none'"))
     click_now(app, ".sms-phone-map")
     app$wait_for_js("document.querySelector('[data-sms-room-of=\"map\"]').hidden === false")

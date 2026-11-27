@@ -1,7 +1,6 @@
 /*
- * The Map room: renders the server-described stage_map() options form via `form.js`, updates the layout label in the
- * title block's Map cell, and ensures the phone header carries a Map opener when the bottom cell is hidden.
- * Never adds event listeners.
+ * The Map room: renders the server-described stage_map() options form via `form.js` and updates the layout label in
+ * the title block's Map cell. Never adds event listeners.
  */
 import { make, setText } from './dom.js';
 import { render as renderForm } from './form.js';
@@ -16,7 +15,7 @@ function selectedLayoutLabel(fields) {
   return '';
 }
 
-function updateMapButton(root, ns, fields) {
+function updateMapButton(root, fields) {
   const valEl = root?.querySelector('[data-sms-room="map"] .sms-val');
   if (valEl) {
     let layoutEl = valEl.querySelector('.sms-map-layout');
@@ -26,26 +25,13 @@ function updateMapButton(root, ns, fields) {
     }
     setText(layoutEl, selectedLayoutLabel(fields));
   }
-
-  const acts = root?.querySelector('.sms-acts');
-  if (acts && !acts.querySelector('.sms-phone-map')) {
-    const btn = make('button', 'sms-btn sms-phone-map', 'Map');
-    btn.type = 'button';
-    btn.dataset.smsRoom = 'map';
-    const roomEl = root?.querySelector('[data-sms-room-of="map"]');
-    btn.setAttribute('aria-expanded', roomEl && !roomEl.hidden ? 'true' : 'false');
-    btn.setAttribute('aria-controls', `${ns}room-map`);
-    const themeBtn = acts.querySelector('.sms-phone-theme');
-    if (themeBtn) acts.insertBefore(btn, themeBtn);
-    else acts.append(btn);
-  }
 }
 
 export function render(el, mapView, ctx) {
   const root = el.closest('.sms');
   const ns = root?.dataset.smsNs ?? '';
   const fields = mapView?.fields ?? [];
-  updateMapButton(root, ns, fields);
+  updateMapButton(root, fields);
 
   let formBox = el.querySelector(':scope > .sms-map-form');
   if (!formBox) {

@@ -23,7 +23,12 @@ studio_view <- function(state) {
       can_undo = studio_journal_can_undo(state$journal)
     ),
     start = studio_view_start(state),
-    status = list(drawn_rev = state$good$rev, problems = nrow(state$check$faults), closed = state$closed),
+    status = list(
+      drawn_rev = state$good$rev,
+      # At least 1 while the build fails, as the Check button counts, even when no fault places the error.
+      problems = max(nrow(state$check$faults), as.integer(!isTRUE(state$check$ok))),
+      closed = state$closed
+    ),
     notice = state$notice
   )
   rooms <- lapply(studio_rooms, function(room) room$view(state))

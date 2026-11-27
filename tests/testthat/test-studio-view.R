@@ -29,6 +29,22 @@ describe("studio_view()", {
     expect_true(view$status$closed)
   })
 
+  it("counts at least one problem while the build fails, with or without a located fault", {
+    state <- studio_state_new(small)
+    state$check <- list(
+      ok = FALSE,
+      head = "Unexpected build error.",
+      lines = list(),
+      faults = studio_faults_df(),
+      notes = character()
+    )
+    expect_identical(studio_view(state)$status$problems, 1L)
+
+    broken <- studio_state_new()
+    expect_identical(studio_view(broken)$status$problems, nrow(broken$check$faults))
+    expect_identical(studio_view(broken)$status$problems, 1L)
+  })
+
   it("checks the state", {
     expect_error(studio_view(list(1)), "state")
   })

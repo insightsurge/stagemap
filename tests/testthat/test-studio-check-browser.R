@@ -22,6 +22,36 @@ open_check_room <- function(app) {
   invisible(app)
 }
 
+# Opens the inspector of the example's card `calc_dose` and blanks its label, which gives the map a second fault.
+# `send` flushes the held text at once (blur); without it the text stays held until a click flushes it.
+blank_calc_dose_label_js <- function(send = TRUE) {
+  paste(
+    studio_type_js(".sms-inspector [data-sms-field='label'] input", ""),
+    if (send) "document.querySelector('.sms-inspector [data-sms-field=\"label\"] input').blur();"
+  )
+}
+
+open_calc_dose <- function(app) {
+  app$run_js(
+    "document.querySelector('#studio-map [data-card=\"calc_dose\"]').dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }))"
+  )
+  app$wait_for_js("document.querySelector('.sms-inspector [data-sms-field=\"label\"] input') !== null")
+  invisible(app)
+}
+
+# JavaScript that finds the element `selector` (quoted safely), for the lines of a test that need it more than once.
+find_js <- function(selector) {
+  sprintf("document.querySelector(%s)", jsonlite::toJSON(selector, auto_unbox = TRUE))
+}
+
+# Delivers the oldest held message only (hold_studio_messages() keeps the rest held).
+deliver_one_held_message_js <- paste0(
+  "{ const m = window.__sms.held.shift();
+     ",
+  studio_root_js,
+  ".dispatchEvent(new CustomEvent('stagemap-studio:deliver', { detail: m })); }"
+)
+
 describe("the Check room", {
   it("[SMS-058] [SMS-059] [SMS-061] shows R's lines and fault cards, fixes the example problem and turns clean", {
     app <- studio_driver("none")
@@ -255,6 +285,175 @@ describe("the Check room", {
          return b.scrollWidth > b.clientWidth; })()"
     )
     expect_false(overflow)
+    expect_studio_clean(app)
+  })
+  it("keeps one status line across renders that says the count and the clean line", {
+    app <- studio_driver("none")
+    open_example_from_start(app)
+    open_check_room(app)
+    status_js <- "document.querySelector('[data-sms-room-of=\"check\"] [role=\"status\"]')"
+    expect_identical(
+      app$get_js(sprintf("document.querySelectorAll('[data-sms-room-of=\"check\"] [role=\"status\"]').length")),
+      1L
+    )
+    expect_identical(app$get_js(sprintf("%s.textContent", status_js)), "1 problem")
+    # Nothing in the room's rebuilt content is a live region, so a redraw does not read every card again
+    expect_identical(
+      app$get_js(
+        "document.querySelectorAll('[data-sms-room-of=\"check\"] .sms-check-body [aria-live], [data-sms-room-of=\"check\"] .sms-check-body [role=\"status\"]').length"
+      ),
+      0L
+    )
+    app$run_js(sprintf("window.__smsStatusNode = %s;", status_js))
+
+    use <- "[data-sms-room-of='check'] [data-sms-action='Use \"calc_dose\"']"
+    studio_do(app, paste0(find_js(use), ".focus();", studio_click_js(use)))
+    # The only fault goes with the focused button: focus lands on the room's heading
+    expect_identical(app$get_js("document.activeElement.id"), "studio-room-check-title")
+    expect_true(app$get_js(sprintf("%s === window.__smsStatusNode && window.__smsStatusNode.isConnected", status_js)))
+    expect_identical(app$get_js(sprintf("%s.textContent", status_js)), "stage_map() accepts this map.")
+
+    # A new problem arriving while the room is open is announced through the same line
+    open_calc_dose(app)
+    studio_do(app, blank_calc_dose_label_js())
+    expect_true(app$get_js(sprintf("%s === window.__smsStatusNode", status_js)))
+    expect_identical(app$get_js(sprintf("%s.textContent", status_js)), "1 problem")
+    expect_studio_clean(app)
+  })
+
+  it("moves focus to the next fault's first control after a fix", {
+    app <- studio_driver("none")
+    open_example_from_start(app)
+    open_calc_dose(app)
+    studio_do(app, blank_calc_dose_label_js())
+    open_check_room(app)
+    expect_identical(app$get_js("document.querySelectorAll('[data-sms-room-of=\"check\"] .sms-chk').length"), 2L)
+
+    use <- "[data-sms-room-of='check'] [data-sms-action='Use \"calc_dose\"']"
+    studio_do(app, paste0(find_js(use), ".focus();", studio_click_js(use)))
+    expect_identical(app$get_js("document.querySelectorAll('[data-sms-room-of=\"check\"] .sms-chk').length"), 1L)
+    expect_identical(
+      app$get_js("document.activeElement.closest('.sms-chk')?.dataset.smsFaultId ?? null"),
+      app$get_js("document.querySelector('[data-sms-room-of=\"check\"] .sms-chk').dataset.smsFaultId")
+    )
+    expect_identical(app$get_js("document.activeElement.dataset.smsAction"), "Show")
+
+    expect_studio_clean(app)
+  })
+
+  it("names every fault card and describes each of its buttons by the fault's text", {
+    app <- studio_driver("none")
+    open_example_from_start(app)
+    open_calc_dose(app)
+    studio_do(app, blank_calc_dose_label_js())
+    open_check_room(app)
+    info <- app$get_js(
+      "(() => [...document.querySelectorAll('[data-sms-room-of=\"check\"] .sms-chk')].map((card) => {
+         const name = document.getElementById(card.getAttribute('aria-labelledby'))?.textContent ?? null;
+         const buttons = [...card.querySelectorAll('button')];
+         return {
+           name,
+           text: card.querySelector('.sms-chk-text').textContent,
+           described: buttons.map((b) => document.getElementById(b.getAttribute('aria-describedby'))?.textContent ?? null),
+           buttons: buttons.length
+         };
+       }))()"
+    )
+    expect_length(info, 2L)
+    names <- vapply(info, function(card) card$name, "")
+    expect_false(anyDuplicated(names) > 0L)
+    for (card in info) {
+      expect_identical(card$name, card$text)
+      expect_gt(card$buttons, 0L)
+      expect_true(all(unlist(card$described) == card$text))
+    }
+    ids <- unlist(app$get_js(
+      "[...document.querySelectorAll('[data-sms-room-of=\"check\"] .sms-chk-text')].map((n) => n.id)"
+    ))
+    expect_false(anyDuplicated(ids) > 0L)
+    expect_studio_clean(app)
+  })
+
+  it("keeps a clicked fix busy and the focused button put when an earlier answer changes the check section", {
+    app <- studio_driver("none")
+    open_example_from_start(app)
+    open_calc_dose(app)
+    open_check_room(app)
+    use <- "[data-sms-room-of='check'] [data-sms-action='Use \"calc_dose\"']"
+    remove_btn <- "[data-sms-room-of='check'] [data-sms-action='Remove link']"
+    app$run_js(sprintf("window.__smsUse = %s;", find_js(use)))
+
+    # The blanked label goes out first and its answer is held; then the fix is clicked and its answer is held too. The
+    # first answer changes the check section (a second card), the second answers the fix.
+    hold_studio_messages(app)
+    app$run_js(paste(
+      blank_calc_dose_label_js(),
+      paste0(find_js(remove_btn), ".focus();")
+    ))
+    wait_studio_held(app, "messages", 1L)
+    sent <- app$get_js(sprintf(
+      "(() => { %s; return Number(%s.dataset.smsSent); })()",
+      studio_click_js(use),
+      studio_root_js
+    ))
+    expect_identical(app$get_js("window.__smsUse.getAttribute('aria-busy')"), "true")
+    wait_studio_held(app, "messages", 2L)
+    studio_wait_held(app, sent)
+
+    app$run_js(deliver_one_held_message_js)
+    # The first answer drew a second card; the clicked button is still the same busy node, and focus did not move
+    expect_identical(app$get_js("document.querySelectorAll('[data-sms-room-of=\"check\"] .sms-chk').length"), 2L)
+    expect_true(app$get_js(sprintf("%s === window.__smsUse", find_js(use))))
+    expect_identical(app$get_js("window.__smsUse.getAttribute('aria-busy')"), "true")
+    expect_identical(app$get_js("window.__smsUse.getAttribute('aria-disabled')"), "true")
+    expect_true(app$get_js(sprintf("document.activeElement === %s", find_js(remove_btn))))
+
+    release_studio_messages(app)
+    studio_wait_step(app)
+    expect_identical(app$get_js(sprintf("%s.querySelectorAll('[data-sms-wait-seq]').length", studio_root_js)), 0L)
+    expect_studio_clean(app)
+  })
+
+  it("writes its words from the boot labels, not from the script", {
+    app <- studio_driver("none")
+    out <- app$get_js(
+      "(async () => {
+         const src = document.querySelector('script[src*=\"studio.js\"]').src;
+         const mod = await import(new URL('js/room-check.js', src));
+         const labels = { clean: 'L-clean', info: 'L-info:', error: 'L-error:', show: 'L-show', fix_prefix: 'L-fix:',
+           r_message: 'L-rmsg', notes: 'L-notes', problem_one: 'L-one', problem_many: 'L-many' };
+         const run = (check) => {
+           const el = document.createElement('div');
+           document.body.append(el);
+           mod.render(el, check, { labels });
+           const out = {
+             text: el.textContent,
+             status: el.querySelector('[role=\"status\"]').textContent,
+             box: el.querySelector('.sms-check-r')?.getAttribute('aria-label') ?? null,
+             buttons: [...el.querySelectorAll('button')].map((b) => b.textContent)
+           };
+           el.remove();
+           return out;
+         };
+         const fault = { id: 'f', text: 'Broken.', where: { kind: 'link', uid: 'u1', field: 'to' },
+           fixes: [{ label: 'Do it', style: 'primary', event: { type: 'fix', data: {} } }] };
+         return {
+           bad: run({ ok: false, head: 'Head.', lines: [{ mark: 'x', text: 'A' }, { mark: 'i', text: 'B' }],
+                      faults: [fault], notes: ['N'] }),
+           clean: run({ ok: true, head: 'All fine.', lines: [], faults: [], notes: [] })
+         };
+       })()"
+    )
+    expect_match(out$bad$text, "L-error: A", fixed = TRUE)
+    expect_match(out$bad$text, "L-info: B", fixed = TRUE)
+    expect_match(out$bad$text, "L-notes", fixed = TRUE)
+    expect_match(out$bad$text, "L-fix:", fixed = TRUE)
+    expect_identical(out$bad$box, "L-rmsg")
+    expect_identical(unlist(out$bad$buttons), c("L-show", "Do it"))
+    expect_identical(out$bad$status, "1 L-one")
+    expect_identical(out$clean$status, "All fine.")
+    expect_false(grepl("Show|Fix:|Notes|Error|Info|Problems found|stage_map", out$bad$text))
+    expect_false(grepl("Clean|stage_map", out$clean$text))
     expect_studio_clean(app)
   })
 })

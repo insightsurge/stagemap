@@ -112,6 +112,15 @@ studio_ui_top <- function(ns) {
       class = "sms-acts",
       tags$nav(class = "sms-outline", `aria-label` = "Change the map", hidden = NA),
       tags$button(class = "sms-btn", type = "button", `data-sms-start` = "open", "Open map"),
+      # The Map cell of the title block is hidden on a phone; this opener takes its place there (CSS).
+      tags$button(
+        class = "sms-btn sms-phone-map",
+        type = "button",
+        `data-sms-room` = "map",
+        `aria-expanded` = "false",
+        `aria-controls` = ns("room-map"),
+        "Map"
+      ),
       tags$button(class = "sms-btn sms-phone-theme", type = "button", `data-sms-theme` = "toggle", "Light or dark")
     )
   )
@@ -277,7 +286,14 @@ studio_labels <- function() {
     start_confirm = "Confirm",
     stamp_prefix = "The map shows the last version that worked:",
     problem_one = "problem",
-    problem_many = "problems"
+    problem_many = "problems",
+    clean = "Clean",
+    info = "Info:",
+    error = "Error:",
+    show = "Show",
+    fix_prefix = "Fix:",
+    r_message = "R check message",
+    notes = "Notes"
   )
 }
 
