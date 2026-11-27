@@ -352,3 +352,163 @@ describe("the studio's R files", {
     expect_length(found, 0L)
   })
 })
+
+describe("studio_app() when the page reloads or reconnects", {
+  skip_if_not_installed("shiny")
+
+  # The sessions of one app, one after the other, each sending `events` (seq, type, data) from a page: returns what the
+  # messages said and the maps Done gave.
+  visit <- function(app, events, log) {
+    shiny::testServer(app, {
+      for (e in events) {
+        session$setInputs(`studio-event` = event(e$seq, e$type, e$data %||% structure(list(), names = character())))
+      }
+      session$flushReact()
+    })
+    invisible(log)
+  }
+
+  local_app_log <- function(env = parent.frame()) {
+    log <- new.env()
+    log$messages <- list()
+    log$done <- list()
+    local_mocked_bindings(
+      studio_send = function(session, message) log$messages[[length(log$messages) + 1L]] <- message,
+      studio_after = function(seconds, fn) NULL,
+      .env = env
+    )
+    log
+  }
+  last_uid <- function(log) log$messages[[length(log$messages)]]$sections$inspector$uid
+
+  it("continues the work when the app runs for one person: a card added, the connection dropped, then an edit and Done", {
+    log <- local_app_log()
+    app <- studio_app(small, on_done = function(map) log$done[[length(log$done) + 1L]] <- map, stop_when_closed = TRUE)
+    visit(app, list(list(seq = 1L, type = "ready"), list(seq = 2L, type = "add", data = list(table = "cards"))), log)
+    uid <- last_uid(log)
+    expect_match(uid, "^u[0-9]+$")
+
+    # The new session: `ready` numbered at the drop, then what was typed while the connection was down
+    n_before <- length(log$messages)
+    visit(
+      app,
+      list(
+        list(seq = 3L, type = "ready"),
+        list(
+          seq = 4L,
+          type = "edit",
+          data = list(table = "cards", uid = uid, field = "label", value = "Typed while down")
+        ),
+        list(seq = 5L, type = "done")
+      ),
+      log
+    )
+    first <- log$messages[[n_before + 1L]]
+    expect_identical(first$ack, 3L)
+    expect_identical(first$sections$status$problems, 0L)
+    expect_null(first$sections$notice)
+    expect_length(log$done, 1L)
+    cards <- stage_map_tables(log$done[[1L]])$cards
+    expect_identical(nrow(cards), nrow(stage_map_tables(small)$cards) + 1L)
+    expect_true("Typed while down" %in% cards$label)
+  })
+
+  it("shows the work again to a page that reloads, whose events are counted from 1, with nothing lit or selected", {
+    log <- local_app_log()
+    app <- studio_app(small, stop_when_closed = TRUE)
+    visit(
+      app,
+      list(
+        list(seq = 1L, type = "ready"),
+        list(seq = 2L, type = "ask", data = list(question = "trace", ids = "u1")),
+        list(seq = 3L, type = "target", data = list(kind = "card", uid = "u1"))
+      ),
+      log
+    )
+    expect_identical(log$messages[[length(log$messages)]]$sections$inspector$uid, "u1")
+    n_before <- length(log$messages)
+    visit(app, list(list(seq = 1L, type = "ready")), log)
+    reloaded <- log$messages[[n_before + 1L]]
+    expect_identical(reloaded$ack, 1L)
+    expect_identical(reloaded$n, 1L)
+    expect_named(
+      reloaded$sections,
+      c("header", "outline", "inspector", "journal", "start", "status", "notice", "ask", "check", "code", "map", "tour")
+    )
+    expect_true(!is.null(reloaded$sections$ask$answer))
+    expect_null(reloaded$sections$inspector)
+  })
+
+  it("starts every session from the given map when it is hosted, shares nothing, and says so after a drop", {
+    log <- local_app_log()
+    app <- studio_app(small, on_done = function(map) log$done[[length(log$done) + 1L]] <- map)
+    visit(app, list(list(seq = 1L, type = "ready"), list(seq = 2L, type = "add", data = list(table = "cards"))), log)
+    uid <- last_uid(log)
+    first_visit <- log$messages
+    expect_null(first_visit[[1L]]$sections$notice)
+
+    n_before <- length(log$messages)
+    visit(
+      app,
+      list(
+        list(seq = 3L, type = "ready"),
+        list(
+          seq = 4L,
+          type = "edit",
+          data = list(table = "cards", uid = uid, field = "label", value = "Typed while down")
+        ),
+        list(seq = 5L, type = "done")
+      ),
+      log
+    )
+    again <- log$messages[[n_before + 1L]]
+    expect_identical(again$sections$notice$text, studio_restart_notice)
+    expect_identical(again$sections$notice$tone, "problem")
+    expect_match(studio_restart_notice, "The connection was lost; the studio started again", fixed = TRUE)
+    expect_identical(again$sections$journal$entries, list())
+    expect_length(log$done, 1L)
+    expect_identical(nrow(stage_map_tables(log$done[[1L]])$cards), nrow(stage_map_tables(small)$cards))
+
+    # A page loaded afresh (its first `ready`) gets no notice
+    n_before <- length(log$messages)
+    visit(app, list(list(seq = 1L, type = "ready")), log)
+    expect_null(log$messages[[n_before + 1L]]$sections$notice)
+  })
+})
+
+describe("studio_server() and its kept state", {
+  skip_if_not_installed("shiny")
+
+  it("writes the state to `keep` after each step and starts a later session from it", {
+    log <- local_studio_log()
+    keep <- new.env()
+    shiny::testServer(studio_server, args = list(map = small, keep = keep), {
+      expect_null(keep$state)
+      session$setInputs(event = event(1L, "ready"))
+      session$setInputs(event = event(2L, "option", list(name = "title", value = "Kept")))
+      expect_identical(keep$state$doc$args$title, "Kept")
+    })
+    shiny::testServer(studio_server, args = list(map = small, keep = keep), {
+      expect_identical(store()$doc$args$title, "Kept")
+      expect_identical(store()$ack, 0L)
+    })
+    expect_error(studio_server("studio", keep = "env"), "keep")
+  })
+
+  it("resumes a state with the page's own marks cleared and its work kept", {
+    s <- studio_state_new(small)
+    s <- studio_step(s, list(seq = 4L, type = "ask", data = list(question = "orphans"), rev = 0L))$state
+    s <- studio_step(s, list(seq = 5L, type = "target", data = list(kind = "card", uid = "u1"), rev = 0L))$state
+    s <- studio_step(s, list(seq = 6L, type = "option", data = list(name = "title", value = "T2"), rev = 0L))$state
+    s <- studio_next_notice(s, "A notice")
+    resumed <- studio_state_resume(s)
+    expect_identical(resumed$ack, 0L)
+    expect_identical(resumed$target, list(kind = "none", uid = NULL))
+    expect_null(resumed$notice)
+    expect_false(isTRUE(resumed$ask$lit))
+    expect_identical(resumed$doc, s$doc)
+    expect_identical(resumed$journal, s$journal)
+    expect_identical(resumed$notice_n, s$notice_n)
+    expect_error(studio_state_resume(list(1)), "state")
+  })
+})

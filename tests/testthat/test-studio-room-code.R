@@ -246,14 +246,15 @@ describe("studio_room_code_view()", {
       builds <<- builds + 1L
       tokenise(lines)
     })
-    first <- studio_room_code_view(state)
+    cache <- new.env()
+    first <- studio_room_code_view(state, cache)
     expect_identical(builds, 1L)
     picked <- studio_step(
       state,
       list(seq = 1L, type = "target", data = list(kind = "card", uid = "u1"), rev = state$rev)
     )$state
     expect_false(identical(picked$target, state$target))
-    expect_identical(studio_room_code_view(picked), first)
+    expect_identical(studio_room_code_view(picked, cache), first)
     expect_identical(builds, 1L)
 
     # A change to the document, or a question, builds it again
@@ -261,11 +262,33 @@ describe("studio_room_code_view()", {
       picked,
       list(seq = 2L, type = "option", data = list(name = "title", value = "Other"), rev = picked$rev)
     )$state
-    studio_room_code_view(edited)
+    studio_room_code_view(edited, cache)
     expect_identical(builds, 2L)
     edited$ask <- list(question = "trace", call = "sm_trace(map, \"a\")", rev = edited$rev, stale = FALSE, error = NULL)
-    studio_room_code_view(edited)
+    studio_room_code_view(edited, cache)
     expect_identical(builds, 3L)
+  })
+
+  it("keeps the last view for one session only: two sessions do not evict each other's, and no call keeps nothing", {
+    state <- studio_state_new(full_map(title = "Cache"))
+    other <- studio_state_new(full_map(title = "Other"))
+    builds <- 0L
+    tokenise <- code_tokens
+    local_mocked_bindings(code_tokens = function(lines) {
+      builds <<- builds + 1L
+      tokenise(lines)
+    })
+    cache_a <- new.env()
+    cache_b <- new.env()
+    for (i in 1:3) {
+      studio_room_code_view(state, cache_a)
+      studio_room_code_view(other, cache_b)
+    }
+    expect_identical(builds, 2L)
+    studio_room_code_view(state)
+    studio_room_code_view(state)
+    expect_identical(builds, 4L)
+    expect_error(studio_room_code_view(state, list()), "environment")
   })
 
   it("keeps the base's code lines in the state, and renews them when a map is opened", {

@@ -371,6 +371,26 @@ studio_faults <- function(doc) {
   studio_faults_df(acc$rows)
 }
 
+# The one of `candidates` nearest to `value` (text) within two edits, or NULL. Ids are short: a value or candidate of
+# more than 200 characters is not compared, and a candidate whose length differs by more than two cannot be within two
+# edits, so utils::adist() (quadratic in the lengths) never runs on a long text.
+studio_nearest <- function(value, candidates) {
+  checkmate::assert_string(value, na.ok = TRUE)
+  checkmate::assert_character(candidates)
+  longest <- 200L
+  if (is.na(value) || nchar(value) > longest) {
+    return(NULL)
+  }
+  lengths <- nchar(candidates)
+  candidates <- candidates[!is.na(lengths) & lengths <= longest & abs(lengths - nchar(value)) <= 2L]
+  if (length(candidates) == 0L) {
+    return(NULL)
+  }
+  dists <- as.numeric(utils::adist(value, candidates)[1L, ])
+  best_idx <- which.min(dists)
+  if (dists[[best_idx]] <= 2) candidates[[best_idx]] else NULL
+}
+
 # Offers fixes (`free`, `use`, `add`, `remove`, `clear`) for a single fault (1-row data frame or named list), each as a
 # change with a `label`.
 studio_fixes <- function(doc, fault) {
@@ -420,10 +440,8 @@ studio_fixes <- function(doc, fault) {
     known_statuses <- stage_map_status_ids(doc$tables)
     known_statuses <- known_statuses[!is.na(known_statuses) & nzchar(trimws(known_statuses))]
     if (!is.na(fault$value) && length(known_statuses) > 0L) {
-      dists <- as.numeric(utils::adist(fault$value, known_statuses)[1L, ])
-      best_idx <- which.min(dists)
-      if (dists[[best_idx]] <= 2) {
-        best <- known_statuses[[best_idx]]
+      best <- studio_nearest(fault$value, known_statuses)
+      if (!is.null(best)) {
         fixes$use <- list(
           label = sprintf("Use \"%s\"", best),
           verb = "Fix",
@@ -464,10 +482,8 @@ studio_fixes <- function(doc, fault) {
         candidates <- intersect(candidates, as_text(doc$args$highlight$ids))
       }
       if (length(candidates) > 0L) {
-        dists <- as.numeric(utils::adist(fault$value, candidates)[1L, ])
-        best_idx <- which.min(dists)
-        if (dists[[best_idx]] <= 2) {
-          best <- candidates[[best_idx]]
+        best <- studio_nearest(fault$value, candidates)
+        if (!is.null(best)) {
           use_ops <- if (identical(fault$table, "args")) {
             if (fault$field %in% c("target", "variant")) {
               list(list(op = "arg", name = fault$field, value = best))

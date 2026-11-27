@@ -16,6 +16,23 @@ describe("code_string()", {
     expect_identical(eval(parse(text = paste0("c(", paste(code_string(x), collapse = ", "), ")"))), x)
   })
 
+  it("writes the bidirectional controls as \\u escapes that parse and read back as the same text", {
+    withr::local_locale(c(LC_CTYPE = "en_US.UTF-8"))
+    skip_if(!l10n_info()[["UTF-8"]], "no UTF-8 locale here")
+    controls <- c(0x061CL, 0x200EL, 0x200FL, 0x202AL:0x202EL, 0x2066L:0x2069L)
+    x <- vapply(controls, function(code) paste0("a", intToUtf8(code), "b"), "")
+    written <- code_string(x)
+    expect_false(any(grepl("[^ -~]", written)))
+    expect_identical(written[[4L]], "\"a\\u202ab\"")
+    expect_identical(eval(parse(text = paste0("c(", paste(written, collapse = ", "), ")"), encoding = "UTF-8")), x)
+    # The other odd strings still read back with them
+    odd <- c("a\\b", "say \"hi\"", "one\ntwo", "caf\u00e9", paste0("x", intToUtf8(0x2066), "\n\"", intToUtf8(0x202E)))
+    expect_identical(
+      eval(parse(text = paste0("c(", paste(code_string(odd), collapse = ", "), ")"), encoding = "UTF-8")),
+      odd
+    )
+  })
+
   it("leaves letters beyond ASCII as they are, and writes NA bare", {
     expect_identical(code_string(c("caf\u00e9", NA)), c("\"caf\u00e9\"", "NA"))
   })

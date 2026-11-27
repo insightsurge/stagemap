@@ -444,6 +444,10 @@ describe("studio_view_journal()", {
     expect_identical(entries[[1L]]$verb, "Edit")
     expect_identical(entries[[1L]]$state, "done")
 
+    # An entry without a target has no target key, and no key named NA
+    plain <- studio_view_journal(list(list(n = 1L, verb = "Edit", text = "t", state = "done")))
+    expect_named(plain[[1L]], c("n", "verb", "text", "state"))
+
     s_rm <- studio_step(
       s,
       list(seq = 2L, type = "remove", data = list(table = "cards", uid = "u1"), rev = s$rev)

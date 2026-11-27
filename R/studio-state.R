@@ -91,6 +91,32 @@ studio_state_new <- function(map = NULL) {
   studio_tour_tick(state)
 }
 
+# The state a new session starts from when it continues the work of an earlier one (a reload or a reconnect of the app
+# that stage_map_studio() runs): the document, journal, question and tour stay. The page counts its events again, so the
+# count of the last event applied starts at 0; what the new page's map shows (a selection, lit cards) and a notice
+# were the old page's, so they are cleared.
+studio_state_resume <- function(state) {
+  checkmate::assert_list(state, names = "unique")
+  studio_assert_doc(state$doc, "state$doc")
+  state$ack <- 0L
+  state$target <- list(kind = "none", uid = NULL)
+  state["notice"] <- list(NULL)
+  state["confirm_open"] <- list(NULL)
+  if (!is.null(state$ask)) {
+    state$ask$lit <- FALSE
+  }
+  state
+}
+
+# The highlight effect that takes an answer's lit cards off the map: it sets the map back to the cards and links the
+# document itself highlights (`stage_map_highlight()` on the map the studio opened), or to none when it has none.
+studio_unlight_effect <- function(state) {
+  checkmate::assert_list(state, names = "unique")
+  studio_assert_doc(state$doc, "state$doc")
+  hl <- state$doc$args$highlight
+  list(type = "highlight", ids = as.character(hl$ids %||% character()), links = hl$links)
+}
+
 # Sets `state$notice` with a monotonically rising notice number across the session.
 studio_next_notice <- function(state, text, tone = "info", room = NULL) {
   checkmate::assert_list(state, names = "unique")
@@ -406,7 +432,7 @@ studio_step <- function(state, event) {
     }
     # The map is drawn again; a card that is lit and still exists would stay lit with no answer to clear it.
     if (isTRUE(state$ask$lit)) {
-      effects[[length(effects) + 1L]] <- list(type = "highlight", ids = character(), links = NULL)
+      effects[[length(effects) + 1L]] <- studio_unlight_effect(opened)
     }
     state <- opened
   } else if (checked$type %in% names(studio_events())) {
@@ -521,7 +547,7 @@ studio_step <- function(state, event) {
       state$ask$stale <- TRUE
       if (was_lit) {
         state$ask$lit <- FALSE
-        effects[[length(effects) + 1L]] <- list(type = "highlight", ids = character(), links = NULL)
+        effects[[length(effects) + 1L]] <- studio_unlight_effect(state)
       }
     }
   }

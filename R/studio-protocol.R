@@ -23,11 +23,11 @@ studio_event_types <- list(
 )
 
 # The event `event` as the page sent it (`{seq, type, data, rev}`), checked: a list with a whole `seq` from 1, a `type`
-# from studio_event_types, a `data` list that names every field the type needs, and a whole `rev` from 0. Returns the
-# event with `seq` and `rev` as integers and `data` as a list, or stops with an error of class `stagemap_error_studio`
-# that says what is wrong. Shiny reads the page's JSON without simplifying it, so `{}` arrives as an empty list and a
-# number may arrive as a double. It takes anything on purpose (the page's value, unread): checking it is its whole work,
-# and a bad event must end as this class, not as a checkmate error.
+# from studio_event_types, a `data` list with every name given and none repeated that holds every field the type needs,
+# and a whole `rev` from 0. Returns the event with `seq` and `rev` as integers and `data` as a list, or stops with an
+# error of class `stagemap_error_studio` that says what is wrong. Shiny reads the page's JSON without simplifying it,
+# so `{}` arrives as an empty list and a number may arrive as a double. It takes anything on purpose (the page's value,
+# unread): checking it is its whole work, and a bad event must end as this class, not as a checkmate error.
 studio_event_check <- function(event) {
   problem <- studio_event_problem(event)
   if (!is.null(problem)) {
@@ -57,7 +57,7 @@ studio_event_problem <- function(event) {
   checks <- list(
     seq = checkmate::check_int(event$seq, lower = 1),
     type = if (!checkmate::test_choice(event$type, names(studio_event_types))) "It is not an event the studio knows.",
-    data = checkmate::check_list(event$data),
+    data = checkmate::check_list(event$data, names = "unique"),
     rev = checkmate::check_int(event$rev, lower = 0)
   )
   bad <- !vapply(checks, function(check) isTRUE(check) || is.null(check), logical(1))

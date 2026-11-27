@@ -152,7 +152,7 @@ export function createStore(root, boot, tools) {
     return () => listeners.delete(listener);
   }
 
-  /* The connection dropped. The next session starts from nothing and its server steps no event before `ready`, so the
+  /* The connection dropped. The next session has none of this page's events and its server steps no event before `ready`, so the
      `ready` that asks for everything is numbered now, once for the gap: every event typed from here on has a higher
      seq, and the answer to `ready` cannot acknowledge an edit the new session has not applied. It does not flush held
      text first, which would number that text ahead of it. */

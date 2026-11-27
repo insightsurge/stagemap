@@ -98,24 +98,23 @@ studio_csv_text <- function(tbl) {
   out
 }
 
-# The last view built by studio_room_code_view() and the inputs it was built from.
-studio_code_view_last <- new.env(parent = emptyenv())
-
 # The `code` section of the studio view: tokenised lines marked against `state$base`, copy text, problem note, and
-# download descriptors for the `.R` script and each table the document has.
-studio_room_code_view <- function(state) {
+# download descriptors for the `.R` script and each table the document has. The view is built on every store change,
+# such as a pick of a card, and a large map takes long to tokenise: `cache` is the environment of one session, which
+# keeps the last view and the inputs it was built from, and the view is reused while nothing it reads has changed. The
+# default is an environment of its own, so a call with no `cache` keeps nothing.
+studio_room_code_view <- function(state, cache = new.env(parent = emptyenv())) {
   checkmate::assert_list(state, names = "unique")
   studio_assert_doc(state$doc, "state$doc")
   studio_assert_doc(state$base, "state$base")
-  # The view is built on every store change, such as a pick of a card, and a large map takes long to tokenise: the
-  # last view is kept and reused while nothing it reads has changed.
+  checkmate::assert_environment(cache)
   key <- list(state$doc, state$base, state$base_code, state$ask, state$rev, isTRUE(state$check$ok))
-  if (identical(studio_code_view_last$key, key)) {
-    return(studio_code_view_last$view)
+  if (identical(cache$key, key)) {
+    return(cache$view)
   }
   view <- studio_room_code_view_build(state)
-  studio_code_view_last$key <- key
-  studio_code_view_last$view <- view
+  cache$key <- key
+  cache$view <- view
   view
 }
 

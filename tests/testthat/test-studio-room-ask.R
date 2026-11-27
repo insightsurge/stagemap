@@ -430,3 +430,94 @@ describe("studio_room_ask_step() and studio_room_ask_clear()", {
     expect_error(studio_room_ask_view(list(1)), "state")
   })
 })
+
+describe("the answer's unlight", {
+  lit_map <- stage_map_highlight(full_map(), c("a", "b"))
+  own <- list(type = "highlight", ids = c("a", "b"), links = NULL)
+
+  it("sets the map back to the highlight the document carries, in every path that unlights", {
+    s <- studio_state_new(lit_map)
+    expect_identical(s$doc$args$highlight$ids, c("a", "b"))
+
+    # A question with no cards in its answer lights none, and the map keeps its own highlight
+    orphans <- studio_step(s, ev_ask(1L, list(question = "orphans")))
+    expect_identical(nrow(orphans$state$ask$rows), 0L)
+    expect_identical(orphans$effects[[1L]], own)
+
+    # A lit answer, then clear
+    lit <- studio_step(s, ev_ask(2L, list(question = "trace", ids = "u3")))
+    expect_true(lit$state$ask$lit)
+    expect_identical(lit$effects[[1L]]$ids, c("c", "d"))
+    cleared <- studio_step(lit$state, list(seq = 3L, type = "ask_clear", data = list(), rev = 0L))
+    expect_identical(cleared$effects[[1L]], own)
+
+    # An error answer
+    failed <- studio_step(s, ev_ask(4L, list(question = "trace", ids = "u999")))
+    expect_identical(failed$effects[[1L]], own)
+
+    # An edit while an answer is lit: the document's highlight, not none
+    edited <- studio_step(
+      lit$state,
+      list(seq = 5L, type = "edit", data = list(table = "cards", uid = "u3", field = "label", value = "X"), rev = 0L)
+    )
+    expect_false(edited$state$ask$lit)
+    expect_identical(edited$effects[[1L]], own)
+
+    # Opening the given map while an answer is lit
+    opened <- studio_step(
+      lit$state,
+      list(seq = 6L, type = "open", data = list(template = "given", confirm = TRUE), rev = 0L)
+    )
+    expect_identical(opened$effects[[1L]], own)
+  })
+
+  it("keeps the links of the document's highlight too, and unlights to none when it has none", {
+    linked <- stage_map_highlight(full_map(), c("a", "b"), links = data.frame(from = "a", to = "b"))
+    s <- studio_state_new(linked)
+    unlit <- studio_unlight_effect(s)
+    expect_identical(unlit$ids, c("a", "b"))
+    expect_identical(unlit$links$from, "a")
+    expect_identical(
+      studio_unlight_effect(studio_state_new(small_map)),
+      list(type = "highlight", ids = character(), links = NULL)
+    )
+    expect_error(studio_unlight_effect(list(1)), "state")
+  })
+})
+
+describe("a distance too large for an integer", {
+  it("is refused as an answer instead of ending the session", {
+    s <- studio_state_new(small_map)
+    for (big in list(2147483648, 3e9, "3000000000", 1e10, Inf, "Inf")) {
+      step <- studio_step(s, ev_ask(1L, list(question = "trace", ids = "u1", max_distance = big)))
+      view <- studio_view(step$state)
+      if (is.infinite(as.numeric(big))) {
+        expect_null(step$state$ask$error)
+      } else {
+        expect_match(step$state$ask$error$head, "whole number")
+        expect_identical(view$ask$answer$error, step$state$ask$error)
+      }
+    }
+    expect_true(is.list(studio_view(
+      studio_step(s, ev_ask(1L, list(question = "trace", ids = "u1", max_distance = 2147483647)))$state
+    )))
+    expect_identical(studio_ask_resolve_distance(2147483647), 2147483647)
+    expect_identical(studio_ask_resolve_distance("2"), 2)
+    expect_identical(studio_ask_resolve_distance(Inf), Inf)
+    for (bad in list(-1, 1.5, 3e9, -Inf, NaN, "abc", TRUE)) {
+      expect_error(studio_ask_resolve_distance(bad), "whole number", class = "stagemap_error_arg")
+    }
+  })
+
+  it("is written in full in the head sentence, whatever its size", {
+    s <- studio_step(
+      studio_state_new(small_map),
+      ev_ask(1L, list(question = "trace", ids = "u1", max_distance = 1))
+    )$state
+    expect_match(studio_ask_head(s$ask, s$doc), "within 1 step$")
+    s$ask$max_distance <- 3e9
+    expect_match(studio_ask_head(s$ask, s$doc), "within 3000000000 steps$")
+    s$ask$max_distance <- 2
+    expect_match(studio_ask_head(s$ask, s$doc), "within 2 steps$")
+  })
+})

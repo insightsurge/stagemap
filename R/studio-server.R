@@ -6,15 +6,20 @@
 # The server of the studio module `id`, opened on `map` (NULL for the built-in example map). Events reach it in the
 # order they were sent, `ready` first, so the `ack` of an answer is the last event the server has applied. `on_done` is
 # called with the map once Done has been answered on the page. `options` are the page's settings (studio_options());
-# the server checks them and the page reads them from the boot JSON.
-studio_server <- function(id, map = NULL, on_done = shiny::stopApp, options = list()) {
+# the server checks them and the page reads them from the boot JSON. `keep` is NULL for a hosted app: every session
+# starts from `map`, no state passes from one session to the next, and a `ready` that comes from a page that was loaded
+# before (its connection dropped) gets a notice that the studio started again. With an environment (the app that
+# stage_map_studio() runs for one person) the last state is kept in `keep$state`, and a new session, from a reload or a
+# reconnect, starts from it and continues the work.
+studio_server <- function(id, map = NULL, on_done = shiny::stopApp, options = list(), keep = NULL) {
   checkmate::assert_string(id, min.chars = 1L)
   checkmate::assert_class(map, "stagemap_widget", null.ok = TRUE)
   checkmate::assert_function(on_done)
   studio_options(options)
+  checkmate::assert_environment(keep, null.ok = TRUE)
   rlang::check_installed("shiny")
   shiny::moduleServer(id, function(input, output, session) {
-    first <- studio_state_new(map)
+    first <- if (is.null(keep) || is.null(keep$state)) studio_state_new(map) else studio_state_resume(keep$state)
     store <- shiny::reactiveVal(first)
     drawn_map <- shiny::reactiveVal(first$good$map)
     # What the server has told the page: the view of the last message, the count of messages, whether the page has
@@ -24,12 +29,17 @@ studio_server <- function(id, map = NULL, on_done = shiny::stopApp, options = li
     outbox$n <- 0L
     outbox$ready <- FALSE
     outbox$done <- list()
+    # The code room's last view: kept for this session only, so it goes with the session.
+    code_cache <- new.env(parent = emptyenv())
     proxy <- stage_map_proxy("map", session)
 
     step <- function(fn) {
       prev <- shiny::isolate(store())
       result <- fn(prev)
       store(result$state)
+      if (!is.null(keep)) {
+        keep$state <- result$state
+      }
       if (!identical(result$state$good$serial, prev$good$serial)) {
         drawn_map(result$state$good$map)
       }
@@ -65,7 +75,15 @@ studio_server <- function(id, map = NULL, on_done = shiny::stopApp, options = li
         outbox$ready <- TRUE
         outbox$view <- NULL
       }
-      step(function(state) studio_step(state, event))
+      step(function(state) {
+        res <- studio_step(state, event)
+        # A `ready` numbered above 1 comes from a page whose connection dropped: this session is new, and when it
+        # started from the map it opened with, the person is told.
+        if (is_ready && is.null(keep) && checkmate::test_int(event$seq, lower = 2)) {
+          res$state <- studio_next_notice(res$state, studio_restart_notice, tone = "problem")
+        }
+        res
+      })
     })
 
     shiny::observe({
@@ -73,7 +91,7 @@ studio_server <- function(id, map = NULL, on_done = shiny::stopApp, options = li
       if (!outbox$ready) {
         return()
       }
-      view <- studio_view(state)
+      view <- studio_view(state, code_cache)
       outbox$n <- outbox$n + 1L
       message <- c(
         list(ns = session$ns(""), n = outbox$n, ack = state$ack, rev = state$rev),
@@ -118,6 +136,9 @@ studio_server <- function(id, map = NULL, on_done = shiny::stopApp, options = li
     }
   })
 }
+
+# What the page is told when its connection dropped and the new session started from the map the studio opened with.
+studio_restart_notice <- "The connection was lost; the studio started again from the map it opened with."
 
 # Sends `message` to the page. The only call to sendCustomMessage() for the studio, so a test can record what is sent.
 studio_send <- function(session, message) {

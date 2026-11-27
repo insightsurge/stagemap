@@ -686,3 +686,39 @@ describe("studio_faults() and studio_fixes()", {
     expect_error(studio_fixes(doc, "fault"), "fault")
   })
 })
+
+describe("studio_nearest() and long ids", {
+  it("finds the nearest candidate within two edits, the first of equals, and none beyond", {
+    expect_identical(studio_nearest("draf", c("review", "draft", "drafts")), "draft")
+    expect_identical(studio_nearest("abc", c("abd", "abe")), "abd")
+    expect_null(studio_nearest("draft", c("review", "ship")))
+    expect_null(studio_nearest(NA_character_, "a"))
+    expect_null(studio_nearest("a", character()))
+  })
+
+  it("does not compare a text of more than 200 characters, nor one whose length is too different", {
+    long <- strrep("a", 30000L)
+    expect_null(studio_nearest(strrep("a", 201L), strrep("a", 200L)))
+    expect_null(studio_nearest(strrep("a", 200L), strrep("a", 201L)))
+    expect_identical(studio_nearest(strrep("a", 200L), c(strrep("a", 199L), "b")), strrep("a", 199L))
+    expect_null(studio_nearest(long, c(long, paste0(long, "x"))))
+    expect_identical(studio_nearest("abc", c("abd", strrep("z", 300L))), "abd")
+  })
+
+  it("builds the view of a map whose stage id is 50,000 characters long", {
+    long <- strrep("a", 50000L)
+    m <- stage_map(
+      data.frame(id = c("a", "b"), label = c("A", "B"), stage = c("s1", "s2"), lane = "l"),
+      data.frame(id = c("s1", "s2"), label = c("S1", "S2")),
+      title = "t"
+    )
+    s <- studio_state_new(m)
+    st <- s$doc$tables$stages$.studio_uid
+    cu <- s$doc$tables$cards$.studio_uid
+    ev <- function(seq, data) list(seq = seq, type = "edit", data = data, rev = 0L)
+    s <- studio_step(s, ev(1L, list(table = "stages", uid = st[[2]], field = "id", value = paste0(long, "x"))))$state
+    s <- studio_step(s, ev(2L, list(table = "cards", uid = cu[[1]], field = "stage", value = paste0(long, "y"))))$state
+    expect_gt(nrow(s$check$faults), 0L)
+    expect_true(is.list(studio_view(s)))
+  })
+})

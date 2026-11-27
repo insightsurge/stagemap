@@ -2,18 +2,21 @@
 # The server sends only the sections that changed (studio_message()). Rooms register their view builders in
 # `studio_rooms` so each room is owned by its own file.
 
-# Registered rooms and their view builders; studio_view() calls each with `state`.
+# Registered rooms and their view builders; studio_view() calls each with `state`, and with the session's `cache` when
+# the room is marked `cached`.
 studio_rooms <- list(
   ask = list(view = studio_room_ask_view),
   check = list(view = studio_room_check_view),
-  code = list(view = studio_room_code_view),
+  code = list(view = studio_room_code_view, cached = TRUE),
   map = list(view = studio_room_map_view),
   tour = list(view = studio_tour_view)
 )
 
-# The view of `state`: every core section and every registered room section.
-studio_view <- function(state) {
+# The view of `state`: every core section and every registered room section. `cache` is an environment of the session
+# that asks, where a room keeps what it can reuse; the default keeps nothing past the call.
+studio_view <- function(state, cache = new.env(parent = emptyenv())) {
   checkmate::assert_list(state, names = "unique")
+  checkmate::assert_environment(cache)
   title <- state$doc$args$title %||% ""
   core <- list(
     header = list(title = title, facts = studio_facts(state$doc), template = state$template),
@@ -32,7 +35,9 @@ studio_view <- function(state) {
     ),
     notice = state$notice
   )
-  rooms <- lapply(studio_rooms, function(room) room$view(state))
+  rooms <- lapply(studio_rooms, function(room) {
+    if (isTRUE(room$cached)) room$view(state, cache) else room$view(state)
+  })
   c(core, rooms)
 }
 
@@ -967,7 +972,8 @@ studio_view_journal <- function(journal, doc = NULL) {
     journal <- utils::tail(journal, 50L)
   }
   lapply(journal, function(entry) {
-    out <- entry[c("n", "verb", "text", "state", "target")]
+    out <- entry[c("n", "verb", "text", "state")]
+    out$target <- entry$target
     if (!is.null(doc) && !is.null(out$target)) {
       tbl_name <- studio_target_table(out$target$kind)
       if (is.null(tbl_name) || is.null(studio_row(doc, tbl_name, out$target$uid))) {

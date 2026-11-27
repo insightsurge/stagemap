@@ -40,7 +40,7 @@ describe("studio_ui()", {
   it("writes a boot JSON with the words, the settings and the engine's event names", {
     boot_text <- sub(".*<script type=\"application/json\" class=\"sms-boot\">(.*?)</script>.*", "\\1", html)
     boot <- jsonlite::fromJSON(boot_text, simplifyVector = FALSE)
-    expect_named(boot, c("labels", "copy_wait_ms", "hold_ms", "events", "done"))
+    expect_named(boot, c("labels", "copy_wait_ms", "hold_ms", "events"))
     expect_identical(boot$copy_wait_ms, 5000L)
     expect_identical(boot$hold_ms, 450L)
     expect_identical(boot$events, list(select = "stagemap:select", hover = "stagemap:hover"))

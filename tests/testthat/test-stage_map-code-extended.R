@@ -45,6 +45,23 @@ describe("stage_map_code() on many maps", {
     expect_identical(stage_map_tables(run_code(stage_map_code(map)))$cards$label, labels)
   })
 
+  it("rebuilds labels with bidirectional controls and the other odd strings, in a UTF-8 locale", {
+    utf8_locale <- withr::with_locale(c(LC_CTYPE = "en_US.UTF-8"), isTRUE(l10n_info()[["UTF-8"]]))
+    skip_if_not(utf8_locale, "the en_US.UTF-8 locale is not available")
+    withr::local_locale(c(LC_CTYPE = "en_US.UTF-8"))
+    labels <- c(
+      "say \"yes\"",
+      "back\\slash",
+      "two\nlines",
+      paste0("a", intToUtf8(0x2066), "b"),
+      paste0("c", intToUtf8(0x202E), "d", intToUtf8(0x200F))
+    )
+    map <- stage_map(data.frame(id = letters[1:5], label = labels, stage = "s", lane = "l"))
+    expect_no_error(parse(text = stage_map_code(map), encoding = "UTF-8"))
+    expect_code_rebuilds(map)
+    expect_identical(stage_map_tables(run_code(stage_map_code(map)))$cards$label, labels)
+  })
+
   it("writes the same code in a C locale as in a UTF-8 one", {
     map <- stage_map(data.frame(id = "a", label = "caf\u00e9 \u00fcber", stage = "s", lane = "l"))
     utf8_locale <- withr::with_locale(c(LC_CTYPE = "en_US.UTF-8"), isTRUE(l10n_info()[["UTF-8"]]))
