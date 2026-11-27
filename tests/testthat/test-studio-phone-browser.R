@@ -63,8 +63,9 @@ guide_open <- function(app) {
   )
 }
 
-# How far the studio reaches past the screen's width: the sheet's scroll width, the dock, and the right edge of each
-# part of the page of its own.
+# How far the studio reaches past the screen's width: the sheet's scroll width, the whole page's (a sideways scrollbar
+# on the page takes height off the studio where scrollbars are classic), the dock, and the right edge of each part of the
+# page of its own.
 overflow <- function(app) {
   app$wait_for_js("document.getAnimations().length === 0")
   jsonlite::fromJSON(
@@ -74,7 +75,7 @@ overflow <- function(app) {
          const sheet = document.querySelector('.sms-sheet');
          const parts = ['.sms-top', '.sms-journal', '.sms-paper', '.sms-hint', '.sms-block', '.sms-tray', '.sms-inspector']
            .map((s) => document.querySelector(s)).filter((el) => el && getComputedStyle(el).display !== 'none' && !el.hidden);
-         return { sheet: sheet.scrollWidth - sheet.clientWidth, root: document.querySelector('.sms').scrollWidth - w,
+         return { sheet: sheet.scrollWidth - sheet.clientWidth, page: document.documentElement.scrollWidth - w, root: document.querySelector('.sms').scrollWidth - w,
                   right: Math.max(0, ...parts.map((el) => el.getBoundingClientRect().right - w)),
                   left: Math.min(0, ...parts.map((el) => el.getBoundingClientRect().left)) };
        })())"
@@ -85,6 +86,7 @@ overflow <- function(app) {
 expect_no_sideways <- function(app, info = "") {
   o <- overflow(app)
   expect_lte(o$sheet, 0, label = paste("sheet overflow", info))
+  expect_lte(o$page, 0, label = paste("page overflow", info))
   expect_lte(o$root, 0, label = paste("root overflow", info))
   expect_lte(o$right, 0.5, label = paste("right edge", info))
   expect_gte(o$left, -0.5, label = paste("left edge", info))
@@ -104,6 +106,12 @@ describe("the studio on a phone", {
       expect_true(app$get_js("getComputedStyle(document.querySelector('.sms-phone-theme')).display !== 'none'"))
       expect_identical(app$get_js("getComputedStyle(document.querySelector('.sms-block .sms-theme')).display"), "none")
       expect_no_sideways(app, width)
+      # Wide fonts (Verdana, or DejaVu Sans on Linux): a reader's own font can be wider than this machine's
+      app$run_js(
+        "document.querySelector('.sms').style.setProperty('--_stagemap-studio-font', 'Verdana, \"DejaVu Sans\", sans-serif')"
+      )
+      expect_no_sideways(app, paste(width, "with a wide font"))
+      app$run_js("document.querySelector('.sms').style.removeProperty('--_stagemap-studio-font')")
 
       # Map opens from the header
       click_now(app, ".sms-phone-map")

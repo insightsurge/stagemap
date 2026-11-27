@@ -197,6 +197,7 @@ studio_count_shim <- function() {
     "  window.ResizeObserver = wrapTargetObserver(window.ResizeObserver);",
     "  window.IntersectionObserver = wrapTargetObserver(window.IntersectionObserver);",
     "  const origSetTimeout = window.setTimeout.bind(window);",
+    "  window.__smsRawTimeout = origSetTimeout;",
     "  const origClearTimeout = window.clearTimeout.bind(window);",
     "  const origSetInterval = window.setInterval.bind(window);",
     "  const origClearInterval = window.clearInterval.bind(window);",
@@ -231,6 +232,24 @@ studio_count_shim <- function() {
     "      total += count;",
     "    }",
     "    return total;",
+    "  };",
+    "  window.__smsDump = () => {",
+    "    const out = {};",
+    "    for (const ref of tracked) {",
+    "      const target = ref.deref();",
+    "      if (!target || (target instanceof Node && !target.isConnected)) continue;",
+    "      const byType = targetMap.get(target);",
+    "      if (!byType) continue;",
+    "      const name = target === window ? 'window' : target === document ? 'document'",
+    "        : (target.tagName || '?') + (target.id ? '#' + target.id : '') +",
+    "          (typeof target.className === 'string' && target.className ? '.' + target.className.split(' ')[0] : '');",
+    "      for (const [type, byCapture] of byType) {",
+    "        let n = 0;",
+    "        for (const byListener of byCapture.values()) n += byListener.size;",
+    "        if (n > 0) out[name + ' ' + type] = (out[name + ' ' + type] || 0) + n;",
+    "      }",
+    "    }",
+    "    return out;",
     "  };",
     "  window.__smsCounts = () => ({",
     "    listeners: liveListeners(),",
@@ -852,6 +871,45 @@ expect_studio_clean <- function(app, closed = FALSE, ignore = NULL) {
 }
 
 # Reads the live counts of listeners, observers, pending timers and DOM nodes from the page shim.
+# Where the live listeners are, as a named integer vector ("target type" -> count), for saying what grew.
+studio_listener_map <- function(dump) {
+  checkmate::assert_list(dump, names = "named")
+  unlist(dump)
+}
+
+# What grew between two snapshots: one line per "target type" whose listener count differs.
+studio_growth <- function(before, after) {
+  b <- studio_listener_map(before$dump)
+  a <- studio_listener_map(after$dump)
+  keys <- union(names(a), names(b))
+  grown <- vapply(keys, function(k) (if (k %in% names(a)) a[[k]] else 0L) - (if (k %in% names(b)) b[[k]] else 0L), 0)
+  grown <- grown[grown != 0]
+  if (length(grown) == 0L) {
+    "no listener target changed"
+  } else {
+    paste0(names(grown), ": ", sprintf("%+d", as.integer(grown)))
+  }
+}
+
+# The counts and where the listeners are, read in one task of the page once no timer is pending, so no timer can start
+# between "the page is quiet" and "count it". It waits in the page with the browser's own timer, which the shim does
+# not count, for at most `browser_timeout`.
+studio_snapshot <- function(app) {
+  checkmate::assert_r6(app, "AppDriver")
+  app$get_js(sprintf(
+    "new Promise((resolve) => {
+       const started = performance.now();
+       const look = () => {
+         const counts = window.__smsCounts();
+         if (counts.timers === 0 || performance.now() - started > %d) resolve({ counts, dump: window.__smsDump() });
+         else window.__smsRawTimeout(look, 20);
+       };
+       look();
+     })",
+    as.integer(browser_timeout)
+  ))
+}
+
 studio_counts <- function(app) {
   checkmate::assert_r6(app, "AppDriver")
   counts <- app$get_js("window.__smsCounts()")

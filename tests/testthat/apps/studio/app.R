@@ -32,8 +32,20 @@ options <- list(copy_wait_ms = as.integer(copy_wait))
 ui <- function(request) {
   tagList(
     studio_ui("studio", options),
-    tags$pre(id = "done_seen", class = "test-done", textOutput("done", inline = TRUE)),
-    tags$pre(id = "map_state_seen", class = "test-map-state", textOutput("map_state", inline = TRUE))
+    # The two readouts wrap: a long line would make the page itself wider than a phone screen, and with classic
+    # scrollbars the sideways scrollbar takes 15px off the height the studio fills.
+    tags$pre(
+      id = "done_seen",
+      class = "test-done",
+      style = "white-space: pre-wrap; overflow-wrap: anywhere;",
+      textOutput("done", inline = TRUE)
+    ),
+    tags$pre(
+      id = "map_state_seen",
+      class = "test-map-state",
+      style = "white-space: pre-wrap; overflow-wrap: anywhere;",
+      textOutput("map_state", inline = TRUE)
+    )
   )
 }
 

@@ -384,11 +384,13 @@ describe("the studio leak count", {
       click_now(app, "[data-sms-close='check']")
       studio_emulate(app, "width", 1280L)
     }
-    round()
+    # A few rounds first: what the page sets up once, on first use, is not a leak
+    for (i in seq_len(3L)) {
+      round()
+    }
     studio_wait_step(app)
     app$wait_for_js("document.querySelector('.sms-toast').dataset.smsOn === undefined")
-    app$wait_for_js("window.__smsCounts().timers === 0")
-    before <- studio_counts(app)
+    before <- studio_snapshot(app)
 
     for (i in seq_len(30L)) {
       round()
@@ -396,12 +398,12 @@ describe("the studio leak count", {
 
     studio_wait_step(app)
     app$wait_for_js("document.querySelector('.sms-toast').dataset.smsOn === undefined")
-    app$wait_for_js("window.__smsCounts().timers === 0")
-    after <- studio_counts(app)
-    expect_identical(after$listeners, before$listeners)
-    expect_identical(after$observers, before$observers)
-    expect_identical(after$timers, before$timers)
-    expect_identical(after$nodes, before$nodes)
+    after <- studio_snapshot(app)
+    grown <- paste(studio_growth(before, after), collapse = "; ")
+    expect_identical(after$counts$listeners, before$counts$listeners, info = grown)
+    expect_identical(after$counts$observers, before$counts$observers)
+    expect_identical(after$counts$timers, before$counts$timers)
+    expect_identical(after$counts$nodes, before$counts$nodes)
     expect_studio_clean(app)
   })
 })
