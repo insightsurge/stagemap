@@ -69,4 +69,27 @@ describe("the studio journal and undo", {
     expect_identical(app$get_js("document.querySelector('.sms-inspector .sms-insp-sub').textContent"), "card")
     expect_studio_clean(app)
   })
+
+  it("keeps Undo aria-disabled without aria-busy after the last undo, and keeps focus on Undo", {
+    app <- studio_driver("small")
+    since1 <- studio_stamp(app)
+    studio_do(app, studio_click_js("[data-sms-action='+ Card']"))
+    studio_wait_map(app, since1)
+
+    app$run_js("document.querySelector('.sms-undo').focus()")
+    since2 <- studio_stamp(app)
+    studio_press(app, "Enter", key_code = 13L)
+    studio_wait_step(app)
+    studio_wait_map(app, since2)
+
+    undo <- app$get_js(
+      "({ disabled: document.querySelector('.sms-undo').getAttribute('aria-disabled'),
+          busy: document.querySelector('.sms-undo').getAttribute('aria-busy'),
+          focused: document.activeElement?.classList?.contains('sms-undo') ?? false })"
+    )
+    expect_identical(undo$disabled, "true")
+    expect_null(undo$busy)
+    expect_true(undo$focused)
+    expect_studio_clean(app)
+  })
 })

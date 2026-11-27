@@ -117,4 +117,22 @@ describe("the studio header and outline", {
     expect_identical(app$get_js("document.activeElement.dataset.smsMenu"), "lanes")
     expect_studio_clean(app)
   })
+
+  it("keeps the card target in the inspector after add, Undo, add", {
+    app <- studio_driver("small")
+    since1 <- studio_stamp(app)
+    studio_do(app, studio_click_js("[data-sms-action='+ Card']"))
+    studio_wait_map(app, since1)
+
+    since2 <- studio_stamp(app)
+    studio_do(app, studio_click_js(".sms-undo"))
+    studio_wait_map(app, since2)
+
+    since3 <- studio_stamp(app)
+    studio_do(app, studio_click_js("[data-sms-action='+ Card']"))
+    studio_wait_map(app, since3)
+    expect_false(app$get_js("document.querySelector('.sms-inspector').hidden"))
+    expect_identical(app$get_js("document.querySelector('.sms-inspector .sms-kick').textContent"), "card")
+    expect_studio_clean(app)
+  })
 })

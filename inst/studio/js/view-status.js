@@ -36,8 +36,10 @@ export function render(el, status, ctx) {
   if (status?.closed && el.dataset.smsClosed === undefined) {
     ctx.closeAllRooms?.();
     el.dataset.smsClosed = '';
-    for (const part of el.querySelectorAll('.sms-sheet, .sms-tray, .sms-block')) {
-      part.inert = true;
+    for (const child of el.children) {
+      if (!child.matches('script, .sms-closed, .sms-toast')) {
+        child.inert = true;
+      }
     }
     setText(el.querySelector('.sms-closed'), ctx.labels.closed);
   }

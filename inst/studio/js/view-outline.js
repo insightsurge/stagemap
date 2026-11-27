@@ -1,8 +1,8 @@
 /*
- * The `outline` section: the add buttons (+ Card, + Stage, + Lane) and the Stages and Lanes dropdown menus.
- * All event payloads come from R; listeners live on the studio root in studio.js.
+ * The `outline` section: the add buttons and the dropdown menus supplied by R.
+ * All labels, counts and event payloads come from R; listeners live on the studio root in studio.js.
  */
-import { make, setBusy, setText } from './dom.js';
+import { make, setDisabled, setText, syncChildren } from './dom.js';
 
 function syncActionButtons(el, actions) {
   const existing = new Map(
@@ -15,11 +15,11 @@ function syncActionButtons(el, actions) {
       btn = make('button', 'sms-btn', action.label);
       btn.type = 'button';
       btn.dataset.smsAction = action.label;
+    } else {
+      setText(btn, action.label);
     }
     btn.setAttribute('data-sms-event', JSON.stringify(action.event));
-    if (!btn.hasAttribute('data-sms-wait-seq')) {
-      setBusy(btn, Boolean(action.disabled));
-    }
+    setDisabled(btn, Boolean(action.disabled));
     nodes.push(btn);
   }
   return nodes;
@@ -61,32 +61,32 @@ function syncMenu(el, ns, name, label, items) {
       btn.setAttribute('role', 'menuitem');
       btn.dataset.smsUid = item.uid;
       nameSpan = make('span', 'sms-menu-label', item.label);
-      countSpan = make('span', 'sms-menu-count', String(item.cards ?? 0));
+      countSpan = make('span', 'sms-menu-count', String(item.count ?? 0));
       btn.append(nameSpan, countSpan);
     } else {
       nameSpan = btn.querySelector('.sms-menu-label');
       countSpan = btn.querySelector('.sms-menu-count');
       setText(nameSpan, item.label);
-      setText(countSpan, String(item.cards ?? 0));
+      setText(countSpan, String(item.count ?? 0));
     }
     btn.setAttribute('data-sms-event', JSON.stringify(item.event));
     children.push(btn);
   }
-  pop.replaceChildren(...children);
+  syncChildren(pop, children);
   return wrap;
 }
 
-export function render(el, outline, ctx) {
+export function render(el, outline) {
+  const root = el.closest('.sms');
   if (!outline) {
+    if (el.contains(document.activeElement)) root?.querySelector('.sms-title')?.focus();
     el.hidden = true;
     el.replaceChildren();
     return;
   }
-  const root = el.closest('.sms');
   const ns = root?.dataset.smsNs ?? '';
   el.hidden = false;
   const actionButtons = syncActionButtons(el, outline.actions);
-  const stagesMenu = syncMenu(el, ns, 'stages', ctx.labels.stages, outline.stages);
-  const lanesMenu = syncMenu(el, ns, 'lanes', ctx.labels.lanes, outline.lanes);
-  el.replaceChildren(...actionButtons, stagesMenu, lanesMenu);
+  const menus = (outline.menus ?? []).map((menu) => syncMenu(el, ns, menu.id, menu.label, menu.items));
+  syncChildren(el, [...actionButtons, ...menus]);
 }

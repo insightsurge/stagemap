@@ -43,6 +43,34 @@ export function setBusy(button, busy) {
     button.setAttribute('aria-disabled', 'true');
   } else {
     button.removeAttribute('aria-busy');
-    button.removeAttribute('aria-disabled');
+    if (button.dataset.smsDisabled !== 'true') {
+      button.removeAttribute('aria-disabled');
+    }
+  }
+}
+
+/* Marks a button server-disabled (aria-disabled and data-sms-disabled), without setting aria-busy. */
+export function setDisabled(button, disabled) {
+  if (disabled) {
+    button.dataset.smsDisabled = 'true';
+    button.setAttribute('aria-disabled', 'true');
+  } else {
+    delete button.dataset.smsDisabled;
+    if (!button.hasAttribute('data-sms-wait-seq')) {
+      button.removeAttribute('aria-disabled');
+    }
+  }
+}
+
+/* Reorders and prunes `parent`'s children to match `nodes` in place so focused nodes stay put when kept. */
+export function syncChildren(parent, nodes) {
+  const wanted = new Set(nodes);
+  for (const child of [...parent.children]) {
+    if (!wanted.has(child)) child.remove();
+  }
+  for (let i = 0; i < nodes.length; i += 1) {
+    const want = nodes[i];
+    const current = parent.children[i] ?? null;
+    if (current !== want) parent.insertBefore(want, current);
   }
 }

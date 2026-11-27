@@ -170,6 +170,29 @@ describe("studio_step()", {
     expect_identical(bad$state$notice$tone, "problem")
   })
 
+  it("decides select effects against good$map, re-selects when good$serial rises, and covers stage renames", {
+    ex <- studio_state_new()
+    ex_add <- studio_step(ex, ev("add", list(table = "cards"), seq = 1L))
+    expect_identical(ex_add$state$target$kind, "card")
+    expect_length(ex_add$effects, 0L)
+
+    fault_id <- ex_add$state$check$faults$id[[1L]]
+    ex_fix <- studio_step(ex_add$state, ev("fix", list(fault = fault_id, fix = "use"), seq = 2L))
+    expect_true(ex_fix$state$check$ok)
+    expect_identical(ex_fix$effects, list(list(type = "select", kind = "card", id = "card")))
+
+    # Renaming a targeted stage emits select for the new stage id
+    s <- studio_state_new(small)
+    stage_uid <- studio_uid_of(s$doc, "stages", "check")
+    st_t <- studio_step(s, ev("target", list(kind = "stage", uid = stage_uid), seq = 1L))
+    expect_identical(st_t$effects, list(list(type = "select", kind = "stage", id = "check")))
+    st_rn <- studio_step(
+      st_t$state,
+      ev("edit", list(table = "stages", uid = stage_uid, field = "id", value = "review"), seq = 2L)
+    )
+    expect_identical(st_rn$effects, list(list(type = "select", kind = "stage", id = "review")))
+  })
+
   it("refuses page-sent picked events and handles server picks through studio_pick()", {
     s <- studio_state_new(small)
     bad_p1 <- studio_step(s, list(seq = 1L, type = "picked", data = list(kind = 1:3, id = "b"), rev = 0L))
@@ -324,6 +347,9 @@ describe("studio_step()", {
     s2 <- studio_step(s1, ev("undo", seq = 2L, rev = s1$rev))$state
     s3 <- studio_step(s2, ev("add", list(table = "cards"), seq = 3L, rev = s2$rev))$state
     uid_second <- s3$target$uid
+    expect_identical(s3$target$kind, "card")
+    expect_match(uid_second, "^u[0-9]+$")
+    expect_false(is.null(studio_row(s3$doc, "cards", uid_second)))
     expect_false(identical(uid_second, uid_first))
 
     seen_uids <- c(unlist(lapply(s$doc$tables, `[[`, ".studio_uid")), uid_first, uid_second)
@@ -331,6 +357,8 @@ describe("studio_step()", {
     opened_uids <- unlist(lapply(s4$doc$tables, `[[`, ".studio_uid"))
     expect_length(intersect(opened_uids, seen_uids), 0L)
     s5 <- studio_step(s4, ev("add", list(table = "cards"), seq = 5L, rev = s4$rev))$state
+    expect_identical(s5$target$kind, "card")
+    expect_false(is.null(studio_row(s5$doc, "cards", s5$target$uid)))
     expect_false(s5$target$uid %in% c(seen_uids, opened_uids))
   })
 })

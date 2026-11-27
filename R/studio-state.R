@@ -224,24 +224,46 @@ studio_step_picked <- function(state, data) {
   state
 }
 
-# Builds the `select` effect when target changed (except from `picked`) or when the targeted card's id changed.
-studio_select_effect <- function(state, old_target, old_doc, event_type) {
+# Builds the `select` effect against `state$good$map`: on target change (except `picked`), when `good$serial` rises,
+# or when the targeted card or stage changes id.
+studio_select_effect <- function(state, old_target, old_doc, event_type, old_serial = state$good$serial) {
   checkmate::assert_list(state, names = "unique")
   checkmate::assert_list(old_target, names = "unique")
   studio_assert_doc(old_doc)
   checkmate::assert_string(event_type, min.chars = 1L)
+  checkmate::assert_int(old_serial, lower = 0L)
 
   if (identical(event_type, "picked")) {
     return(list())
   }
+
+  in_drawn <- function(kind, id) {
+    if (!(kind %in% c("card", "stage")) || is.null(id) || is.na(id) || !nzchar(trimws(as_text(id)))) {
+      return(FALSE)
+    }
+    tbl <- stage_map_tables(state$good$map)[[studio_target_table(kind)]]
+    is.data.frame(tbl) && (as_text(id) %in% as_text(tbl$id))
+  }
+
   target <- state$target
-  if (!identical(target, old_target)) {
-    if (target$kind %in% c("card", "stage")) {
-      row <- studio_row(state$doc, studio_target_table(target$kind), target$uid)
-      if (!is.null(row) && !is.na(row$id) && nzchar(trimws(as_text(row$id)))) {
-        return(list(list(type = "select", kind = target$kind, id = as_text(row$id))))
-      }
+  select_target_if_drawn <- function() {
+    if (!(target$kind %in% c("card", "stage"))) {
       return(list())
+    }
+    row <- studio_row(state$doc, studio_target_table(target$kind), target$uid)
+    if (!is.null(row) && !is.na(row$id) && nzchar(trimws(as_text(row$id)))) {
+      id_text <- as_text(row$id)
+      if (in_drawn(target$kind, id_text)) {
+        return(list(list(type = "select", kind = target$kind, id = id_text)))
+      }
+    }
+    list()
+  }
+
+  if (!identical(target, old_target)) {
+    eff <- select_target_if_drawn()
+    if (length(eff) > 0L) {
+      return(eff)
     }
     if (old_target$kind %in% c("card", "stage")) {
       return(list(list(type = "select", kind = "none", id = NULL)))
@@ -249,17 +271,21 @@ studio_select_effect <- function(state, old_target, old_doc, event_type) {
     return(list())
   }
 
-  if (identical(target$kind, "card") && !identical(state$doc, old_doc)) {
-    old_row <- studio_row(old_doc, "cards", target$uid)
-    new_row <- studio_row(state$doc, "cards", target$uid)
+  if (!identical(state$good$serial, old_serial) && target$kind %in% c("card", "stage")) {
+    return(select_target_if_drawn())
+  }
+
+  if (target$kind %in% c("card", "stage") && !identical(state$doc, old_doc)) {
+    tbl_name <- studio_target_table(target$kind)
+    old_row <- studio_row(old_doc, tbl_name, target$uid)
+    new_row <- studio_row(state$doc, tbl_name, target$uid)
     if (
       !is.null(old_row) &&
         !is.null(new_row) &&
         !identical(as_text(old_row$id), as_text(new_row$id)) &&
-        !is.na(new_row$id) &&
-        nzchar(trimws(as_text(new_row$id)))
+        in_drawn(target$kind, new_row$id)
     ) {
-      return(list(list(type = "select", kind = "card", id = as_text(new_row$id))))
+      return(list(list(type = "select", kind = target$kind, id = as_text(new_row$id))))
     }
   }
   list()
@@ -298,6 +324,7 @@ studio_step <- function(state, event) {
   old_rev <- state$rev
   old_target <- state$target
   old_doc <- state$doc
+  old_serial <- state$good$serial
   effects <- list()
 
   if (identical(checked$type, "ready")) {
@@ -417,6 +444,6 @@ studio_step <- function(state, event) {
   }
 
   state <- studio_tour_tick(state)
-  effects <- c(effects, studio_select_effect(state, old_target, old_doc, checked$type))
+  effects <- c(effects, studio_select_effect(state, old_target, old_doc, checked$type, old_serial = old_serial))
   list(state = state, effects = effects)
 }

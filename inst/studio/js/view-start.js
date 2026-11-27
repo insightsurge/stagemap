@@ -2,7 +2,7 @@
  * The `start` section: the start card overlay with template options. Shows when `start.open` is true or when opened
  * from the header button (`data-sms-open="true"`), closing automatically once an `open` bumps the revision.
  */
-import { make, setText } from './dom.js';
+import { make, setText, syncChildren } from './dom.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -63,8 +63,10 @@ function buildSkeleton(el, labels) {
 }
 
 export function render(el, start, ctx) {
+  el.setAttribute('role', 'dialog');
+  el.setAttribute('aria-modal', 'true');
   if (!start) {
-    el.hidden = true;
+    ctx.syncStart?.(false);
     return;
   }
   if (el.dataset.smsOpen === 'true' && Number(el.dataset.smsOpenedRev ?? -1) !== ctx.rev) {
@@ -72,7 +74,6 @@ export function render(el, start, ctx) {
     delete el.dataset.smsOpenedRev;
   }
   const show = Boolean(start.open) || el.dataset.smsOpen === 'true';
-  el.hidden = !show;
 
   if (!el.querySelector('.sms-start-in')) {
     buildSkeleton(el, ctx.labels);
@@ -85,13 +86,18 @@ export function render(el, start, ctx) {
     [...list.querySelectorAll('button[data-sms-open]')].map((btn) => [btn.dataset.smsOpen, btn]),
   );
   const items = (start.options ?? []).map((opt, idx) => {
-    const li = document.createElement('li');
     let btn = existing.get(opt.id);
+    let li = btn?.closest('li');
     if (!btn) {
       btn = make('button', 'sms-opt');
       btn.type = 'button';
       btn.dataset.smsOpen = opt.id;
       btn.append(make('span', 'sms-opt-n'), make('b'), make('span', 'sms-opt-go'), make('small'));
+      li = document.createElement('li');
+      li.append(btn);
+    } else if (!li) {
+      li = document.createElement('li');
+      li.append(btn);
     }
     setText(btn.querySelector('.sms-opt-n'), String(idx + 1));
     setText(btn.querySelector('b'), opt.title);
@@ -101,8 +107,8 @@ export function render(el, start, ctx) {
     );
     setText(btn.querySelector('small'), opt.text);
     btn.setAttribute('data-sms-event', JSON.stringify(opt.event));
-    li.append(btn);
     return li;
   });
-  list.replaceChildren(...items);
+  syncChildren(list, items);
+  ctx.syncStart?.(show);
 }

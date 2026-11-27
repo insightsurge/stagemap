@@ -34,7 +34,14 @@ studio_ui <- function(id, options = list()) {
           stage_map_output(ns("map"))
         ),
         tags$div(class = "sms-hint", `aria-live` = "polite", hidden = NA),
-        tags$section(class = "sms-start", id = ns("start"), `aria-label` = "Start", hidden = NA)
+        tags$section(
+          class = "sms-start",
+          id = ns("start"),
+          role = "dialog",
+          `aria-modal` = "true",
+          `aria-label` = "Start",
+          hidden = NA
+        )
       ),
       tags$aside(class = "sms-inspector", id = ns("inspector"), `aria-label` = "Inspector", hidden = NA),
       studio_ui_block(ns),
@@ -247,8 +254,6 @@ studio_labels <- function() {
     problem = "Problem",
     line = "line",
     lines = "lines",
-    stages = "Stages",
-    lanes = "Lanes",
     undo = "Undo",
     undone = "undone",
     journal = "Journal",
@@ -264,9 +269,7 @@ studio_labels <- function() {
     start_confirm = "Confirm",
     stamp_prefix = "The map shows the last version that worked:",
     problem_one = "problem",
-    problem_many = "problems",
-    hint_card = "Card",
-    hint_stage = "Stage"
+    problem_many = "problems"
   )
 }
 

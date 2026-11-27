@@ -85,7 +85,7 @@
   padding-bottom: calc(var(--_stagemap-studio-tray-h) + 74px);
 }
 
-@media (min-width: 1180px) {
+@media (min-width: 641px) {
   .sms[data-sms-inspector] .sms-sheet {
     padding-right: 340px;
   }
@@ -514,6 +514,20 @@
   }
 }
 
+@media (max-width: 1040px) {
+  .sms .sms-top {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+
+  .sms .sms-acts {
+    grid-column: 1;
+    grid-row: auto;
+    justify-content: flex-start;
+    margin-top: 8px;
+  }
+}
+
 /* Phone: a dock of four, one room at a time. */
 @media (max-width: 640px) {
   .sms {
@@ -528,12 +542,6 @@
   .sms[data-sms-inspector] .sms-sheet {
     padding-right: 12px;
     padding-bottom: 140px;
-  }
-
-  @media (min-width: 1180px) {
-    .sms[data-sms-inspector] .sms-sheet {
-      padding-right: 340px;
-    }
   }
 
   .sms .sms-top {

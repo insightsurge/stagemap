@@ -818,8 +818,8 @@ studio_console <- function(app) {
 
 # Expects the page to be clean: no console error, nothing busy, nothing inert that is shown (a closed room is
 # hidden as well as inert), and focus is inside the page (not inside a hidden or inert container). After Done
-# (`closed = TRUE`) the sheet, the tray and the title block are inert on purpose. Console lines that match the regular
-# expression `ignore` are left out (a test says why).
+# (`closed = TRUE`) the page siblings (except toast/closed) are inert on purpose; while the start modal is shown,
+# the background behind it is inert on purpose. Console lines that match `ignore` are left out (a test says why).
 expect_studio_clean <- function(app, closed = FALSE, ignore = NULL) {
   checkmate::assert_r6(app, "AppDriver")
   checkmate::assert_flag(closed)
@@ -832,14 +832,16 @@ expect_studio_clean <- function(app, closed = FALSE, ignore = NULL) {
   state <- app$get_js(sprintf(
     "(() => { const r = %s; const shown = (n) => !n.closest('[hidden]');
       const closed = %s;
+      const modal = Boolean(r.querySelector('.sms-start') && !r.querySelector('.sms-start').hidden);
       const a = document.activeElement;
       const focus_ok = a !== null && a.isConnected &&
         (a === document.body || (!a.closest('[hidden]') && (!a.closest('[inert]') || closed)));
       return { busy: r.hasAttribute('aria-busy') || r.querySelector('[aria-busy=\"true\"]') !== null,
                focus_ok,
                inert: [...r.querySelectorAll('[inert]')].filter((n) => shown(n) &&
-                 !(n.matches('.sms-tray') && (closed || r.dataset.smsTray === undefined)) &&
-                 !(closed && n.matches('.sms-sheet, .sms-block'))).map((n) => n.className) }; })()",
+                 !(n.matches('.sms-tray') && (closed || modal || r.dataset.smsTray === undefined)) &&
+                 !(closed && n.matches('.sms-skip, .sms-sheet, .sms-inspector, .sms-block')) &&
+                 !(modal && (n.matches('.sms-skip, .sms-inspector, .sms-block') || n.parentElement?.matches('.sms-sheet')))).map((n) => n.className) }; })()",
     studio_root_js,
     tolower(closed)
   ))

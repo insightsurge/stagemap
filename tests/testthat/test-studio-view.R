@@ -52,13 +52,16 @@ describe("studio_facts()", {
 })
 
 describe("studio_view_outline()", {
-  it("lists stages and lanes with card counts, cards for hover hints, and target-aware add actions", {
+  it("lists menus with neutral counts, hover hints by kind/id, and target-aware add actions", {
     s <- studio_state_new(small)
     out0 <- studio_view_outline(s$doc, s$target)
-    expect_length(out0$stages, 3L)
-    expect_length(out0$lanes, 2L)
-    expect_length(out0$cards, 4L)
-    expect_identical(vapply(out0$stages, `[[`, integer(1), "cards"), c(1L, 2L, 1L))
+    expect_identical(vapply(out0$menus, `[[`, "", "id"), c("stages", "lanes"))
+    expect_length(out0$menus[[1L]]$items, 3L)
+    expect_length(out0$menus[[2L]]$items, 2L)
+    expect_length(out0$hints$card, 4L)
+    expect_identical(out0$hints$card[["b"]], "Card: Review")
+    expect_identical(out0$hints$stage[["ship"]], "Stage: Ship")
+    expect_identical(vapply(out0$menus[[1L]]$items, `[[`, integer(1), "count"), c(1L, 2L, 1L))
     expect_identical(out0$actions[[1L]]$event$data, list(table = "cards"))
 
     s_card <- studio_step(s, list(seq = 1L, type = "target", data = list(kind = "card", uid = "u2"), rev = 0L))$state
@@ -80,21 +83,26 @@ describe("studio_view_outline()", {
     out_stage <- studio_view_outline(s_stage$doc, s_stage$target)
     expect_identical(out_stage$actions[[1L]]$event$data, list(table = "cards", stage = stage_uid))
 
-    # Blank labels fall back to id or "Untitled ...", and empty tables yield empty outline lists
+    # Blank labels fall back to id or "Untitled ...", and empty/blank-id tables yield empty menu/hint lists
     doc_blank <- s$doc
     doc_blank$tables$cards$label[[1L]] <- ""
     doc_blank$tables$cards$label[[2L]] <- ""
     doc_blank$tables$cards$id[[2L]] <- ""
+    doc_blank$tables$stages$label <- rep("", nrow(doc_blank$tables$stages))
+    doc_blank$tables$stages$id <- rep("", nrow(doc_blank$tables$stages))
     out_blank <- studio_view_outline(doc_blank, s$target)
-    expect_identical(out_blank$cards[[1L]]$label, "a")
-    expect_identical(out_blank$cards[[2L]]$label, "Untitled card")
+    expect_identical(out_blank$hints$card[["a"]], "Card: a")
+    expect_length(out_blank$hints$card, 3L)
+    expect_identical(out_blank$menus[[1L]]$items[[1L]]$label, "Untitled stage")
+    expect_identical(out_blank$hints$stage, structure(list(), names = character()))
 
     doc_empty <- s$doc
     doc_empty$tables$cards <- doc_empty$tables$cards[0L, , drop = FALSE]
     doc_empty$tables$stages <- doc_empty$tables$stages[0L, , drop = FALSE]
     out_empty <- studio_view_outline(doc_empty, s$target)
-    expect_identical(out_empty$cards, list())
-    expect_identical(out_empty$stages, list())
+    expect_identical(out_empty$hints$card, structure(list(), names = character()))
+    expect_identical(out_empty$hints$stage, structure(list(), names = character()))
+    expect_identical(out_empty$menus[[1L]]$items, list())
   })
 })
 

@@ -91,22 +91,42 @@ function mount(root) {
     return true;
   };
 
-  const ctx = () => ({
-    send: store.send,
-    labels: boot.labels,
-    ack: store.ack,
-    rev: store.rev,
-    toast: shell.toast,
-    closeAllRooms: shell.closeAllRooms,
-    shouldFocusInspector,
-  });
+  function syncModalInert(modal) {
+    if (root.dataset.smsClosed !== undefined) return;
+    const startEl = root.querySelector('.sms-start');
+    const sheet = root.querySelector('.sms-sheet');
+    if (sheet) {
+      for (const child of sheet.children) {
+        if (child !== startEl) child.inert = modal;
+      }
+    }
+    for (const child of root.children) {
+      if (child.matches('.sms-skip, .sms-inspector, .sms-block')) {
+        child.inert = modal;
+      }
+    }
+    const tray = root.querySelector('.sms-tray');
+    if (tray) tray.inert = modal || root.dataset.smsTray === undefined;
+  }
 
-  function closeMenus() {
+  function restoreInspectorFocus() {
+    if (inspectorOpener?.isConnected && !inspectorOpener.closest('[hidden]') && !inspectorOpener.closest('[inert]')) {
+      inspectorOpener.focus();
+    } else {
+      root.querySelector('.sms-title')?.focus();
+    }
+    inspectorOpener = null;
+  }
+
+  function closeMenus(refocus = false) {
     let closedTrigger = null;
     for (const pop of root.querySelectorAll('.sms-menu-pop:not([hidden])')) {
-      pop.hidden = true;
       const box = pop.closest('.sms-menu');
       const trigger = box?.querySelector('[data-sms-menu]');
+      if (refocus && trigger && pop.contains(document.activeElement)) {
+        trigger.focus();
+      }
+      pop.hidden = true;
       if (trigger) {
         trigger.setAttribute('aria-expanded', 'false');
         closedTrigger = trigger;
@@ -115,34 +135,58 @@ function mount(root) {
     return closedTrigger;
   }
 
-  function closeStart() {
+  function syncStart(show, reason = 'opened') {
     const startEl = root.querySelector('.sms-start');
-    if (startEl?.dataset.smsOpen !== 'true') return false;
+    if (!startEl) return false;
+    const wasShown = !startEl.hidden;
+    if (show) {
+      if (!wasShown) shell.closeAllRooms();
+      startEl.hidden = false;
+      syncModalInert(true);
+      if (!wasShown && !startEl.contains(document.activeElement)) {
+        startEl.querySelector('.sms-opt')?.focus();
+      }
+      return true;
+    }
+    if (!wasShown && startEl.dataset.smsOpen !== 'true') return false;
+    const hadFocus = startEl.contains(document.activeElement);
     delete startEl.dataset.smsOpen;
     delete startEl.dataset.smsOpenedRev;
+    syncModalInert(false);
+    if (hadFocus || reason === 'cancel') {
+      const dest =
+        reason === 'cancel'
+          ? (root.querySelector('[data-sms-start="open"]') ?? root.querySelector('.sms-title'))
+          : (root.querySelector('.sms-title') ?? root.querySelector('[data-sms-start="open"]'));
+      dest?.focus();
+    }
     startEl.hidden = true;
-    root.querySelector('[data-sms-start="open"]')?.focus();
     return true;
   }
+
+  const ctx = () => ({
+    send: store.send,
+    labels: boot.labels,
+    ack: store.ack,
+    rev: store.rev,
+    toast: shell.toast,
+    closeAllRooms: shell.closeAllRooms,
+    shouldFocusInspector,
+    restoreInspectorFocus,
+    syncStart,
+  });
 
   function showHint(detail) {
     const hintEl = root.querySelector('.sms-hint');
     if (!hintEl) return;
-    const outline = store.view.outline;
-    if (!detail || detail.id == null || !outline) {
+    const hints = store.view.outline?.hints;
+    const text = detail && detail.id != null ? hints?.[detail.kind]?.[String(detail.id)] : null;
+    if (!text) {
       hintEl.hidden = true;
       setText(hintEl, '');
       return;
     }
-    const items = detail.kind === 'card' ? outline.cards : outline.stages;
-    const hit = items?.find((item) => item.id === detail.id);
-    if (!hit) {
-      hintEl.hidden = true;
-      setText(hintEl, '');
-      return;
-    }
-    const prefix = detail.kind === 'card' ? boot.labels.hint_card : boot.labels.hint_stage;
-    setText(hintEl, `${prefix}: ${hit.label}`);
+    setText(hintEl, text);
     hintEl.hidden = false;
   }
 
@@ -154,6 +198,14 @@ function mount(root) {
       if (view[section.name] === undefined) continue;
       const el = section.target ? root.querySelector(section.target) : root;
       if (el) section.render(el, view[section.name], ctx());
+    }
+    const startEl = root.querySelector('.sms-start');
+    if (
+      startEl?.dataset.smsOpen === 'true' &&
+      Number(startEl.dataset.smsOpenedRev ?? -1) !== store.rev &&
+      !view.start?.open
+    ) {
+      syncStart(false, 'opened');
     }
     if (pendingInspectorSeq > 0 && store.ack >= pendingInspectorSeq && !view.inspector) {
       pendingInspectorSeq = 0;
@@ -208,11 +260,11 @@ function mount(root) {
           if (startEl) {
             startEl.dataset.smsOpen = 'true';
             startEl.dataset.smsOpenedRev = String(store.rev);
-            startEl.hidden = false;
+            syncStart(true);
             startEl.querySelector('.sms-opt')?.focus();
           }
         } else if (startAct.dataset.smsStart === 'close') {
-          closeStart();
+          syncStart(false, 'cancel');
         }
         return;
       }
@@ -235,7 +287,7 @@ function mount(root) {
       const button = target?.closest('button[data-sms-event]');
       if (button && button.getAttribute('aria-disabled') !== 'true') {
         const menuTrigger = button.closest('.sms-menu')?.querySelector('[data-sms-menu]');
-        if (button.closest('.sms-menu-pop')) closeMenus();
+        if (button.closest('.sms-menu-pop')) closeMenus(true);
         const sent = readEvent(button);
         const sentSeq = store.send(sent.type, sent.data);
         if (button.closest('.sms-outline') || button.closest('.sms-journal')) {
@@ -277,14 +329,33 @@ function mount(root) {
         return;
       }
 
+      const startEl = root.querySelector('.sms-start');
+      if (startEl && !startEl.hidden && event.key === 'Tab') {
+        const focusables = [...startEl.querySelectorAll('button:not([hidden])')].filter(
+          (node) => !node.closest('[hidden]'),
+        );
+        if (focusables.length > 0) {
+          const first = focusables[0];
+          const last = focusables[focusables.length - 1];
+          if (event.shiftKey && (document.activeElement === first || !startEl.contains(document.activeElement))) {
+            event.preventDefault();
+            last.focus();
+          } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
+          }
+        }
+        return;
+      }
+
       if (event.key === 'Escape') {
-        const trigger = closeMenus();
+        const trigger = closeMenus(true);
         if (trigger) {
           trigger.focus();
           event.preventDefault();
           return;
         }
-        if (closeStart() || shell.closeTopmost()) {
+        if (syncStart(false, 'cancel') || shell.closeTopmost()) {
           event.preventDefault();
           return;
         }
@@ -293,16 +364,7 @@ function mount(root) {
           if (!mapEl?.contains(event.target)) {
             event.preventDefault();
             store.send('target', { kind: 'none', uid: null });
-            if (
-              inspectorOpener?.isConnected &&
-              !inspectorOpener.closest('[hidden]') &&
-              !inspectorOpener.closest('[inert]')
-            ) {
-              inspectorOpener.focus();
-            } else {
-              root.querySelector('.sms-title')?.focus();
-            }
-            inspectorOpener = null;
+            restoreInspectorFocus();
           }
         }
         return;
@@ -316,7 +378,7 @@ function mount(root) {
         !isUndoBlocked(event.target)
       ) {
         const undoBtn = root.querySelector('.sms-undo');
-        if (undoBtn && undoBtn.getAttribute('aria-disabled') !== 'true') {
+        if (undoBtn && undoBtn.getAttribute('aria-disabled') !== 'true' && !undoBtn.closest('[inert]')) {
           event.preventDefault();
           store.track(undoBtn, store.send('undo', {}));
         }

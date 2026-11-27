@@ -4,21 +4,41 @@ skip_without_chrome()
 # edits would be lost.
 
 describe("the studio start card", {
-  it("[SMS-022] opens on map = NULL with template options over the drawn map", {
+  it("[SMS-022] opens on map = NULL as a modal dialog with focus on the first option", {
     app <- studio_driver("none")
     start <- app$get_js(
       "({ hidden: document.querySelector('.sms-start').hidden,
+          role: document.querySelector('.sms-start').getAttribute('role'),
+          modal: document.querySelector('.sms-start').getAttribute('aria-modal'),
+          active: document.activeElement?.dataset?.smsOpen ?? null,
+          topInert: document.querySelector('.sms-top').inert,
+          blockInert: document.querySelector('.sms-block').inert,
           opts: [...document.querySelectorAll('.sms-start [data-sms-open]')].map((b) => b.dataset.smsOpen) })"
     )
     expect_false(start$hidden)
+    expect_identical(start$role, "dialog")
+    expect_identical(start$modal, "true")
+    expect_identical(start$active, "example")
+    expect_true(start$topInert)
+    expect_true(start$blockInert)
     expect_identical(unlist(start$opts), c("example", "blank"))
+
+    # Shift+Tab stays trapped inside the modal start card
+    studio_press(app, "Tab", modifiers = "shift", code = "Tab", key_code = 9L)
+    expect_identical(app$get_js("document.activeElement?.dataset?.smsOpen"), "blank")
     expect_studio_clean(app)
   })
 
   it("[SMS-023] loads the worked example from the start card with the problem stamp", {
     app <- studio_driver("none")
-    studio_do(app, studio_click_js("[data-sms-open='example']"))
+    app$run_js("document.querySelector('[data-sms-open=\"example\"]').focus()")
+    studio_press(app, "Enter", key_code = 13L)
+    app$wait_for_js("document.querySelector('.sms-start').hidden === true")
+    studio_wait_step(app)
     expect_true(app$get_js("document.querySelector('.sms-start').hidden"))
+    expect_false(app$get_js("document.querySelector('.sms-top').inert"))
+    expect_false(app$get_js("document.querySelector('.sms-block').inert"))
+    expect_identical(app$get_js("document.activeElement.className"), "sms-title")
     expect_identical(app$get_js("document.querySelectorAll('[data-card]').length"), 13L)
     expect_identical(app$get_js("document.querySelector('.sms-title').value"), "Dose calculator validation")
     stamp <- app$get_js(
@@ -27,6 +47,19 @@ describe("the studio start card", {
     )
     expect_match(stamp$text, "The map shows the last version that worked: 1 problem", fixed = TRUE)
     expect_identical(stamp$svg, 1L)
+    expect_studio_clean(app)
+  })
+
+  it("closes a header-opened start card with no edits once a template opens", {
+    app <- studio_driver("small")
+    click_now(app, "[data-sms-start='open']")
+    app$wait_for_js("document.querySelector('.sms-start').hidden === false")
+    since <- studio_stamp(app)
+    studio_do(app, studio_click_js("[data-sms-open='blank']"))
+    studio_wait_map(app, since)
+    expect_true(app$get_js("document.querySelector('.sms-start').hidden"))
+    expect_false(app$get_js("document.querySelector('.sms-top').inert"))
+    expect_identical(app$get_js("document.querySelectorAll('[data-card]').length"), 1L)
     expect_studio_clean(app)
   })
 
@@ -53,9 +86,12 @@ describe("the studio start card", {
     ))
     expect_identical(opts, c("example", "blank", "given"))
 
-    # First click asks confirmation and keeps edits
-    studio_do(app, studio_click_js("[data-sms-open='blank']"))
+    # First click via keyboard asks confirmation, keeps edits and keeps focus on the option
+    app$run_js("document.querySelector('[data-sms-open=\"blank\"]').focus()")
+    studio_press(app, "Enter", key_code = 13L)
+    studio_wait_step(app)
     expect_false(app$get_js("document.querySelector('.sms-start').hidden"))
+    expect_identical(app$get_js("document.activeElement?.dataset?.smsOpen"), "blank")
     expect_identical(studio_section(app, "status")$rev, 1L)
     expect_match(
       app$get_js("document.querySelector('[data-sms-open=\"blank\"] small').textContent"),

@@ -552,4 +552,10 @@
     border-bottom: 0;
     box-shadow: var(--_stagemap-studio-shadow);
   }
+
+  .sms[data-sms-tray] .sms-inspector {
+    bottom: calc(var(--_stagemap-studio-block-h) + var(--_stagemap-studio-tray-h));
+    max-height: calc(100dvh - var(--_stagemap-studio-block-h) - var(--_stagemap-studio-tray-h));
+    z-index: 15;
+  }
 }

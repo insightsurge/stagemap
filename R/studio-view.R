@@ -52,7 +52,7 @@ studio_facts <- function(x) {
   )
 }
 
-# Outline of stages, lanes, cards (for hover hints) and header add actions, with target/add event payloads built in R.
+# Outline of menus (stages, lanes), hover hint lookup keyed by kind/id, and target-aware header add actions.
 studio_view_outline <- function(doc, target) {
   studio_assert_doc(doc)
   checkmate::assert_list(target, names = "unique")
@@ -82,22 +82,25 @@ studio_view_outline <- function(doc, target) {
         uid = uid,
         id = id,
         label = row_label(tbl, i, paste("Untitled", target_kind)),
-        cards = as.integer(n_cards),
+        count = as.integer(n_cards),
         event = list(type = "target", data = list(kind = target_kind, uid = uid))
       )
     })
   }
 
-  card_items <- if (has_cards) {
-    lapply(seq_len(nrow(cards_tbl)), function(i) {
-      list(
-        uid = cards_tbl$.studio_uid[[i]],
-        id = if ("id" %in% names(cards_tbl) && !is.na(cards_tbl$id[[i]])) as_text(cards_tbl$id[[i]]) else "",
-        label = row_label(cards_tbl, i, "Untitled card")
-      )
-    })
-  } else {
-    list()
+  hint_map <- function(tbl_name, prefix, fallback) {
+    tbl <- doc$tables[[tbl_name]]
+    if (!is.data.frame(tbl) || nrow(tbl) == 0L || !("id" %in% names(tbl))) {
+      return(structure(list(), names = character()))
+    }
+    ids <- as_text(tbl$id)
+    keep <- which(!is.na(tbl$id) & nzchar(trimws(ids)))
+    keep <- keep[!duplicated(ids[keep])]
+    if (length(keep) == 0L) {
+      return(structure(list(), names = character()))
+    }
+    vals <- vapply(keep, function(i) sprintf("%s: %s", prefix, row_label(tbl, i, fallback)), character(1))
+    stats::setNames(as.list(vals), ids[keep])
   }
 
   stage_uid <- NULL
@@ -123,9 +126,14 @@ studio_view_outline <- function(doc, target) {
   }
 
   list(
-    stages = outline_items("stages", "stage", "stage"),
-    lanes = outline_items("lanes", "lane", "lane"),
-    cards = card_items,
+    menus = list(
+      list(id = "stages", label = "Stages", items = outline_items("stages", "stage", "stage")),
+      list(id = "lanes", label = "Lanes", items = outline_items("lanes", "lane", "lane"))
+    ),
+    hints = list(
+      card = hint_map("cards", "Card", "Untitled card"),
+      stage = hint_map("stages", "Stage", "Untitled stage")
+    ),
     actions = list(
       add_action("+ Card", drop_nulls(list(table = "cards", stage = stage_uid, lane = lane_uid))),
       add_action("+ Stage", list(table = "stages")),
