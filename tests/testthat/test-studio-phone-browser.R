@@ -104,6 +104,12 @@ describe("the studio on a phone", {
       expect_true(app$get_js("getComputedStyle(document.querySelector('.sms-phone-theme')).display !== 'none'"))
       expect_identical(app$get_js("getComputedStyle(document.querySelector('.sms-block .sms-theme')).display"), "none")
       expect_no_sideways(app, width)
+      # Wide fonts (Verdana, or DejaVu Sans on Linux): a reader's own font can be wider than this machine's
+      app$run_js(
+        "document.querySelector('.sms').style.setProperty('--_stagemap-studio-font', 'Verdana, \"DejaVu Sans\", sans-serif')"
+      )
+      expect_no_sideways(app, paste(width, "with a wide font"))
+      app$run_js("document.querySelector('.sms').style.removeProperty('--_stagemap-studio-font')")
 
       # Map opens from the header
       click_now(app, ".sms-phone-map")
