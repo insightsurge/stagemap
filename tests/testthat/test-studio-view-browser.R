@@ -172,7 +172,7 @@ describe("the studio target, inspector head, hint bar and keyboard", {
       "document.querySelector('#studio-map').dispatchEvent(new CustomEvent('stagemap:hover', { bubbles: true, detail: { kind: 'zone', id: 'z1' } }))"
     )
     expect_false(app$get_js("document.querySelector('.sms-hint').hidden"))
-    expect_identical(app$get_js("document.querySelector('.sms-hint').textContent"), "Zone: Review zone")
+    expect_identical(app$get_js("document.querySelector('.sms-hint-text').textContent"), "Zone: Review zone")
     expect_studio_clean(app)
   })
 })
