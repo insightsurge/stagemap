@@ -68,7 +68,16 @@ studio_ui <- function(id, options = list()) {
           ),
           body = list(
             tags$pre(class = "sms-code", tabindex = "0", `aria-label` = "R code for this map"),
-            tags$p(class = "sms-code-note")
+            tags$p(class = "sms-code-note"),
+            tags$div(
+              class = "sms-code-downloads",
+              hidden = NA,
+              `aria-hidden` = "true",
+              shiny::downloadLink(ns("download_r"), "map.R", class = "sms-dl"),
+              lapply(map_table_names, function(tbl) {
+                shiny::downloadLink(ns(paste0("download_csv_", tbl)), paste0(tbl, ".csv"), class = "sms-dl")
+              })
+            )
           )
         )
       ),

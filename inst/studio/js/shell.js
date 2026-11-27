@@ -13,6 +13,7 @@ export function createShell(root, boot, tools) {
   const { later, cancel } = tools;
   const tray = root.querySelector('.sms-tray');
   const open = []; /* the names of the open rooms, the last opened last */
+  let seenCode = false;
   let toastTimer = 0;
 
   const buttonOf = (name) =>
@@ -32,6 +33,10 @@ export function createShell(root, boot, tools) {
     open.push(name);
     tray.inert = false;
     root.dataset.smsTray = open.join(' ');
+    if (name === 'code' && !seenCode && root.dataset.smsClosed === undefined) {
+      seenCode = true;
+      tools.send?.('seen', { what: 'code' });
+    }
     /* Focus goes into the room, to its heading, so the next Tab reaches the room's first control. */
     room.querySelector('[tabindex="-1"]')?.focus({ preventScroll: true });
   }

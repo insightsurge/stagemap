@@ -12,7 +12,7 @@
  * its timers are in one set that destroy() clears. Renderers add no listener.
  */
 import { copyCode } from './js/copy.js';
-import { readBoot, readEvent, setText } from './js/dom.js';
+import { readBoot, readEvent, setBusy, setText } from './js/dom.js';
 import { readFieldValue } from './js/form.js';
 import { createHold } from './js/hold.js';
 import { render as renderAsk } from './js/room-ask.js';
@@ -21,7 +21,7 @@ import { render as renderCode } from './js/room-code.js';
 import { render as renderMap } from './js/room-map.js';
 import { render as renderTour } from './js/room-tour.js';
 import { createShell } from './js/shell.js';
-import { createStore } from './js/store.js';
+import { createStore, LateError } from './js/store.js';
 import { createTheme } from './js/theme.js';
 import { render as renderHeader } from './js/view-header.js';
 import { render as renderInspector } from './js/view-inspector.js';
@@ -79,7 +79,7 @@ function mount(root) {
   let hold = null;
   const store = createStore(root, boot, { flush: () => hold?.flush(), later, cancel, signal });
   hold = createHold(boot, store.send, { later, cancel });
-  const shell = createShell(root, boot, { later, cancel });
+  const shell = createShell(root, boot, { later, cancel, send: store.send });
   const theme = createTheme(root, { signal });
 
   let modality = 'pointer';
@@ -178,6 +178,7 @@ function mount(root) {
   const ctx = () => ({
     send: store.send,
     flush: store.flush,
+    whenInStep: store.whenInStep,
     labels: boot.labels,
     ack: store.ack,
     rev: store.rev,
@@ -270,6 +271,26 @@ function mount(root) {
       const target = event.target instanceof Element ? event.target : null;
       const copy = target?.closest('[data-sms-copy]');
       if (copy) return copyCode(copy, { root, store, labels: boot.labels, toast: shell.toast });
+      const download = target?.closest('[data-sms-download]');
+      if (download) {
+        if (download.closest('.sms-menu-pop')) closeMenus(true);
+        if (download.getAttribute('aria-busy') === 'true') return;
+        const id = download.dataset.smsDownload;
+        const link = id ? document.getElementById(`${ns}${id}`) : null;
+        if (!link) return;
+        setBusy(download, true);
+        store
+          .whenInStep()
+          .then(() => {
+            link.click();
+          })
+          .catch((error) => {
+            if (error instanceof LateError) shell.toast(boot.labels.copy_late, 'problem');
+            else console.error(error);
+          })
+          .finally(() => setBusy(download, false));
+        return;
+      }
       const room = target?.closest('[data-sms-room]');
       if (room) return shell.toggleRoom(room.dataset.smsRoom);
       const close = target?.closest('[data-sms-close]');
