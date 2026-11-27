@@ -79,6 +79,8 @@ studio_state_new <- function(map = NULL) {
     tour = tour,
     seen = character(),
     notice = NULL,
+    notice_n = 0L,
+    next_uid = doc$next_uid,
     ack = 0L,
     closed = FALSE,
     start_open = start_open,
@@ -88,6 +90,18 @@ studio_state_new <- function(map = NULL) {
   studio_tour_tick(state)
 }
 
+# Sets `state$notice` with a monotonically rising notice number across the session.
+studio_next_notice <- function(state, text, tone = "info", room = NULL) {
+  checkmate::assert_list(state, names = "unique")
+  checkmate::assert_string(text, min.chars = 1L)
+  checkmate::assert_choice(tone, c("info", "problem"))
+  checkmate::assert_string(room, min.chars = 1L, null.ok = TRUE)
+  n <- (state$notice_n %||% 0L) + 1L
+  state$notice_n <- n
+  state$notice <- list(n = n, text = text, tone = tone, room = room)
+  state
+}
+
 # Produces a refused result: `state` with an incremented notice (tone `"problem"` or `"info"`, optional `room`) and
 # no effects.
 studio_refuse <- function(state, text, room = NULL, tone = "problem") {
@@ -95,8 +109,7 @@ studio_refuse <- function(state, text, room = NULL, tone = "problem") {
   checkmate::assert_string(text, min.chars = 1L)
   checkmate::assert_string(room, min.chars = 1L, null.ok = TRUE)
   checkmate::assert_choice(tone, c("info", "problem"))
-  n <- if (is.null(state$notice)) 1L else state$notice$n + 1L
-  state$notice <- list(n = n, text = text, tone = tone, room = room)
+  state <- studio_next_notice(state, text, tone = tone, room = room)
   list(state = state, effects = list())
 }
 
@@ -120,12 +133,12 @@ studio_step_open <- function(state, data) {
       return(studio_refuse(state, "No map was given to R when the studio opened."))
     }
     base_map <- state$given_map
-    doc <- studio_doc(map_parts(base_map))
+    doc <- studio_doc(map_parts(base_map), next_uid = max(state$doc$next_uid, state$next_uid %||% 1L))
     tour_id <- NULL
   } else {
     tpl <- studio_template(data$template)
     base_map <- tpl$map
-    doc <- studio_doc(map_parts(base_map))
+    doc <- studio_doc(map_parts(base_map), next_uid = max(state$doc$next_uid, state$next_uid %||% 1L))
     if (length(tpl$then) > 0L) {
       doc <- studio_doc_apply(doc, tpl$then)
     }
@@ -136,22 +149,25 @@ studio_step_open <- function(state, data) {
   checked <- studio_state_build(doc, new_rev, good = state$good, fallback_map = base_map)
   state$doc <- doc
   state$base <- doc
+  state$next_uid <- doc$next_uid
   state$journal <- list()
   state$rev <- new_rev
   state$good <- checked$good
   state$check <- checked$check
   state$target <- list(kind = "none", uid = NULL)
-  state$ask <- NULL
+  state["ask"] <- list(NULL)
   state$template <- data$template
   state$seen <- character()
-  state$tour <- if (!is.null(tour_id)) {
-    list(id = tour_id, done = rep(FALSE, length(studio_tours[[tour_id]]$steps)))
-  } else {
-    NULL
-  }
+  state["tour"] <- list(
+    if (!is.null(tour_id)) {
+      list(id = tour_id, done = rep(FALSE, length(studio_tours[[tour_id]]$steps)))
+    } else {
+      NULL
+    }
+  )
   state$start_open <- FALSE
-  state$confirm_open <- NULL
-  state$notice <- NULL
+  state["confirm_open"] <- list(NULL)
+  state["notice"] <- list(NULL)
   state
 }
 
@@ -183,7 +199,14 @@ studio_step_picked <- function(state, data) {
   checkmate::assert_list(data, names = "unique")
   kind <- data$kind
   id <- data$id
-  if (is.null(kind) || kind %in% c("all", "none") || is.null(id) || !nzchar(as_text(id))) {
+  if (
+    is.null(kind) ||
+      kind %in% c("all", "none") ||
+      is.null(id) ||
+      length(id) == 0L ||
+      is.na(id[[1L]]) ||
+      !nzchar(as_text(id)[[1L]])
+  ) {
     state$target <- list(kind = "none", uid = NULL)
     return(state)
   }
@@ -269,7 +292,7 @@ studio_step <- function(state, event) {
     return(studio_refuse(state, "The map has gone back to R: nothing more changes here."))
   }
   if (!identical(checked$type, "open")) {
-    state$confirm_open <- NULL
+    state["confirm_open"] <- list(NULL)
   }
 
   old_rev <- state$rev
@@ -301,12 +324,28 @@ studio_step <- function(state, event) {
     }
     change <- tryCatch(
       studio_resolve(state$doc, checked, from_doc = from_doc),
-      error = function(e) list(refused = cli::ansi_strip(conditionMessage(e)))
+      stagemap_error_payload = function(e) list(refused = "The studio could not read that change from the page.")
     )
     if (!is.null(change$refused)) {
       return(studio_refuse(state, change$refused))
     }
     if (length(change$ops) > 0L) {
+      uid_cursor <- max(state$doc$next_uid, state$next_uid %||% 1L)
+      first_insert <- NULL
+      for (k in seq_along(change$ops)) {
+        if (identical(change$ops[[k]]$op, "insert") && is.null(change$ops[[k]]$uid)) {
+          uid_val <- paste0("u", uid_cursor)
+          change$ops[[k]]$uid <- uid_val
+          if (is.null(first_insert)) {
+            first_insert <- uid_val
+          }
+          uid_cursor <- uid_cursor + 1L
+        }
+      }
+      if (!is.null(first_insert) && !is.null(change$target)) {
+        change$target$uid <- first_insert
+      }
+      state$next_uid <- uid_cursor
       old_len <- length(state$journal)
       state$journal <- studio_journal_add(state$journal, change)
       state$doc <- if (length(state$journal) > old_len) {
@@ -315,7 +354,7 @@ studio_step <- function(state, event) {
         studio_journal_replay(state$base, state$journal)
       }
       state$rev <- state$rev + 1L
-      state$notice <- NULL
+      state["notice"] <- list(NULL)
       if (!is.null(change$target)) {
         state$target <- change$target
       }
@@ -335,8 +374,7 @@ studio_step <- function(state, event) {
     state$journal <- studio_journal_undo(state$journal)
     state$doc <- studio_journal_replay(state$base, state$journal)
     state$rev <- state$rev + 1L
-    n <- if (is.null(state$notice)) 1L else state$notice$n + 1L
-    state$notice <- list(n = n, text = paste0("Undone: ", undone_entry$text), tone = "info", room = NULL)
+    state <- studio_next_notice(state, paste0("Undone: ", undone_entry$text), tone = "info", room = NULL)
     if (
       !identical(state$target$kind, "none") &&
         is.null(studio_row(state$doc, studio_target_table(state$target$kind), state$target$uid))

@@ -92,30 +92,36 @@ studio_count_shim <- function() {
   paste(
     "(() => {",
     "  if (window.__smsCounts) return;",
-    "  let listeners = 0;",
     "  let observers = 0;",
     "  const timers = new Set();",
     "  const targetMap = new WeakMap();",
+    "  const tracked = new Set();",
     "  const origAdd = EventTarget.prototype.addEventListener;",
     "  const origRemove = EventTarget.prototype.removeEventListener;",
     "  const getCapture = (options) =>",
     "    Boolean(typeof options === 'boolean' ? options : options && options.capture);",
     "  const getEntryMap = (target, type, capture, create) => {",
     "    let byType = targetMap.get(target);",
-    "    if (!byType) { if (!create) return null; byType = new Map(); targetMap.set(target, byType); }",
+    "    if (!byType) {",
+    "      if (!create) return null;",
+    "      byType = new Map();",
+    "      byType.__smsCount = 0;",
+    "      targetMap.set(target, byType);",
+    "      tracked.add(new WeakRef(target));",
+    "    }",
     "    let byCapture = byType.get(type);",
     "    if (!byCapture) { if (!create) return null; byCapture = new Map(); byType.set(type, byCapture); }",
     "    let byListener = byCapture.get(capture);",
     "    if (!byListener) { if (!create) return null; byListener = new Map(); byCapture.set(capture, byListener); }",
-    "    return byListener;",
+    "    return { byType, byListener };",
     "  };",
     "  const dropEntry = (target, type, capture, listener) => {",
-    "    const byListener = getEntryMap(target, type, capture, false);",
-    "    if (!byListener) return null;",
-    "    const entry = byListener.get(listener);",
+    "    const found = getEntryMap(target, type, capture, false);",
+    "    if (!found) return null;",
+    "    const entry = found.byListener.get(listener);",
     "    if (!entry) return null;",
-    "    byListener.delete(listener);",
-    "    listeners -= 1;",
+    "    found.byListener.delete(listener);",
+    "    found.byType.__smsCount -= 1;",
     "    return entry;",
     "  };",
     "  EventTarget.prototype.addEventListener = function (type, listener, options) {",
@@ -128,7 +134,7 @@ studio_count_shim <- function() {
     "    }",
     "    const keyType = String(type);",
     "    const capture = getCapture(options);",
-    "    const byListener = getEntryMap(this, keyType, capture, true);",
+    "    const { byType, byListener } = getEntryMap(this, keyType, capture, true);",
     "    if (!byListener.has(listener)) {",
     "      const target = this;",
     "      let actual = listener;",
@@ -141,7 +147,7 @@ studio_count_shim <- function() {
     "        entry.wrapped = actual;",
     "      }",
     "      byListener.set(listener, entry);",
-    "      listeners += 1;",
+    "      byType.__smsCount += 1;",
     "      if (opts && opts.signal) {",
     "        origAdd.call(opts.signal, 'abort', () => dropEntry(target, keyType, capture, listener), { once: true });",
     "      }",
@@ -210,8 +216,24 @@ studio_count_shim <- function() {
     "    return id;",
     "  };",
     "  window.clearInterval = function (id) { timers.delete(id); return origClearInterval(id); };",
+    "  const liveListeners = () => {",
+    "    let total = 0;",
+    "    for (const ref of [...tracked]) {",
+    "      const target = ref.deref();",
+    "      if (!target) { tracked.delete(ref); continue; }",
+    "      const byType = targetMap.get(target);",
+    "      const count = byType ? byType.__smsCount : 0;",
+    "      if (count === 0) {",
+    "        if (!(target instanceof Node) || !target.isConnected) tracked.delete(ref);",
+    "        continue;",
+    "      }",
+    "      if (target instanceof Node && !target.isConnected) continue;",
+    "      total += count;",
+    "    }",
+    "    return total;",
+    "  };",
     "  window.__smsCounts = () => ({",
-    "    listeners,",
+    "    listeners: liveListeners(),",
     "    observers,",
     "    timers: timers.size,",
     "    nodes: document.querySelectorAll('*').length",
@@ -507,14 +529,26 @@ studio_press <- function(app, key, modifiers = character(), code = key, key_code
   mod_bits <- c(alt = 1L, ctrl = 2L, meta = 4L, shift = 8L)
   mod_mask <- sum(mod_bits[modifiers])
   session <- app$get_chromote_session()
+  key_text <- if (identical(key, "Enter")) {
+    "\r"
+  } else if (identical(key, " ")) {
+    " "
+  } else {
+    ""
+  }
   for (type in c("keyDown", "keyUp")) {
-    session$Input$dispatchKeyEvent(
+    args <- list(
       type = type,
       key = key,
       code = code,
       modifiers = as.integer(mod_mask),
       windowsVirtualKeyCode = as.integer(key_code)
     )
+    if (identical(type, "keyDown") && nzchar(key_text)) {
+      args$text <- key_text
+      args$unmodifiedText <- key_text
+    }
+    do.call(session$Input$dispatchKeyEvent, args)
   }
   invisible(app)
 }

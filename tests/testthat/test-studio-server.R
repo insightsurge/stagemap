@@ -32,7 +32,10 @@ describe("studio_server()", {
       message <- log$messages[[1]]
       expect_named(message, c("ns", "n", "ack", "rev", "sections"))
       expect_identical(message[c("n", "ack", "rev")], list(n = 1L, ack = 1L, rev = 0L))
-      expect_named(message$sections, c("header", "status", "notice", "code"))
+      expect_named(
+        message$sections,
+        c("header", "outline", "inspector", "journal", "start", "status", "notice", "ask", "check", "code", "map")
+      )
       expect_identical(message$sections$header$title, "A map")
     })
   })
@@ -44,7 +47,7 @@ describe("studio_server()", {
       session$setInputs(event = event(2L, "option", list(name = "title", value = "Plan B")))
       message <- log$messages[[2]]
       expect_identical(message[c("n", "ack", "rev")], list(n = 2L, ack = 2L, rev = 1L))
-      expect_named(message$sections, c("header", "status", "code"))
+      expect_named(message$sections, c("header", "journal", "status", "code"))
       expect_match(message$sections$code$text, "Plan B", fixed = TRUE)
     })
   })
@@ -97,7 +100,10 @@ describe("studio_server()", {
     shiny::testServer(studio_server, args = list(map = small), {
       session$setInputs(event = event(1L, "ready"))
       session$setInputs(event = event(2L, "ready"))
-      expect_named(log$messages[[2]]$sections, c("header", "status", "notice", "code"))
+      expect_named(
+        log$messages[[2]]$sections,
+        c("header", "outline", "inspector", "journal", "start", "status", "notice", "ask", "check", "code", "map")
+      )
     })
   })
 
@@ -122,6 +128,57 @@ describe("studio_server()", {
       drawn <- jsonlite::fromJSON(output$map, simplifyVector = FALSE)
       expect_identical(drawn$x$data$options$dismiss, "no_outside")
       expect_true(all(c("title", "details", "stage") %in% unlist(drawn$x$data$options$hosted)))
+    })
+  })
+
+  it("handles a scripted run of events and only redraws output$map when good$serial rises", {
+    log <- local_studio_log()
+    shiny::testServer(studio_server, args = list(map = NULL), {
+      session$setInputs(event = event(1L, "ready"))
+      first_drawn <- jsonlite::fromJSON(output$map, simplifyVector = FALSE)
+      expect_true(log$messages[[1]]$sections$start$open)
+
+      session$setInputs(event = event(2L, "open", list(template = "blank", confirm = FALSE)))
+      expect_false(log$messages[[2]]$sections$start$open)
+      blank_drawn <- jsonlite::fromJSON(output$map, simplifyVector = FALSE)
+      expect_length(blank_drawn$x$data$cards, 1L)
+
+      session$setInputs(event = event(3L, "add", list(table = "cards")))
+      expect_identical(log$messages[[3]]$sections$inspector$kind, "card")
+      added_drawn <- jsonlite::fromJSON(output$map, simplifyVector = FALSE)
+      expect_length(added_drawn$x$data$cards, 2L)
+
+      # Breaking the card id leaves good$serial unchanged: output$map still has the last working cards
+      new_uid <- log$messages[[3]]$sections$inspector$uid
+      session$setInputs(event = event(4L, "edit", list(table = "cards", uid = new_uid, field = "id", value = "")))
+      expect_identical(log$messages[[4]]$sections$status$problems, 1L)
+      still_drawn <- jsonlite::fromJSON(output$map, simplifyVector = FALSE)
+      expect_length(still_drawn$x$data$cards, 2L)
+
+      session$setInputs(event = event(5L, "undo"))
+      session$setInputs(event = event(6L, "undo"))
+      undone_drawn <- jsonlite::fromJSON(output$map, simplifyVector = FALSE)
+      expect_length(undone_drawn$x$data$cards, 1L)
+    })
+  })
+
+  it("accepts input$map_pick only from the reader after ready, and clears target when id is absent", {
+    log <- local_studio_log()
+    shiny::testServer(studio_server, args = list(map = small), {
+      session$setInputs(map_pick = list(kind = "card", id = "b", by = "reader"))
+      expect_length(log$messages, 0L)
+
+      session$setInputs(event = event(1L, "ready"))
+      session$setInputs(map_pick = list(kind = "card", id = "b", by = "data"))
+      expect_length(log$messages, 1L)
+
+      session$setInputs(map_pick = list(kind = "card", id = "b", by = "reader"))
+      expect_length(log$messages, 2L)
+      expect_identical(log$messages[[2]]$sections$inspector$sub, "b")
+
+      session$setInputs(map_pick = list(kind = "card", id = NULL, by = "reader"))
+      expect_length(log$messages, 3L)
+      expect_null(log$messages[[3]]$sections$inspector)
     })
   })
 

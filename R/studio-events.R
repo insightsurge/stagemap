@@ -649,7 +649,16 @@ studio_resolve <- function(doc, event, from_doc = NULL) {
   checkmate::assert_choice(event$type, names(events))
   checkmate::assert_list(event$data)
   spec <- events[[event$type]]
-  spec$check(event$data)
+  tryCatch(
+    spec$check(event$data),
+    error = function(e) {
+      sm_abort(
+        cli_escape(conditionMessage(e)),
+        class = "stagemap_error_payload",
+        parent = e
+      )
+    }
+  )
   if (identical(event$type, "edit")) {
     spec$resolve(doc, event$data, from_doc = from_doc)
   } else {

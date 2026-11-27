@@ -20,16 +20,16 @@ studio_assert_doc <- function(doc, name = "doc") {
   invisible(doc)
 }
 
-# Builds a studio document from `parts` (`list(tables, args)` as map_parts() returns it): assigns `.studio_uid` in
-# `map_table_names` order, converts id-like columns with `as_text()` and `stages$date` to `Date`.
-studio_doc <- function(parts) {
+# Builds a studio document from `parts` (`list(tables, args)` as map_parts() returns it): assigns `.studio_uid`
+# in `map_table_names` order starting from `next_uid`, converts id columns with `as_text()` and `stages$date` to `Date`.
+studio_doc <- function(parts, next_uid = 1L) {
   checkmate::assert_list(parts, names = "unique")
   checkmate::assert_names(names(parts), must.include = c("tables", "args"))
   checkmate::assert_list(parts$tables, types = "data.frame", names = "unique")
   checkmate::assert_subset(names(parts$tables), map_table_names)
   checkmate::assert_list(parts$args, names = "unique")
+  checkmate::assert_count(next_uid, positive = TRUE)
 
-  next_uid <- 1L
   tables <- list()
   for (name in intersect(map_table_names, names(parts$tables))) {
     tbl <- parts$tables[[name]]
@@ -266,16 +266,25 @@ studio_op_set <- function(doc, op) {
   doc
 }
 
-# Applies an `insert` operation (`table`, `row`, `after`).
+# Applies an `insert` operation (`table`, `row`, `after`, optional `uid`).
 studio_op_insert <- function(doc, op) {
   studio_assert_doc(doc)
   checkmate::assert_list(op, names = "unique")
   checkmate::assert_choice(op$table, map_table_names)
   checkmate::assert_list(op$row, names = "unique")
   checkmate::assert_string(op$after, min.chars = 1L, null.ok = TRUE)
+  checkmate::assert_string(op$uid, min.chars = 1L, null.ok = TRUE)
 
-  uid <- paste0("u", doc$next_uid)
-  doc$next_uid <- doc$next_uid + 1L
+  if (!is.null(op$uid)) {
+    uid <- op$uid
+    num <- suppressWarnings(as.integer(sub("^u", "", uid)))
+    if (!is.na(num) && num >= doc$next_uid) {
+      doc$next_uid <- num + 1L
+    }
+  } else {
+    uid <- paste0("u", doc$next_uid)
+    doc$next_uid <- doc$next_uid + 1L
+  }
   row_fields <- setdiff(names(op$row), ".studio_uid")
   tbl <- doc$tables[[op$table]]
 

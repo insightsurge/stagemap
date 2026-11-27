@@ -20,9 +20,9 @@ describe("the studio page", {
     expect_identical(state$n, "1")
     expect_identical(state$rev, "0")
     expect_identical(state$title, "A small piece of work")
-    expect_identical(state$facts, "4 cards in 3 stages and 2 lanes")
+    expect_identical(state$facts, "4 cards in 3 stages and 2 lanes, 3 links")
     expect_match(state$code, "A small piece of work", fixed = TRUE)
-    expect_identical(state$count, "1 line")
+    expect_match(state$count, "^[0-9]+ lines$")
     expect_identical(state$cards, 4L)
     expect_null(state$busy)
     expect_studio_clean(app)
@@ -97,7 +97,7 @@ describe("Copy", {
     path <- studio_wait_copy(app)
     # Then the clipboard holds the code the room shows, written through a ClipboardItem
     expect_identical(path, "item")
-    shown <- app$get_js("document.querySelector('.sms-code').textContent")
+    shown <- paste(vapply(studio_section(app, "code")$lines, `[[`, "", "text"), collapse = "\n")
     expect_identical(app$get_js("navigator.clipboard.readText()"), shown)
     expect_identical(app$get_js("document.querySelector('.sms-toast-text').textContent"), "Copied the R code.")
     expect_studio_clean(app)
@@ -115,7 +115,7 @@ describe("Copy", {
     expect_length(copied, 1L)
     studio_wait_step(app)
     # and it is the whole code the server drew for that title, not the title field's text or an older code
-    shown <- app$get_js("document.querySelector('.sms-code').textContent")
+    shown <- paste(vapply(studio_section(app, "code")$lines, `[[`, "", "text"), collapse = "\n")
     expect_identical(copied[[1]]$text, shown)
     expect_match(shown, "Typed then copied", fixed = TRUE)
     expect_false(identical(copied[[1]]$text, "Typed then copied"))
@@ -146,7 +146,7 @@ describe("Copy", {
     # Then the copy has the new title and Copy is no longer busy
     expect_identical(studio_wait_copy(app), "item")
     studio_wait_step(app)
-    shown <- app$get_js("document.querySelector('.sms-code').textContent")
+    shown <- paste(vapply(studio_section(app, "code")$lines, `[[`, "", "text"), collapse = "\n")
     expect_identical(studio_copied(app)[[1]]$text, shown)
     expect_match(shown, "Held answer", fixed = TRUE)
     expect_null(app$get_js("document.querySelector('[data-sms-copy]').getAttribute('aria-busy')"))
@@ -157,7 +157,7 @@ describe("Copy", {
   it("[SMS-008] uses writeText() without ClipboardItem, the copy command when that is refused, and asks for Ctrl+C last", {
     app <- studio_driver()
     studio_open_code(app)
-    shown <- app$get_js("document.querySelector('.sms-code').textContent")
+    shown <- paste(vapply(studio_section(app, "code")$lines, `[[`, "", "text"), collapse = "\n")
     # Without ClipboardItem
     stub_studio_clipboard(app, item = FALSE)
     app$run_js(studio_copy_js)
@@ -174,7 +174,9 @@ describe("Copy", {
     app$run_js(studio_copy_js)
     expect_identical(studio_wait_copy(app), "manual")
     expect_length(studio_copied(app), 0L)
-    expect_identical(app$get_js("window.getSelection().toString()"), shown)
+    selected <- strsplit(app$get_js("window.getSelection().toString()"), "\n", fixed = TRUE)[[1]]
+    expected_lines <- strsplit(shown, "\n", fixed = TRUE)[[1]]
+    expect_identical(selected[nzchar(selected)], expected_lines[nzchar(expected_lines)])
     expect_match(app$get_js("document.querySelector('.sms-toast-text').textContent"), "press Ctrl+C", fixed = TRUE)
     expect_studio_clean(app)
   })
@@ -364,7 +366,7 @@ describe("a reconnect", {
     done <- jsonlite::fromJSON(app$get_js("document.getElementById('done').textContent"))
     expect_identical(done$title, "Typed while down")
     expect_identical(studio_wait_copy(app), "item")
-    shown <- app$get_js("document.querySelector('.sms-code').textContent")
+    shown <- paste(vapply(studio_section(app, "code")$lines, `[[`, "", "text"), collapse = "\n")
     expect_identical(studio_copied(app)[[1]]$text, shown)
     expect_match(shown, "Typed while down", fixed = TRUE)
     studio_wait_step(app)

@@ -61,7 +61,8 @@ describe("studio_step()", {
     s <- studio_step(s, ev("option", list(name = "title", value = "Edited"), seq = 3L))$state
     s_undone <- studio_step(s, ev("undo", seq = 4L))$state
     expect_identical(s_undone$doc, s_undone$base)
-    expect_identical(s_undone$doc, studio_doc(map_parts(studio_template("blank")$map)))
+    expect_identical(studio_doc_parts(s_undone$doc), map_parts(studio_template("blank")$map))
+    expect_gt(s_undone$doc$next_uid, length(unlist(lapply(s$base$tables, nrow))))
 
     # Make a change so opening again needs confirm = TRUE
     s <- studio_step(s, ev("option", list(name = "title", value = "Edited 2"), seq = 5L))$state
@@ -231,7 +232,7 @@ describe("studio_step()", {
     s1 <- studio_step(s, ev("add", list(table = "cards"), seq = 1L))$state
     expect_identical(s1$doc$tables$cards[["owner name"]], c("Ana", NA_character_))
     s2 <- studio_step(s1, ev("undo", seq = 2L))$state
-    expect_identical(s2$doc, s2$base)
+    expect_identical(studio_doc_parts(s2$doc), studio_doc_parts(s2$base))
     expect_identical(studio_journal_replay(s2$base, s2$journal), s2$doc)
   })
 
@@ -285,6 +286,52 @@ describe("studio_step()", {
     expect_identical(res$state$ack, 6L)
     expect_match(res$state$notice$text, "has no rev")
     expect_identical(studio_step(s, "bad")$state$ack, 0L)
+  })
+
+  it("keeps notice$n rising across accepted changes and repeated identical refusals", {
+    s <- studio_state_new(small)
+    r1 <- studio_step(s, ev("option", list(name = "title", value = ""), seq = 1L))$state
+    expect_identical(r1$notice$n, 1L)
+    ok <- studio_step(r1, ev("option", list(name = "title", value = "Valid"), seq = 2L, rev = r1$rev))$state
+    expect_null(ok$notice)
+    r2 <- studio_step(ok, ev("option", list(name = "title", value = ""), seq = 3L, rev = ok$rev))$state
+    expect_identical(r2$notice$n, 2L)
+    expect_identical(r2$notice$text, r1$notice$text)
+    r3 <- studio_step(r2, ev("option", list(name = "title", value = ""), seq = 4L, rev = r2$rev))$state
+    expect_identical(r3$notice$n, 3L)
+  })
+
+  it("turns a malformed event payload into a short plain notice without swallowing internal bugs", {
+    s <- studio_state_new(small)
+    bad_payload <- studio_step(s, ev("add", list(table = "links"), seq = 1L))
+    expect_identical(bad_payload$state$rev, 0L)
+    expect_identical(bad_payload$state$notice$tone, "problem")
+    expect_false(grepl("Assertion on", bad_payload$state$notice$text, fixed = TRUE))
+
+    local_mocked_bindings(
+      studio_resolve = function(...) stop("unexpected internal bug")
+    )
+    expect_error(
+      studio_step(s, ev("add", list(table = "cards"), seq = 2L)),
+      "unexpected internal bug"
+    )
+  })
+
+  it("never reuses row keys after Undo or open within one session", {
+    s <- studio_state_new(small)
+    s1 <- studio_step(s, ev("add", list(table = "cards"), seq = 1L))$state
+    uid_first <- s1$target$uid
+    s2 <- studio_step(s1, ev("undo", seq = 2L, rev = s1$rev))$state
+    s3 <- studio_step(s2, ev("add", list(table = "cards"), seq = 3L, rev = s2$rev))$state
+    uid_second <- s3$target$uid
+    expect_false(identical(uid_second, uid_first))
+
+    seen_uids <- c(unlist(lapply(s$doc$tables, `[[`, ".studio_uid")), uid_first, uid_second)
+    s4 <- studio_step(s3, ev("open", list(template = "blank", confirm = TRUE), seq = 4L, rev = s3$rev))$state
+    opened_uids <- unlist(lapply(s4$doc$tables, `[[`, ".studio_uid"))
+    expect_length(intersect(opened_uids, seen_uids), 0L)
+    s5 <- studio_step(s4, ev("add", list(table = "cards"), seq = 5L, rev = s4$rev))$state
+    expect_false(s5$target$uid %in% c(seen_uids, opened_uids))
   })
 })
 
@@ -358,7 +405,7 @@ describe("replay and row key stability across 40 mixed events", {
     expect_identical(studio_row(s$doc, "cards", u_calc)$id, "calc_dose_4")
     expect_identical(s$doc$args$target, "calc_dose_4")
 
-    # Undoing every remaining entry returns base with identical keys
+    # Undoing every remaining entry returns base tables and args, and replay matches doc
     while (studio_journal_can_undo(s$journal)) {
       res <- studio_step(s, ev("undo", seq = seq_n, rev = s$rev))
       seq_n <- seq_n + 1L
@@ -366,7 +413,7 @@ describe("replay and row key stability across 40 mixed events", {
       expect_match(s$notice$text, "^Undone: ")
       expect_identical(studio_journal_replay(s$base, s$journal), s$doc)
     }
-    expect_identical(s$doc, s$base)
+    expect_identical(studio_doc_parts(s$doc), studio_doc_parts(s$base))
   })
 
   it("keeps doc identical to replay when clearing a newly added column or returning a factor cell", {
