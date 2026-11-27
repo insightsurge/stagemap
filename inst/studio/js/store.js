@@ -25,6 +25,8 @@ export function createStore(root, boot, tools) {
   const waiters = new Set(); /* whenInStep() promises: { target, resolve, reject, timer } */
   const listeners = new Set();
   const waiting = []; /* events sent while the session is not initialised, in the order they were sent */
+  const deferred = []; /* events held one tick so a reader's map pick leaves before an immediate action */
+  let deferTimer = 0;
   let seq = 0;
   let sent = 0;
   let ack = 0;
@@ -38,6 +40,19 @@ export function createStore(root, boot, tools) {
 
   function post(event) {
     window.Shiny.setInputValue(`${ns}event`, event, { priority: 'event' });
+  }
+
+  function flushDeferred() {
+    deferTimer = 0;
+    for (const event of deferred.splice(0)) {
+      if (connected) post(event);
+      else waiting.push(event);
+    }
+  }
+
+  /* Holds outgoing events for one tick so the map widget's own 0 ms pick push reaches Shiny first. */
+  function deferNextTick() {
+    if (!deferTimer) deferTimer = later(flushDeferred, 0);
   }
 
   function markBusy() {
@@ -56,7 +71,8 @@ export function createStore(root, boot, tools) {
       new CustomEvent('stagemap-studio:send', { detail: event, cancelable: true, bubbles: true }),
     );
     if (go) {
-      if (connected) post(event);
+      if (deferTimer) deferred.push(event);
+      else if (connected) post(event);
       else waiting.push(event);
     }
     return seq;
@@ -174,6 +190,7 @@ export function createStore(root, boot, tools) {
   return {
     send,
     flush,
+    deferNextTick,
     whenInStep,
     subscribe,
     receive,

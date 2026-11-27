@@ -36,6 +36,21 @@ studio_server <- function(id, map = NULL, on_done = shiny::stopApp, options = li
       studio_effects(result$effects, proxy, outbox)
     }
 
+    # Register `map_pick` before `event` so a pick and an immediate action (`+ Card`) in the same Shiny message
+    # apply the pick first; an edit flushed before a pick addresses its row by uid and does not move `state$target`.
+    shiny::observeEvent(input$map_pick, {
+      if (!outbox$ready) {
+        return()
+      }
+      pick <- input$map_pick
+      if (!is.list(pick) || !identical(pick$by, "reader")) {
+        return()
+      }
+      kind <- if (is.character(pick$kind) && length(pick$kind) == 1L && nzchar(pick$kind)) pick$kind else NULL
+      id <- if (is.character(pick$id) && length(pick$id) == 1L && nzchar(pick$id)) pick$id else NULL
+      step(function(state) studio_pick(state, kind, id))
+    })
+
     shiny::observeEvent(input$event, {
       event <- input$event
       is_ready <- is.list(event) && identical(event$type, "ready")
@@ -51,19 +66,6 @@ studio_server <- function(id, map = NULL, on_done = shiny::stopApp, options = li
         outbox$view <- NULL
       }
       step(function(state) studio_step(state, event))
-    })
-
-    shiny::observeEvent(input$map_pick, {
-      if (!outbox$ready) {
-        return()
-      }
-      pick <- input$map_pick
-      if (!is.list(pick) || !identical(pick$by, "reader")) {
-        return()
-      }
-      kind <- if (is.character(pick$kind) && length(pick$kind) == 1L && nzchar(pick$kind)) pick$kind else NULL
-      id <- if (is.character(pick$id) && length(pick$id) == 1L && nzchar(pick$id)) pick$id else NULL
-      step(function(state) studio_pick(state, kind, id))
     })
 
     shiny::observe({

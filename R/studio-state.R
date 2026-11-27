@@ -194,6 +194,48 @@ studio_step_target <- function(state, data) {
   list(state = state, effects = list(), refused = FALSE)
 }
 
+# Resolves a drawn `kind` ("card" or "stage") and `id_text` to its `.studio_uid` in `state$doc` when that id sits at
+# the same position in the drawn map and `state$doc` and occurs once in `state$doc`; otherwise NULL.
+studio_drawn_uid <- function(state, kind, id_text) {
+  checkmate::assert_list(state, names = "unique")
+  checkmate::assert_string(kind, min.chars = 1L)
+  checkmate::assert_string(id_text, na.ok = TRUE)
+  if (!(kind %in% c("card", "stage")) || is.na(id_text) || !nzchar(trimws(id_text))) {
+    return(NULL)
+  }
+  tbl_name <- studio_target_table(kind)
+  good_tbl <- stage_map_tables(state$good$map)[[tbl_name]]
+  good_ids <- if (is.data.frame(good_tbl)) as_text(good_tbl$id) else character()
+  pos <- match(id_text, good_ids)
+  if (is.na(pos)) {
+    return(NULL)
+  }
+  doc_tbl <- state$doc$tables[[tbl_name]]
+  doc_ids <- if (is.data.frame(doc_tbl) && "id" %in% names(doc_tbl)) as_text(doc_tbl$id) else character()
+  if (pos > length(doc_ids) || !identical(doc_ids[[pos]], id_text) || sum(doc_ids == id_text, na.rm = TRUE) != 1L) {
+    return(NULL)
+  }
+  doc_tbl$.studio_uid[[pos]]
+}
+
+# Builds a `select` effect for `state$target` when that target is unambiguously present in `state$good$map`.
+studio_target_select_effect <- function(state) {
+  checkmate::assert_list(state, names = "unique")
+  target <- state$target
+  if (!(target$kind %in% c("card", "stage")) || is.null(target$uid)) {
+    return(list())
+  }
+  row <- studio_row(state$doc, studio_target_table(target$kind), target$uid)
+  if (is.null(row) || is.na(row$id) || !nzchar(trimws(as_text(row$id)))) {
+    return(list())
+  }
+  id_text <- as_text(row$id)
+  if (identical(studio_drawn_uid(state, target$kind, id_text), target$uid)) {
+    return(list(list(type = "select", kind = target$kind, id = id_text)))
+  }
+  list()
+}
+
 studio_step_picked <- function(state, data) {
   checkmate::assert_list(state, names = "unique")
   checkmate::assert_list(data, names = "unique")
@@ -214,22 +256,17 @@ studio_step_picked <- function(state, data) {
     tbl_name <- studio_target_table(kind)
     good_tbl <- stage_map_tables(state$good$map)[[tbl_name]]
     id_text <- as_text(id)[[1L]]
-    if (is.data.frame(good_tbl) && (id_text %in% as_text(good_tbl$id))) {
-      doc_tbl <- state$doc$tables[[tbl_name]]
-      good_ids <- as_text(good_tbl$id)
-      doc_ids <- if (is.data.frame(doc_tbl) && "id" %in% names(doc_tbl)) as_text(doc_tbl$id) else character()
-      if (!identical(state$good$rev, state$rev) && !identical(doc_ids, good_ids)) {
-        return(studio_next_notice(
-          state,
-          "The drawn map is out of date while the map has problems. Fix them in Check first.",
-          tone = "problem",
-          room = "check"
-        ))
-      }
-      uid <- studio_uid_of(state$doc, tbl_name, id_text)
-      if (!is.null(uid)) {
-        state$target <- list(kind = kind, uid = uid)
-      }
+    uid <- studio_drawn_uid(state, kind, id_text)
+    if (!is.null(uid)) {
+      state$target <- list(kind = kind, uid = uid)
+      state["notice"] <- list(NULL)
+    } else if (is.data.frame(good_tbl) && (id_text %in% as_text(good_tbl$id))) {
+      return(studio_next_notice(
+        state,
+        "The drawn map is out of date while the map has problems. Fix them in Check first.",
+        tone = "problem",
+        room = "check"
+      ))
     }
   }
   state
@@ -278,41 +315,10 @@ studio_select_effect <- function(state, old_target, old_doc, event_type, old_ser
     return(list())
   }
 
-  in_drawn <- function(kind, id) {
-    if (!(kind %in% c("card", "stage")) || is.null(id) || is.na(id) || !nzchar(trimws(as_text(id)))) {
-      return(FALSE)
-    }
-    tbl_name <- studio_target_table(kind)
-    good_tbl <- stage_map_tables(state$good$map)[[tbl_name]]
-    good_ids <- if (is.data.frame(good_tbl)) as_text(good_tbl$id) else character()
-    if (!(as_text(id) %in% good_ids)) {
-      return(FALSE)
-    }
-    if (identical(state$good$rev, state$rev)) {
-      return(TRUE)
-    }
-    doc_tbl <- state$doc$tables[[tbl_name]]
-    doc_ids <- if (is.data.frame(doc_tbl) && "id" %in% names(doc_tbl)) as_text(doc_tbl$id) else character()
-    identical(doc_ids, good_ids)
-  }
-
   target <- state$target
-  select_target_if_drawn <- function() {
-    if (!(target$kind %in% c("card", "stage"))) {
-      return(list())
-    }
-    row <- studio_row(state$doc, studio_target_table(target$kind), target$uid)
-    if (!is.null(row) && !is.na(row$id) && nzchar(trimws(as_text(row$id)))) {
-      id_text <- as_text(row$id)
-      if (in_drawn(target$kind, id_text)) {
-        return(list(list(type = "select", kind = target$kind, id = id_text)))
-      }
-    }
-    list()
-  }
 
   if (!identical(target, old_target)) {
-    eff <- select_target_if_drawn()
+    eff <- studio_target_select_effect(state)
     if (length(eff) > 0L) {
       return(eff)
     }
@@ -323,7 +329,7 @@ studio_select_effect <- function(state, old_target, old_doc, event_type, old_ser
   }
 
   if (!identical(state$good$serial, old_serial) && target$kind %in% c("card", "stage")) {
-    return(select_target_if_drawn())
+    return(studio_target_select_effect(state))
   }
 
   if (target$kind %in% c("card", "stage") && !identical(state$doc, old_doc)) {
@@ -333,16 +339,16 @@ studio_select_effect <- function(state, old_target, old_doc, event_type, old_ser
     if (
       !is.null(old_row) &&
         !is.null(new_row) &&
-        !identical(as_text(old_row$id), as_text(new_row$id)) &&
-        in_drawn(target$kind, new_row$id)
+        !identical(as_text(old_row$id), as_text(new_row$id))
     ) {
-      return(list(list(type = "select", kind = target$kind, id = as_text(new_row$id))))
+      return(studio_target_select_effect(state))
     }
   }
   list()
 }
 
-# Handles a server-made map pick (`kind`, `id`) without emitting a `select` effect.
+# Handles a server-made map pick (`kind`, `id`). Emits a `select` effect to restore the map selection whenever a card
+# or stage click is refused or names an id not in the drawn map.
 studio_pick <- function(state, kind, id = NULL) {
   checkmate::assert_list(state, names = "unique")
   checkmate::assert_string(kind, min.chars = 1L, null.ok = TRUE)
@@ -350,9 +356,20 @@ studio_pick <- function(state, kind, id = NULL) {
   if (isTRUE(state$closed)) {
     return(studio_refuse(state, "The map has gone back to R: nothing more changes here."))
   }
+  has_id <- !is.null(id) && length(id) > 0L && !is.na(id[[1L]]) && nzchar(as_text(id)[[1L]])
+  refused <- !is.null(kind) &&
+    (kind %in% c("card", "stage")) &&
+    has_id &&
+    is.null(studio_drawn_uid(state, kind, as_text(id)[[1L]]))
   state <- studio_step_picked(state, list(kind = kind, id = id))
   state <- studio_tour_tick(state)
-  list(state = state, effects = list())
+  effects <- if (refused) {
+    eff <- studio_target_select_effect(state)
+    if (length(eff) > 0L) eff else list(list(type = "select", kind = "none", id = NULL))
+  } else {
+    list()
+  }
+  list(state = state, effects = effects)
 }
 
 # Applies one page event to `state`, returning `list(state, effects)`.
@@ -436,7 +453,7 @@ studio_step <- function(state, event) {
       }
       state$rev <- state$rev + 1L
       state["notice"] <- list(NULL)
-      if (!is.null(change$target)) {
+      if (!is.null(change$target) && !identical(checked$type, "edit")) {
         state$target <- change$target
       }
       if (

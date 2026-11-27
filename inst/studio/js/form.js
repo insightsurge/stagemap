@@ -247,7 +247,7 @@ function syncRadioGroup(wrap, field, id, ctx, created) {
   });
 
   syncChildren(seg, items);
-  return { rootNode: fieldset, ariaTarget: fieldset };
+  return { rootNode: fieldset, ariaTarget: fieldset, invalidTargets: [...seg.querySelectorAll('input[type="radio"]')] };
 }
 
 function syncToggle(wrap, field, id, ctx, created) {
@@ -348,18 +348,22 @@ function syncField(existing, field, ctx, idPrefix) {
   const id = `${idPrefix}f-${field.name}`;
   let mainNodes;
   let ariaTarget;
+  let invalidTargets;
   if (field.type === 'radio') {
     const res = syncRadioGroup(wrap, field, id, ctx, created);
     mainNodes = [res.rootNode];
     ariaTarget = res.ariaTarget;
+    invalidTargets = res.invalidTargets;
   } else if (field.type === 'toggle') {
     const res = syncToggle(wrap, field, id, ctx, created);
     mainNodes = [res.rootNode];
     ariaTarget = res.ariaTarget;
+    invalidTargets = [ariaTarget];
   } else {
     const res = syncInputField(wrap, field, id, ctx, created, idPrefix);
     mainNodes = res.nodes;
     ariaTarget = res.ariaTarget;
+    invalidTargets = [ariaTarget];
   }
 
   const tail = [];
@@ -373,8 +377,16 @@ function syncField(existing, field, ctx, idPrefix) {
     describedBy.push(hintEl.id);
   }
 
+  let liveEl = wrap.querySelector(':scope > .sms-fld-live');
+  if (!liveEl) {
+    liveEl = make('div', 'sms-fld-live');
+    liveEl.setAttribute('aria-live', 'polite');
+    liveEl.setAttribute('aria-atomic', 'true');
+  }
+  tail.push(liveEl);
+
   if (field.problem) {
-    let errEl = wrap.querySelector(':scope > .sms-err');
+    let errEl = liveEl.querySelector(':scope > .sms-err');
     let errText;
     if (!errEl) {
       errEl = make('p', 'sms-err');
@@ -385,7 +397,7 @@ function syncField(existing, field, ctx, idPrefix) {
     }
     errEl.id = `${id}-prob`;
     setText(errText, field.problem.text ?? '');
-    tail.push(errEl);
+    syncChildren(liveEl, [errEl]);
     describedBy.unshift(errEl.id);
 
     if (field.problem.fixes?.length > 0) {
@@ -394,9 +406,10 @@ function syncField(existing, field, ctx, idPrefix) {
       syncActions(fixesEl, field.problem.fixes, `${id}-fix-`);
       tail.push(fixesEl);
     }
-    ariaTarget.setAttribute('aria-invalid', 'true');
+    for (const el of invalidTargets) el.setAttribute('aria-invalid', 'true');
   } else {
-    ariaTarget.removeAttribute('aria-invalid');
+    syncChildren(liveEl, []);
+    for (const el of invalidTargets) el.removeAttribute('aria-invalid');
   }
 
   if (describedBy.length > 0) ariaTarget.setAttribute('aria-describedby', describedBy.join(' '));

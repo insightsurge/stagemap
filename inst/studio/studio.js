@@ -253,6 +253,7 @@ function mount(root) {
         const detail = event.detail ?? {};
         if (detail.by === 'reader') {
           hold.flush();
+          store.deferNextTick();
           if (detail.id != null && (detail.via === 'key' || modality === 'key')) {
             pendingInspectorSeq = Math.max(1, store.sent);
             inspectorOpener = document.activeElement instanceof Element ? document.activeElement : null;
@@ -458,8 +459,14 @@ function mount(root) {
   root.addEventListener(
     'focusout',
     (event) => {
-      if (!isTextField(event.target) || !event.target.hasAttribute('data-sms-event')) return;
-      hold.flush();
+      if (
+        !(event.target instanceof Element) ||
+        !event.target.matches('input, select, textarea') ||
+        !event.target.hasAttribute('data-sms-event')
+      ) {
+        return;
+      }
+      if (isTextField(event.target)) hold.flush();
       /* Once focus has moved on, the field may show the server's value again. */
       later(() => {
         if (store.view.header) renderHeader(root, store.view.header, ctx());

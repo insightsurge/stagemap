@@ -5,7 +5,7 @@ skip_without_chrome()
 
 pick_card_js <- function(id) {
   sprintf(
-    "document.querySelector('#studio-map [data-card=\"%s\"]').dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }))",
+    "document.querySelector('#studio-map [data-card=\"%s\"]').dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }));",
     id
   )
 }
@@ -271,6 +271,7 @@ describe("the card inspector form", {
     expect_match(studio_section(app, "journal")$text, "A **bold** note", fixed = TRUE)
 
     # Side "Edit" action beside Stage (at once after typing)
+    app$run_js("window.__sms.sent = [];")
     studio_do(
       app,
       paste(
@@ -278,6 +279,8 @@ describe("the card inspector form", {
         studio_click_js(".sms-inspector [data-sms-field='stage'] [data-sms-action='Edit']")
       )
     )
+    sent_ed <- vapply(studio_sent(app), `[[`, character(1L), "type")
+    expect_lt(match("edit", sent_ed), match("target", sent_ed))
     expect_identical(app$get_js("document.querySelector('.sms-inspector .sms-kick').textContent"), "stage")
     expect_identical(app$get_js("document.querySelector('.sms-inspector .sms-insp-sub').textContent"), "ship")
     expect_match(studio_section(app, "journal")$text, "By stage edit", fixed = TRUE)
@@ -285,6 +288,7 @@ describe("the card inspector form", {
     # Trace from here (at once + held) on card "a"
     app$run_js(pick_card_js("a"))
     app$wait_for_js("document.querySelector('.sms-inspector .sms-kick')?.textContent === 'card'")
+    app$run_js("window.__sms.sent = [];")
     hold_studio_messages(app)
     tr_seq <- app$get_js(paste(
       studio_type_js(".sms-inspector [data-sms-field='sub'] input", "Before trace"),
@@ -292,6 +296,8 @@ describe("the card inspector form", {
       sprintf("Number(%s.dataset.smsSent)", studio_root_js)
     ))
     studio_wait_held(app, tr_seq)
+    sent_tr <- vapply(studio_sent(app), `[[`, character(1L), "type")
+    expect_lt(match("edit", sent_tr), match("ask", sent_tr))
     expect_identical(
       app$get_js(
         "document.querySelector('.sms-inspector [data-sms-action=\"Trace from here\"]').getAttribute('aria-busy')"
@@ -300,6 +306,10 @@ describe("the card inspector form", {
     )
     release_studio_messages(app)
     studio_wait_step(app)
+    expect_identical(
+      app$get_js("document.querySelector('.sms-inspector [data-sms-field=\"sub\"] input').value"),
+      "Before trace"
+    )
     expect_match(studio_section(app, "journal")$text, "Before trace", fixed = TRUE)
     expect_studio_clean(app)
   })
@@ -364,6 +374,7 @@ describe("the card inspector form", {
     app$wait_for_js("document.querySelector('.sms-inspector [data-sms-action=\"Remove card\"]') !== null")
 
     since <- studio_stamp(app)
+    record_studio_events(app)
     studio_do(
       app,
       paste(
@@ -372,6 +383,8 @@ describe("the card inspector form", {
       )
     )
     studio_wait_map(app, since)
+    sent_rm <- vapply(studio_sent(app), `[[`, character(1L), "type")
+    expect_lt(match("edit", sent_rm), match("remove", sent_rm))
     expect_true(studio_section(app, "inspector")$hidden)
     expect_identical(app$get_js("document.querySelectorAll('#studio-map [data-card]').length"), 3L)
     j <- studio_section(app, "journal")$text
@@ -399,12 +412,29 @@ describe("the card inspector form", {
     expect_studio_clean(app)
   })
 
-  it("[SMS-050] shows inline problem and fix on duplicate id, refuses stale map click, and clears all three", {
+  it("[SMS-050] announces inline problem in a persistent live region, restores selection on stale refusal, and allows unchanged stale picks", {
     app <- studio_driver("small")
     # Add an unlinked card so duplicating its id produces only the 2 duplicate faults (no broken link)
     since_add <- studio_stamp(app)
     studio_do(app, studio_click_js("[data-sms-action='+ Card']"))
     studio_wait_map(app, since_add)
+
+    # Persistent polite live region exists on the field before any problem appears
+    live_before <- app$get_js(
+      "(() => {
+         const l = document.querySelector('.sms-inspector [data-sms-field=\"id\"] .sms-fld-live');
+         return l ? {
+           live: l.getAttribute('aria-live'),
+           atomic: l.getAttribute('aria-atomic'),
+           children: l.children.length,
+           display: getComputedStyle(l).display
+         } : null;
+       })()"
+    )
+    expect_identical(live_before$live, "polite")
+    expect_identical(live_before$atomic, "true")
+    expect_identical(live_before$children, 0L)
+    expect_false(identical(live_before$display, "none"))
 
     stamp_before <- studio_stamp(app)
     studio_do(
@@ -414,24 +444,40 @@ describe("the card inspector form", {
         "document.querySelector('.sms-inspector [data-sms-field=\"id\"] input').blur();"
       )
     )
-    # Problem beside Id, stamp counts 2 duplicate faults, drawn map stays on last working version
+    # Problem appears inside the persistent live region, stamp counts 2 duplicate faults, drawn map stays on last good
     expect_identical(
       app$get_js("document.querySelector('.sms-inspector [data-sms-field=\"id\"] input').getAttribute('aria-invalid')"),
       "true"
     )
     expect_match(
-      app$get_js("document.querySelector('.sms-inspector [data-sms-field=\"id\"] .sms-err').textContent"),
+      app$get_js("document.querySelector('.sms-inspector [data-sms-field=\"id\"] .sms-fld-live .sms-err').textContent"),
       "Another card"
     )
     expect_match(studio_section(app, "status")$stamp, "2 problems", fixed = TRUE)
     expect_identical(studio_stamp(app), stamp_before)
 
-    # Clicking card "b" on the stale drawn map refuses with a notice instead of targeting the wrong row
+    # Clicking duplicated "b" on the stale drawn map refuses and clears the widget selection (target u5 is not drawn)
     app$run_js(pick_card_js("b"))
     app$wait_for_js("document.querySelector('.sms-toast').dataset.smsOn !== undefined")
     expect_match(studio_section(app, "notice")$text, "out of date")
+    app$wait_for_js("JSON.parse(document.getElementById('map_state').textContent).selected.length === 0")
 
-    # Apply inline fix (at once + held) -> clears problem, stamp, and rebuilds map
+    # Clicking unchanged card "c" on the stale map succeeds and selects "c"
+    app$run_js(pick_card_js("c"))
+    app$wait_for_js("document.querySelector('.sms-inspector .sms-insp-sub')?.textContent === 'c'")
+    app$wait_for_js("JSON.parse(document.getElementById('map_state').textContent).selected?.[0] === 'c'")
+
+    # Clicking duplicated "b" while targeting "c" refuses and puts the map selection back to "c"
+    app$run_js(pick_card_js("b"))
+    app$wait_for_js("document.querySelector('.sms-toast').dataset.smsOn !== undefined")
+    expect_match(studio_section(app, "notice")$text, "out of date")
+    app$wait_for_js("JSON.parse(document.getElementById('map_state').textContent).selected?.[0] === 'c'")
+    expect_identical(app$get_js("document.querySelector('.sms-inspector .sms-insp-sub').textContent"), "c")
+
+    # Re-open the duplicated card from the journal chip and apply inline fix (at once + held)
+    studio_do(app, studio_click_js(".sms-journal-list .sms-ev:last-child .sms-ev-btn"))
+    app$wait_for_js("document.querySelector('.sms-inspector [data-sms-field=\"id\"] .sms-prob-fixes button') !== null")
+    record_studio_events(app)
     hold_studio_messages(app)
     fix_seq <- app$get_js(paste(
       studio_type_js(".sms-inspector [data-sms-field='label'] input", "Fixed draft"),
@@ -439,6 +485,8 @@ describe("the card inspector form", {
       sprintf("Number(%s.dataset.smsSent)", studio_root_js)
     ))
     studio_wait_held(app, fix_seq)
+    sent_fix <- vapply(studio_sent(app), `[[`, character(1L), "type")
+    expect_lt(match("edit", sent_fix), match("fix", sent_fix))
     expect_identical(
       app$get_js(
         "document.querySelector('.sms-inspector [data-sms-field=\"id\"] .sms-prob-fixes button').getAttribute('aria-busy')"
@@ -449,9 +497,18 @@ describe("the card inspector form", {
     studio_wait_step(app)
     studio_wait_map(app, stamp_before)
     expect_null(app$get_js("document.querySelector('.sms-inspector [data-sms-field=\"id\"] .sms-err')"))
+    expect_identical(
+      app$get_js("document.querySelector('.sms-inspector [data-sms-field=\"id\"] .sms-fld-live').children.length"),
+      0L
+    )
     expect_identical(studio_section(app, "status")$stamp, "")
     expect_identical(app$get_js("document.querySelector('.sms-inspector .sms-insp-sub').textContent"), "card")
-    expect_match(studio_section(app, "journal")$text, "Fixed draft", fixed = TRUE)
+    expect_identical(
+      app$get_js("document.querySelector('.sms-inspector [data-sms-field=\"label\"] input').value"),
+      "Fixed draft"
+    )
+    j_fix <- studio_section(app, "journal")$text
+    expect_lt(regexpr("Fixed draft", j_fix, fixed = TRUE), regexpr("Set card id to card", j_fix, fixed = TRUE))
     expect_studio_clean(app)
   })
 })
@@ -463,6 +520,7 @@ describe("links, stages and lanes inspector forms", {
     app$wait_for_js("document.querySelector('.sms-inspector [data-sms-list=\"out\"] .sms-add') !== null")
 
     # Connect a -> d with kind "hand" (at once after typing + held)
+    record_studio_events(app)
     since_c <- studio_stamp(app)
     hold_studio_messages(app)
     conn_seq <- app$get_js(paste(
@@ -473,6 +531,8 @@ describe("links, stages and lanes inspector forms", {
       sprintf("Number(%s.dataset.smsSent)", studio_root_js)
     ))
     studio_wait_held(app, conn_seq)
+    sent_c <- vapply(studio_sent(app), `[[`, character(1L), "type")
+    expect_lt(match("edit", sent_c), match("link_add", sent_c))
     expect_identical(
       app$get_js(
         "document.querySelector('.sms-inspector [data-sms-list=\"out\"] [data-sms-action=\"Connect\"]').getAttribute('aria-busy')"
@@ -482,6 +542,12 @@ describe("links, stages and lanes inspector forms", {
     release_studio_messages(app)
     studio_wait_step(app)
     studio_wait_map(app, since_c)
+    expect_identical(
+      app$get_js("document.querySelector('.sms-inspector [data-sms-field=\"sub\"] input').value"),
+      "Before connect"
+    )
+    j_c <- studio_section(app, "journal")$text
+    expect_lt(regexpr("Before connect", j_c, fixed = TRUE), regexpr("Link a", j_c, fixed = TRUE))
     expect_identical(
       app$get_js("document.querySelectorAll('.sms-inspector [data-sms-list=\"out\"] .sms-row').length"),
       2L
@@ -504,6 +570,7 @@ describe("links, stages and lanes inspector forms", {
     studio_wait_map(app, since_k)
     expect_identical(app$get_js("document.querySelector('.sms-inspector .sms-insp-sub').textContent"), "plain")
 
+    app$run_js("window.__sms.sent = [];")
     since_sw <- studio_stamp(app)
     hold_studio_messages(app)
     swap_seq <- app$get_js(paste(
@@ -512,6 +579,8 @@ describe("links, stages and lanes inspector forms", {
       sprintf("Number(%s.dataset.smsSent)", studio_root_js)
     ))
     studio_wait_held(app, swap_seq)
+    sent_sw <- vapply(studio_sent(app), `[[`, character(1L), "type")
+    expect_lt(match("edit", sent_sw), match("link_reverse", sent_sw))
     expect_identical(
       app$get_js("document.querySelector('.sms-inspector [data-sms-action=\"Swap ends\"]').getAttribute('aria-busy')"),
       "true"
@@ -520,9 +589,15 @@ describe("links, stages and lanes inspector forms", {
     studio_wait_step(app)
     studio_wait_map(app, since_sw)
     expect_identical(app$get_js("document.querySelector('#studio-inspector-title').textContent"), "d -> a")
-    expect_match(studio_section(app, "journal")$text, "Direct", fixed = TRUE)
+    expect_identical(
+      app$get_js("document.querySelector('.sms-inspector [data-sms-field=\"label\"] input').value"),
+      "Direct"
+    )
+    j_sw <- studio_section(app, "journal")$text
+    expect_lt(regexpr("Direct", j_sw, fixed = TRUE), regexpr("Reverse", j_sw, fixed = TRUE))
 
     # Remove link from Link form (at once + held)
+    app$run_js("window.__sms.sent = [];")
     since_rm <- studio_stamp(app)
     hold_studio_messages(app)
     rm_seq <- app$get_js(paste(
@@ -531,6 +606,8 @@ describe("links, stages and lanes inspector forms", {
       sprintf("Number(%s.dataset.smsSent)", studio_root_js)
     ))
     studio_wait_held(app, rm_seq)
+    sent_rml <- vapply(studio_sent(app), `[[`, character(1L), "type")
+    expect_lt(match("edit", sent_rml), match("remove", sent_rml))
     expect_identical(
       app$get_js(
         "document.querySelector('.sms-inspector [data-sms-action=\"Remove link\"]').getAttribute('aria-busy')"
@@ -541,6 +618,8 @@ describe("links, stages and lanes inspector forms", {
     studio_wait_step(app)
     studio_wait_map(app, since_rm)
     expect_true(studio_section(app, "inspector")$hidden)
+    j_rm <- studio_section(app, "journal")$text
+    expect_lt(regexpr("Gone", j_rm, fixed = TRUE), regexpr("Remove link", j_rm, fixed = TRUE))
     expect_match(studio_section(app, "header")$facts, "3 links", fixed = TRUE)
 
     # Remove link directly from a card's list row
@@ -603,6 +682,7 @@ describe("links, stages and lanes inspector forms", {
     )
 
     # Earlier (at once + held) reorders stage to first and disables Earlier with reason
+    record_studio_events(app)
     since_mv <- studio_stamp(app)
     hold_studio_messages(app)
     mv_seq <- app$get_js(paste(
@@ -611,6 +691,8 @@ describe("links, stages and lanes inspector forms", {
       sprintf("Number(%s.dataset.smsSent)", studio_root_js)
     ))
     studio_wait_held(app, mv_seq)
+    sent_mv <- vapply(studio_sent(app), `[[`, character(1L), "type")
+    expect_lt(match("edit", sent_mv), match("move", sent_mv))
     expect_identical(
       app$get_js("document.querySelector('.sms-inspector [data-sms-action=\"Earlier\"]').getAttribute('aria-busy')"),
       "true"
@@ -618,6 +700,12 @@ describe("links, stages and lanes inspector forms", {
     release_studio_messages(app)
     studio_wait_step(app)
     studio_wait_map(app, since_mv)
+    expect_identical(
+      app$get_js("document.querySelector('.sms-inspector [data-sms-field=\"kicker\"] input').value"),
+      "Phase 1"
+    )
+    j_mv <- studio_section(app, "journal")$text
+    expect_lt(regexpr("Phase 1", j_mv, fixed = TRUE), regexpr("Move stage", j_mv, fixed = TRUE))
     expect_identical(
       app$get_js(
         "document.querySelector('.sms-inspector [data-sms-action=\"Earlier\"]').getAttribute('aria-disabled')"
@@ -632,6 +720,7 @@ describe("links, stages and lanes inspector forms", {
     )
 
     # Add a card here (at once + held) places card in this stage
+    app$run_js("window.__sms.sent = [];")
     since_add <- studio_stamp(app)
     hold_studio_messages(app)
     add_seq <- app$get_js(paste(
@@ -640,6 +729,8 @@ describe("links, stages and lanes inspector forms", {
       sprintf("Number(%s.dataset.smsSent)", studio_root_js)
     ))
     studio_wait_held(app, add_seq)
+    sent_add <- vapply(studio_sent(app), `[[`, character(1L), "type")
+    expect_lt(match("edit", sent_add), match("add", sent_add))
     expect_identical(
       app$get_js(
         "document.querySelector('.sms-inspector [data-sms-action=\"Add a card here\"]').getAttribute('aria-busy')"
@@ -654,6 +745,13 @@ describe("links, stages and lanes inspector forms", {
       app$get_js("document.querySelector('.sms-inspector [data-sms-field=\"stage\"] select').value"),
       "verify"
     )
+    j_add <- studio_section(app, "journal")$text
+    expect_lt(regexpr("Ready", j_add, fixed = TRUE), regexpr("Add card", j_add, fixed = TRUE))
+    studio_do(app, studio_click_js(".sms-inspector [data-sms-field='stage'] [data-sms-action='Edit']"))
+    expect_identical(
+      app$get_js("document.querySelector('.sms-inspector [data-sms-field=\"flag\"] input').value"),
+      "Ready"
+    )
 
     # Add an empty stage, then remove it (at once + held)
     since_s <- studio_stamp(app)
@@ -664,6 +762,7 @@ describe("links, stages and lanes inspector forms", {
         "document.querySelector('.sms-inspector [data-sms-action=\"Remove stage\"]').getAttribute('aria-disabled')"
       )
     )
+    app$run_js("window.__sms.sent = [];")
     since_rms <- studio_stamp(app)
     hold_studio_messages(app)
     rms_seq <- app$get_js(paste(
@@ -672,6 +771,8 @@ describe("links, stages and lanes inspector forms", {
       sprintf("Number(%s.dataset.smsSent)", studio_root_js)
     ))
     studio_wait_held(app, rms_seq)
+    sent_rms <- vapply(studio_sent(app), `[[`, character(1L), "type")
+    expect_lt(match("edit", sent_rms), match("remove", sent_rms))
     expect_identical(
       app$get_js(
         "document.querySelector('.sms-inspector [data-sms-action=\"Remove stage\"]').getAttribute('aria-busy')"
@@ -682,6 +783,8 @@ describe("links, stages and lanes inspector forms", {
     studio_wait_step(app)
     studio_wait_map(app, since_rms)
     expect_true(studio_section(app, "inspector")$hidden)
+    j_rms <- studio_section(app, "journal")$text
+    expect_lt(regexpr("Temp stage", j_rms, fixed = TRUE), regexpr("Remove stage", j_rms, fixed = TRUE))
     expect_studio_clean(app)
   })
 
@@ -717,6 +820,7 @@ describe("links, stages and lanes inspector forms", {
     )
 
     # Lower (at once + held) reorders lanes and enables Higher, disables Lower
+    record_studio_events(app)
     since_mv <- studio_stamp(app)
     hold_studio_messages(app)
     mv_seq <- app$get_js(paste(
@@ -725,6 +829,8 @@ describe("links, stages and lanes inspector forms", {
       sprintf("Number(%s.dataset.smsSent)", studio_root_js)
     ))
     studio_wait_held(app, mv_seq)
+    sent_mv <- vapply(studio_sent(app), `[[`, character(1L), "type")
+    expect_lt(match("edit", sent_mv), match("move", sent_mv))
     expect_identical(
       app$get_js("document.querySelector('.sms-inspector [data-sms-action=\"Lower\"]').getAttribute('aria-busy')"),
       "true"
@@ -732,6 +838,12 @@ describe("links, stages and lanes inspector forms", {
     release_studio_messages(app)
     studio_wait_step(app)
     studio_wait_map(app, since_mv)
+    expect_identical(
+      app$get_js("document.querySelector('.sms-inspector [data-sms-field=\"text\"] textarea').value"),
+      "Lane note"
+    )
+    j_mv <- studio_section(app, "journal")$text
+    expect_lt(regexpr("Lane note", j_mv, fixed = TRUE), regexpr("Move lane", j_mv, fixed = TRUE))
     expect_identical(
       app$get_js("document.querySelector('.sms-inspector [data-sms-action=\"Lower\"]').getAttribute('aria-disabled')"),
       "true"
@@ -744,6 +856,7 @@ describe("links, stages and lanes inspector forms", {
     since_l <- studio_stamp(app)
     studio_do(app, studio_click_js("[data-sms-action='+ Lane']"))
     studio_wait_map(app, since_l)
+    app$run_js("window.__sms.sent = [];")
     since_rml <- studio_stamp(app)
     hold_studio_messages(app)
     rml_seq <- app$get_js(paste(
@@ -752,6 +865,8 @@ describe("links, stages and lanes inspector forms", {
       sprintf("Number(%s.dataset.smsSent)", studio_root_js)
     ))
     studio_wait_held(app, rml_seq)
+    sent_rml <- vapply(studio_sent(app), `[[`, character(1L), "type")
+    expect_lt(match("edit", sent_rml), match("remove", sent_rml))
     expect_identical(
       app$get_js(
         "document.querySelector('.sms-inspector [data-sms-action=\"Remove lane\"]').getAttribute('aria-busy')"
@@ -762,6 +877,8 @@ describe("links, stages and lanes inspector forms", {
     studio_wait_step(app)
     studio_wait_map(app, since_rml)
     expect_true(studio_section(app, "inspector")$hidden)
+    j_rml <- studio_section(app, "journal")$text
+    expect_lt(regexpr("Temp lane", j_rml, fixed = TRUE), regexpr("Remove lane", j_rml, fixed = TRUE))
     expect_studio_clean(app)
   })
 })
@@ -843,6 +960,20 @@ describe("keyboard-only inspector flow and layout at narrow and phone widths", {
     expect_true(sheet$hitMap)
     expect_false(sheet$overflow)
 
+    # Phone form controls are 16px (no iOS focus zoom) and at least 44px tall
+    phone_controls <- app$get_js(
+      "(() => [...document.querySelectorAll('.sms-inspector .sms-in')].map((el) => ({
+         tag: el.tagName,
+         fontSize: getComputedStyle(el).fontSize,
+         height: el.getBoundingClientRect().height
+       })))()"
+    )
+    expect_gt(length(phone_controls), 0L)
+    for (ctrl in phone_controls) {
+      expect_identical(ctrl$fontSize, "16px")
+      expect_gte(ctrl$height, 44)
+    }
+
     # 375px with open room: inspector sits above the room
     studio_open_code(app)
     app$wait_for_js(
@@ -872,5 +1003,308 @@ describe("keyboard-only inspector flow and layout at narrow and phone widths", {
     expect_true(app$get_js("document.querySelector('.sms-inspector').inert"))
     expect_true(app$get_js("document.querySelector('.sms-skip').inert"))
     expect_studio_clean(app, closed = TRUE)
+  })
+})
+
+describe("inspector form edge cases: at-once + Card, broken example picks, focusout revert, in-flight guards and forced-colors", {
+  it("places a new card in the picked card's stage when pick and + Card fire in one call, and keeps broken example cards clickable after + Card", {
+    app <- studio_driver("small")
+    since <- studio_stamp(app)
+    app$run_js(paste(
+      pick_card_js("b"),
+      studio_click_js("[data-sms-action='+ Card']")
+    ))
+    studio_wait_step(app)
+    studio_wait_map(app, since)
+    expect_identical(app$get_js("document.querySelector('.sms-inspector .sms-kick').textContent"), "card")
+    expect_identical(app$get_js("document.querySelector('.sms-inspector .sms-insp-sub').textContent"), "card")
+    expect_identical(
+      app$get_js("document.querySelector('.sms-inspector [data-sms-field=\"stage\"] select').value"),
+      "check"
+    )
+    expect_identical(
+      app$get_js("document.querySelector('.sms-inspector [data-sms-field=\"lane\"] select').value"),
+      "docs"
+    )
+    expect_studio_clean(app)
+
+    # Example template starts broken on a link: + Card leaves the drawn map stale, yet unchanged cards remain clickable
+    app_ex <- studio_driver("none")
+    studio_do(app_ex, studio_click_js("[data-sms-open='example']"))
+    studio_do(app_ex, studio_click_js("[data-sms-action='+ Card']"))
+    app_ex$run_js(pick_card_js("round_dose"))
+    app_ex$wait_for_js("document.querySelector('.sms-inspector .sms-insp-sub')?.textContent === 'round_dose'")
+    expect_null(app_ex$get_js("document.querySelector('.sms-toast').dataset.smsOn ?? null"))
+    expect_studio_clean(app_ex)
+  })
+
+  it("reverts refused select and date edits on focusout with no further server message", {
+    app <- studio_driver("small")
+    app$run_js(pick_card_js("b"))
+    app$wait_for_js("document.querySelector('.sms-inspector [data-sms-field=\"tone\"] select') !== null")
+
+    # Select: focus, pick an unallowed value so server refuses while focused, then blur with no further server message
+    studio_do(
+      app,
+      "{ const sel = document.querySelector('.sms-inspector [data-sms-field=\"tone\"] select');
+         const opt = document.createElement('option'); opt.value = 'nope'; opt.textContent = 'Nope';
+         sel.append(opt); sel.focus(); sel.value = 'nope';
+         sel.dispatchEvent(new Event('change', { bubbles: true })); }"
+    )
+    expect_match(studio_section(app, "notice")$text, "not allowed")
+    expect_identical(
+      app$get_js("document.querySelector('.sms-inspector [data-sms-field=\"tone\"] select').value"),
+      "nope"
+    )
+    n_before <- app$get_js(sprintf("Number(%s.dataset.smsN)", studio_root_js))
+    app$run_js("document.querySelector('.sms-inspector [data-sms-field=\"tone\"] select').blur()")
+    app$wait_for_js("document.querySelector('.sms-inspector [data-sms-field=\"tone\"] select').value === ''")
+    expect_identical(app$get_js(sprintf("Number(%s.dataset.smsN)", studio_root_js)), n_before)
+
+    # Date input on a stage: focus, send a refused edit while focused, then blur with no further server message
+    click_now(app, "[data-sms-menu='stages']")
+    studio_do(app, studio_click_js("#studio-menu-stages [role='menuitem']:nth-child(2)"))
+    app$wait_for_js("document.querySelector('.sms-inspector [data-sms-field=\"date\"] input') !== null")
+    studio_do(
+      app,
+      "{ const el = document.querySelector('.sms-inspector [data-sms-field=\"date\"] input');
+         const ev = JSON.parse(el.getAttribute('data-sms-event'));
+         ev.data.field = 'unknown';
+         el.setAttribute('data-sms-event', JSON.stringify(ev));
+         el.focus(); el.value = '2026-04-01';
+         el.dispatchEvent(new Event('change', { bubbles: true })); }"
+    )
+    expect_match(studio_section(app, "notice")$text, "cannot edit")
+    expect_identical(
+      app$get_js("document.querySelector('.sms-inspector [data-sms-field=\"date\"] input').value"),
+      "2026-04-01"
+    )
+    n_date <- app$get_js(sprintf("Number(%s.dataset.smsN)", studio_root_js))
+    app$run_js("document.querySelector('.sms-inspector [data-sms-field=\"date\"] input').blur()")
+    app$wait_for_js("document.querySelector('.sms-inspector [data-sms-field=\"date\"] input').value === ''")
+    expect_identical(app$get_js(sprintf("Number(%s.dataset.smsN)", studio_root_js)), n_date)
+    expect_studio_clean(app)
+  })
+
+  it("protects in-flight select, radio and toggle edits, ignores out-of-order answers, and preserves Connect drafts across redraws", {
+    app <- studio_driver("small")
+    # Snapshot the real initial card "b" server message (stage=check, status=running, milestone=FALSE)
+    app$run_js(sprintf(
+      "window.__sms = window.__sms || {}; window.__sms.snap = null;
+       %s.addEventListener('stagemap-studio:message', (e) => {
+         if (!window.__sms.snap && e.detail?.sections?.inspector?.uid === 'u2') {
+           window.__sms.snap = structuredClone(e.detail);
+         }
+       });",
+      studio_root_js
+    ))
+    app$run_js(pick_card_js("b"))
+    app$wait_for_js(
+      "window.__sms.snap !== null && document.querySelector('.sms-inspector [data-sms-field=\"stage\"] select') !== null"
+    )
+
+    # (a) In-flight guards on select, radio and toggle against an older message carrying old values
+    hold_studio_messages(app)
+    old_ack <- app$get_js(sprintf("Number(%s.dataset.smsAck)", studio_root_js))
+    last_seq <- app$get_js(paste(
+      set_select_js(".sms-inspector [data-sms-field='stage'] select", "ship"),
+      "document.querySelector('.sms-inspector [data-sms-field=\"stage\"] select').blur();",
+      studio_click_js(".sms-inspector [data-sms-field='status'] input[value='done']"),
+      studio_click_js(".sms-inspector [data-sms-field='milestone'] input[type='checkbox']"),
+      sprintf("Number(%s.dataset.smsSent)", studio_root_js)
+    ))
+    studio_wait_held(app, last_seq)
+    app$run_js(sprintf(
+      "{ const r = %s;
+         const oldMsg = structuredClone(window.__sms.snap);
+         oldMsg.n = Number(r.dataset.smsN) + 0.5;
+         oldMsg.ack = %d;
+         r.dispatchEvent(new CustomEvent('stagemap-studio:deliver', { detail: oldMsg })); }",
+      studio_root_js,
+      as.integer(old_ack)
+    ))
+    expect_identical(
+      app$get_js("document.querySelector('.sms-inspector [data-sms-field=\"stage\"] select').value"),
+      "ship"
+    )
+    expect_identical(
+      app$get_js("document.querySelector('.sms-inspector [data-sms-field=\"status\"] input:checked').value"),
+      "done"
+    )
+    expect_true(
+      app$get_js(
+        "document.querySelector('.sms-inspector [data-sms-field=\"milestone\"] input[type=\"checkbox\"]').checked"
+      )
+    )
+    release_studio_messages(app)
+    studio_wait_step(app)
+    expect_identical(
+      app$get_js("document.querySelector('.sms-inspector [data-sms-field=\"stage\"] select').value"),
+      "ship"
+    )
+    expect_identical(
+      app$get_js("document.querySelector('.sms-inspector [data-sms-field=\"status\"] input:checked').value"),
+      "done"
+    )
+    expect_true(
+      app$get_js(
+        "document.querySelector('.sms-inspector [data-sms-field=\"milestone\"] input[type=\"checkbox\"]').checked"
+      )
+    )
+
+    # (b) Reverse-order message delivery on two tone edits ends on the newer value
+    hold_studio_messages(app)
+    app$run_js(set_select_js(".sms-inspector [data-sms-field='tone'] select", "good"))
+    wait_studio_held(app, "messages", 1L)
+    app$run_js(paste(
+      set_select_js(".sms-inspector [data-sms-field='tone'] select", "warn"),
+      "document.querySelector('.sms-inspector [data-sms-field=\"tone\"] select').blur();"
+    ))
+    wait_studio_held(app, "messages", 2L)
+    release_studio_messages(app, reverse = TRUE)
+    studio_wait_step(app)
+    expect_identical(
+      app$get_js("document.querySelector('.sms-inspector [data-sms-field=\"tone\"] select').value"),
+      "warn"
+    )
+
+    # (c) Connect draft selects survive an unrelated edit that redraws the inspector
+    app$run_js(pick_card_js("a"))
+    app$wait_for_js(
+      "document.querySelector('.sms-inspector .sms-insp-sub')?.textContent === 'a' &&
+       document.querySelector('.sms-inspector [data-sms-list=\"out\"] [data-sms-field=\"to\"] select') !== null"
+    )
+    app$run_js(paste(
+      set_select_js(".sms-inspector [data-sms-list='out'] [data-sms-field='to'] select", "u4"),
+      set_select_js(".sms-inspector [data-sms-list='out'] [data-sms-field='kind'] select", "hand")
+    ))
+    studio_do(app, set_select_js(".sms-inspector [data-sms-field='tone'] select", "good"))
+    expect_identical(
+      app$get_js(
+        "document.querySelector('.sms-inspector [data-sms-list=\"out\"] [data-sms-field=\"to\"] select').value"
+      ),
+      "u4"
+    )
+    expect_identical(
+      app$get_js(
+        "document.querySelector('.sms-inspector [data-sms-list=\"out\"] [data-sms-field=\"kind\"] select').value"
+      ),
+      "hand"
+    )
+    expect_studio_clean(app)
+  })
+
+  it("puts radio aria-invalid on radio inputs (not fieldset) and keeps focus outlines distinct in forced-colors mode", {
+    app <- studio_driver("small")
+    app$run_js(pick_card_js("b"))
+    app$wait_for_js("document.querySelector('.sms-inspector [data-sms-field=\"status\"] fieldset') !== null")
+
+    # Deliver a radio field problem: aria-invalid goes on each radio input, never on fieldset; text lands in .sms-fld-live
+    app$run_js(sprintf(
+      "{ const r = %s; r.dispatchEvent(new CustomEvent('stagemap-studio:deliver', { detail: {
+          ns: r.dataset.smsNs, n: Number(r.dataset.smsN) + 0.5, ack: Number(r.dataset.smsAck), rev: Number(r.dataset.smsRev),
+          sections: { inspector: {
+            kind: 'link', uid: 'u9', title: 'a -> b', sub: 'unknown',
+            fields: [{
+              name: 'kind', label: 'Kind', type: 'radio', value: 'bad',
+              choices: [
+                { value: '', label: 'None', glyph: null, missing: false },
+                { value: 'bad', label: 'bad (missing)', glyph: null, missing: true }
+              ],
+              event: { type: 'edit', data: { table: 'links', uid: 'u9', field: 'kind' } },
+              problem: { text: 'Kind \"bad\" is not in kinds.', fixes: [] }
+            }],
+            lists: [], actions: []
+          } } } })); }",
+      studio_root_js
+    ))
+    radio_aria <- app$get_js(
+      "(() => {
+         const fld = document.querySelector('.sms-inspector [data-sms-field=\"kind\"]');
+         const fs = fld.querySelector('fieldset');
+         const inputs = [...fld.querySelectorAll('input[type=\"radio\"]')];
+         const live = fld.querySelector('.sms-fld-live');
+         return {
+           fsInvalid: fs.hasAttribute('aria-invalid'),
+           fsDesc: fs.getAttribute('aria-describedby'),
+           allInvalid: inputs.length > 0 && inputs.every((i) => i.getAttribute('aria-invalid') === 'true'),
+           liveText: live?.querySelector('.sms-err')?.textContent ?? ''
+         };
+       })()"
+    )
+    expect_false(radio_aria$fsInvalid)
+    expect_match(radio_aria$fsDesc, "-prob$", fixed = FALSE)
+    expect_true(radio_aria$allInvalid)
+    expect_match(radio_aria$liveText, "not in kinds", fixed = TRUE)
+
+    # Restore real card "b" view and emulate forced-colors: active
+    app$run_js(pick_card_js("a"))
+    app$wait_for_js("document.querySelector('.sms-inspector .sms-insp-sub')?.textContent === 'a'")
+    app$run_js(pick_card_js("b"))
+    app$wait_for_js("document.querySelector('.sms-inspector .sms-insp-sub')?.textContent === 'b'")
+    studio_emulate(app, "forced-colors", "active")
+
+    # Focus status radio via keyboard so :focus-visible matches, check distinct focus outline vs checked border
+    app$run_js("document.querySelector('.sms-inspector [data-sms-field=\"status\"] input:checked').focus()")
+    studio_press(app, "ArrowRight", key_code = 39L)
+    studio_wait_step(app)
+    radio_fc <- app$get_js(
+      "(() => {
+         const input = document.querySelector('.sms-inspector [data-sms-field=\"status\"] input:checked');
+         const face = input.nextElementSibling;
+         const cs = getComputedStyle(face);
+         return {
+           focusVisible: input.matches(':focus-visible'),
+           outlineStyle: cs.outlineStyle,
+           outlineWidth: cs.outlineWidth,
+           outlineOffset: cs.outlineOffset,
+           borderWidth: cs.borderTopWidth
+         };
+       })()"
+    )
+    expect_true(radio_fc$focusVisible)
+    expect_identical(radio_fc$outlineStyle, "solid")
+    expect_identical(radio_fc$outlineWidth, "2px")
+    expect_identical(radio_fc$outlineOffset, "2px")
+    expect_identical(radio_fc$borderWidth, "2px")
+
+    # Make Id invalid (duplicate "a"): unfocused has dashed border; focused adds distinct solid outline
+    studio_do(
+      app,
+      paste(
+        studio_type_js(".sms-inspector [data-sms-field='id'] input", "a"),
+        "document.querySelector('.sms-inspector [data-sms-field=\"id\"] input').blur();"
+      )
+    )
+    unfocused_fc <- app$get_js(
+      "(() => {
+         const cs = getComputedStyle(document.querySelector('.sms-inspector [data-sms-field=\"id\"] input'));
+         return { borderStyle: cs.borderTopStyle, borderWidth: cs.borderTopWidth, outlineStyle: cs.outlineStyle };
+       })()"
+    )
+    expect_identical(unfocused_fc$borderStyle, "dashed")
+    expect_identical(unfocused_fc$borderWidth, "2px")
+    expect_identical(unfocused_fc$outlineStyle, "none")
+
+    app$run_js("document.querySelector('.sms-inspector [data-sms-field=\"id\"] input').focus()")
+    focused_fc <- app$get_js(
+      "(() => {
+         const el = document.querySelector('.sms-inspector [data-sms-field=\"id\"] input');
+         const cs = getComputedStyle(el);
+         return {
+           focusVisible: el.matches(':focus-visible'),
+           borderStyle: cs.borderTopStyle,
+           outlineStyle: cs.outlineStyle,
+           outlineWidth: cs.outlineWidth,
+           outlineOffset: cs.outlineOffset
+         };
+       })()"
+    )
+    expect_true(focused_fc$focusVisible)
+    expect_identical(focused_fc$borderStyle, "dashed")
+    expect_identical(focused_fc$outlineStyle, "solid")
+    expect_identical(focused_fc$outlineWidth, "2px")
+    expect_identical(focused_fc$outlineOffset, "2px")
+    expect_studio_clean(app)
   })
 })

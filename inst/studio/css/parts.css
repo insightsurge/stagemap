@@ -147,6 +147,11 @@
     padding: 5px 8px;
   }
 
+  .sms .sms-in {
+    font-size: 16px;
+    min-height: 44px;
+  }
+
   .sms .sms-seg-face,
   .sms .sms-toggle {
     min-height: 44px;
@@ -512,8 +517,8 @@
 }
 
 .sms .sms-fld {
-  display: grid;
-  gap: 4px;
+  display: flex;
+  flex-direction: column;
   margin: 12px 0 0;
   min-width: 0;
 }
@@ -540,6 +545,7 @@
   display: flex;
   gap: 6px;
   align-items: center;
+  margin-top: 4px;
   min-width: 0;
 }
 
@@ -569,7 +575,7 @@
 .sms .sms-fld-hint {
   font-size: 12px;
   color: var(--_stagemap-studio-muted);
-  margin: 0;
+  margin: 4px 0 0;
 }
 
 .sms .sms-err {
@@ -578,7 +584,7 @@
   gap: 6px;
   font-size: 13px;
   color: var(--_stagemap-studio-red);
-  margin: 2px 0 0;
+  margin: 4px 0 0;
   font-weight: 600;
   overflow-wrap: anywhere;
 }
@@ -592,7 +598,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-top: 2px;
+  margin-top: 4px;
 }
 
 .sms .sms-seg {
@@ -769,13 +775,29 @@
 }
 
 @media (forced-colors: active) {
+  .sms .sms-seg-opt[data-sms-missing="true"] .sms-seg-face {
+    border: 2px dashed CanvasText;
+  }
+
   .sms .sms-seg-opt input:checked + .sms-seg-face {
+    border: 2px solid Highlight;
+    background: Highlight;
+    color: HighlightText;
+    forced-color-adjust: none;
+  }
+
+  .sms .sms-seg-opt input:focus-visible + .sms-seg-face {
     outline: 2px solid Highlight;
-    outline-offset: -2px;
+    outline-offset: 2px;
   }
 
   .sms .sms-in[aria-invalid="true"] {
-    outline: 2px solid Mark;
+    border: 2px dashed CanvasText;
+  }
+
+  .sms .sms-in[aria-invalid="true"]:focus-visible {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
   }
 }
 
