@@ -485,8 +485,14 @@ studio_step <- function(state, event) {
       return(list(state = res$state, effects = res$effects))
     }
     state <- res$state
-  } else if (checked$type %in% c("ask", "ask_clear")) {
-    return(studio_refuse(state, "Not available yet.", tone = "info"))
+  } else if (identical(checked$type, "ask")) {
+    ask_res <- studio_room_ask_step(state, checked$data)
+    state <- ask_res$state
+    effects <- c(effects, ask_res$effects)
+  } else if (identical(checked$type, "ask_clear")) {
+    ask_res <- studio_room_ask_clear(state)
+    state <- ask_res$state
+    effects <- c(effects, ask_res$effects)
   } else if (identical(checked$type, "seen")) {
     if (!checkmate::test_string(checked$data$what, min.chars = 1L)) {
       return(studio_refuse(state, "Unknown view name."))
