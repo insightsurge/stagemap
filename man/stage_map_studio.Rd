@@ -17,7 +17,7 @@ error.}
 \code{FALSE} returns the app without running it, for \code{\link[shiny:runApp]{shiny::runApp()}} or a test.}
 }
 \value{
-With \code{run = TRUE}, the map from \strong{Done} (a \code{\link[=stage_map]{stage_map()}} widget, with the title set in the studio),
+With \code{run = TRUE}, the map from \strong{Done} (a \code{\link[=stage_map]{stage_map()}} widget, with the changes made in the studio),
 invisibly, or \code{NULL} invisibly when the studio's page was closed without \strong{Done}. With \code{run = FALSE}, the app, a
 \code{shiny.appobj}.
 }

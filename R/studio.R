@@ -31,7 +31,7 @@
 #'   error.
 #' @param run `TRUE` (the default) runs the studio and waits for it to close; it needs an interactive R session.
 #'   `FALSE` returns the app without running it, for [shiny::runApp()] or a test.
-#' @returns With `run = TRUE`, the map from **Done** (a [stage_map()] widget, with the title set in the studio),
+#' @returns With `run = TRUE`, the map from **Done** (a [stage_map()] widget, with the changes made in the studio),
 #'   invisibly, or `NULL` invisibly when the studio's page was closed without **Done**. With `run = FALSE`, the app, a
 #'   `shiny.appobj`.
 #' @examples
