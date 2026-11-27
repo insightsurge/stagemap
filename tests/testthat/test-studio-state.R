@@ -368,6 +368,105 @@ describe("replay and row key stability across 40 mixed events", {
     }
     expect_identical(s$doc, s$base)
   })
+
+  it("keeps doc identical to replay when clearing a newly added column or returning a factor cell", {
+    cards <- data.frame(
+      id = c("a", "b"),
+      label = factor(c("A", "B")),
+      stage = "s",
+      lane = "l"
+    )
+    map <- stage_map(cards, data.frame(id = "s", label = "S"), data.frame(id = "l", label = "L"))
+    s <- studio_state_new(map)
+    expect_null(s$doc$tables$cards$tone)
+    expect_null(s$doc$tables$stages$date)
+    expect_true(is.factor(s$doc$tables$cards$label))
+
+    # Add new tone and date columns then clear them back to NULL/NA
+    s <- studio_step(s, ev("edit", list(table = "cards", uid = "u1", field = "tone", value = "good"), seq = 1L))$state
+    expect_identical(s$doc$tables$cards$tone, c("good", NA_character_))
+    s <- studio_step(
+      s,
+      ev("edit", list(table = "cards", uid = "u1", field = "tone", value = ""), seq = 2L, rev = s$rev)
+    )$state
+    expect_length(s$journal, 0L)
+    expect_identical(studio_journal_replay(s$base, s$journal), s$doc)
+    expect_null(s$doc$tables$cards$tone)
+
+    uid_s <- s$doc$tables$stages$.studio_uid[[1L]]
+    s <- studio_step(
+      s,
+      ev("edit", list(table = "stages", uid = uid_s, field = "date", value = "2026-05-01"), seq = 3L, rev = s$rev)
+    )$state
+    s <- studio_step(
+      s,
+      ev("edit", list(table = "stages", uid = uid_s, field = "date", value = ""), seq = 4L, rev = s$rev)
+    )$state
+    expect_identical(studio_journal_replay(s$base, s$journal), s$doc)
+    expect_null(s$doc$tables$stages$date)
+
+    # Factor column turned text on first edit returns to factor when edited back
+    s <- studio_step(
+      s,
+      ev("edit", list(table = "cards", uid = "u1", field = "label", value = "Edited"), seq = 5L, rev = s$rev)
+    )$state
+    expect_false(is.factor(s$doc$tables$cards$label))
+    s <- studio_step(
+      s,
+      ev("edit", list(table = "cards", uid = "u1", field = "label", value = "A"), seq = 6L, rev = s$rev)
+    )$state
+    expect_true(is.factor(s$doc$tables$cards$label))
+    expect_identical(studio_journal_replay(s$base, s$journal), s$doc)
+  })
+
+  it("preserves full rename cascades when an id edit passes through blank or duplicate values", {
+    map <- full_map(title = "A map", target = "b") |>
+      add_steps(
+        data.frame(id = "step1", label = "Step 1", stage = "write"),
+        changes = data.frame(step = "step1", card = "b", stage = "ship", status = "done")
+      ) |>
+      stage_map_highlight(c("a", "b"), links = data.frame(from = "a", to = "b"))
+
+    # Round trip a rename through blank back to the starting id: b -> b2 -> "" -> b
+    s <- studio_state_new(map)
+    s <- studio_step(s, ev("edit", list(table = "cards", uid = "u2", field = "id", value = "b2"), seq = 1L))$state
+    s <- studio_step(
+      s,
+      ev("edit", list(table = "cards", uid = "u2", field = "id", value = ""), seq = 2L, rev = s$rev)
+    )$state
+    expect_identical(studio_journal_replay(s$base, s$journal), s$doc)
+    expect_identical(s$doc$args$target, "b")
+    expect_identical(s$doc$tables$links$to[[1L]], "b")
+    s <- studio_step(
+      s,
+      ev("edit", list(table = "cards", uid = "u2", field = "id", value = "b"), seq = 3L, rev = s$rev)
+    )$state
+    expect_length(s$journal, 0L)
+    expect_identical(s$doc, s$base)
+    expect_true(s$check$ok)
+
+    # Passing through blank or duplicate to a new id keeps all cascades: b -> b2 -> "" -> a -> b_final
+    s <- studio_step(s, ev("edit", list(table = "cards", uid = "u2", field = "id", value = "b2"), seq = 4L))$state
+    s <- studio_step(
+      s,
+      ev("edit", list(table = "cards", uid = "u2", field = "id", value = ""), seq = 5L, rev = s$rev)
+    )$state
+    s <- studio_step(
+      s,
+      ev("edit", list(table = "cards", uid = "u2", field = "id", value = "a"), seq = 6L, rev = s$rev)
+    )$state
+    s <- studio_step(
+      s,
+      ev("edit", list(table = "cards", uid = "u2", field = "id", value = "b_final"), seq = 7L, rev = s$rev)
+    )$state
+    expect_true(s$check$ok)
+    expect_identical(s$doc$tables$links$to[[1L]], "b_final")
+    expect_identical(s$doc$tables$changes$card[[1L]], "b_final")
+    expect_identical(s$doc$args$target, "b_final")
+    expect_identical(s$doc$args$highlight$ids, c("a", "b_final"))
+    expect_identical(s$doc$args$highlight$links$to, "b_final")
+    expect_identical(studio_journal_replay(s$base, s$journal), s$doc)
+  })
 })
 
 describe("the eight state-core R files", {

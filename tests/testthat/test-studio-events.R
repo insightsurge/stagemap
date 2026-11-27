@@ -258,6 +258,25 @@ describe("studio_resolve() for add, remove and move", {
     expect_match(resolve(one, "remove", list(table = "stages", uid = "u2"))$refused, "last stage")
     expect_match(resolve(one, "remove", list(table = "lanes", uid = "u3"))$refused, "last lane")
     expect_match(resolve(one, "remove", list(table = "cards", uid = "u99"))$refused, "no longer")
+
+    # Removing an empty stage cascades to changes$stage and steps$stage
+    doc_mv <- studio_doc_apply(
+      doc,
+      list(list(op = "set", table = "cards", uid = "u4", field = "stage", value = "check"))
+    )
+    ch_rm_ship <- resolve(doc_mv, "remove", list(table = "stages", uid = studio_uid_of(doc_mv, "stages", "ship")))
+    doc_no_ship <- studio_doc_apply(doc_mv, ch_rm_ship$ops)
+    expect_identical(nrow(doc_no_ship$tables$changes), 0L)
+    expect_true(studio_build(doc_no_ship)$ok)
+
+    doc_mv_w <- studio_doc_apply(
+      doc,
+      list(list(op = "set", table = "cards", uid = "u1", field = "stage", value = "check"))
+    )
+    ch_rm_w <- resolve(doc_mv_w, "remove", list(table = "stages", uid = studio_uid_of(doc_mv_w, "stages", "write")))
+    doc_no_w <- studio_doc_apply(doc_mv_w, ch_rm_w$ops)
+    expect_true(is.na(doc_no_w$tables$steps$stage[[1L]]))
+    expect_true(studio_build(doc_no_w)$ok)
   })
 
   it("moves stages and lanes and refuses at either end", {

@@ -98,4 +98,98 @@ describe("extended replay on large studio data", {
     cat(sprintf("studio large 300-event replay + full undo: %.3f s\n", elapsed))
     expect_identical(s$doc, s$base)
   })
+
+  it("keeps replay identical across randomised repeated cell edits including blanks and returns", {
+    old_seed <- if (exists(".Random.seed", envir = globalenv(), inherits = FALSE)) {
+      get(".Random.seed", envir = globalenv(), inherits = FALSE)
+    } else {
+      NULL
+    }
+    on.exit(
+      {
+        if (is.null(old_seed)) {
+          rm(".Random.seed", envir = globalenv())
+        } else {
+          assign(".Random.seed", old_seed, envir = globalenv())
+        }
+      },
+      add = TRUE
+    )
+    set.seed(20261127L)
+
+    cards <- data.frame(
+      id = c("a", "b", "c"),
+      label = factor(c("Alpha", "Beta", "Gamma")),
+      stage = c("s1", "s2", "s2"),
+      lane = c("l1", "l1", "l2")
+    )
+    stages <- data.frame(id = c("s1", "s2"), label = c("Start", "End"), stringsAsFactors = FALSE)
+    lanes <- data.frame(id = c("l1", "l2"), label = c("Main", "Side"), stringsAsFactors = FALSE)
+    links <- data.frame(from = c("a", "b"), to = c("b", "c"), stringsAsFactors = FALSE)
+    map <- stage_map(cards, stages, lanes, title = "Seeded", target = "b") |>
+      add_links(links) |>
+      add_steps(
+        data.frame(id = "st1", label = "Step 1", stage = "s2"),
+        changes = data.frame(step = "st1", card = "b", stage = "s2", status = "done")
+      ) |>
+      stage_map_highlight(c("a", "b"), links = data.frame(from = "a", to = "b"))
+
+    s <- studio_state_new(map)
+    seq_n <- 1L
+    u_a <- studio_uid_of(s$doc, "cards", "a")
+    u_b <- studio_uid_of(s$doc, "cards", "b")
+    u_s1 <- studio_uid_of(s$doc, "stages", "s1")
+    u_s2 <- studio_uid_of(s$doc, "stages", "s2")
+
+    edit_pool <- list(
+      list(table = "cards", uid = u_a, field = "tone", vals = c("good", "warn", "bad", "")),
+      list(table = "cards", uid = u_a, field = "label", vals = c("Alpha", "Alpha 2", "Alpha 3", "Alpha")),
+      list(table = "cards", uid = u_b, field = "id", vals = c("b", "b_tmp", "", "a", "b_next", "b")),
+      list(table = "stages", uid = u_s1, field = "date", vals = c("2026-01-01", "2026-06-15", "")),
+      list(table = "stages", uid = u_s2, field = "id", vals = c("s2", "s2_alt", "", "s1", "s2"))
+    )
+
+    current_slot <- 1L
+    for (step_i in seq_len(180L)) {
+      roll <- sample.int(10L, 1L)
+      if (roll <= 6L) {
+        slot <- edit_pool[[current_slot]]
+        val <- sample(slot$vals, 1L)
+        ev_cur <- list(
+          seq = seq_n,
+          type = "edit",
+          data = list(table = slot$table, uid = slot$uid, field = slot$field, value = val),
+          rev = s$rev
+        )
+      } else if (roll <= 8L) {
+        current_slot <- sample.int(length(edit_pool), 1L)
+        slot <- edit_pool[[current_slot]]
+        val <- sample(slot$vals, 1L)
+        ev_cur <- list(
+          seq = seq_n,
+          type = "edit",
+          data = list(table = slot$table, uid = slot$uid, field = slot$field, value = val),
+          rev = s$rev
+        )
+      } else if (roll == 9L) {
+        opt_val <- sample(c("Seeded", "Renamed", "Final"), 1L)
+        ev_cur <- list(seq = seq_n, type = "option", data = list(name = "title", value = opt_val), rev = s$rev)
+      } else {
+        ev_cur <- list(seq = seq_n, type = "undo", data = structure(list(), names = character()), rev = s$rev)
+      }
+      seq_n <- seq_n + 1L
+      s <- studio_step(s, ev_cur)$state
+      expect_identical(studio_journal_replay(s$base, s$journal), s$doc)
+    }
+
+    while (studio_journal_can_undo(s$journal)) {
+      s <- studio_step(
+        s,
+        list(seq = seq_n, type = "undo", data = structure(list(), names = character()), rev = s$rev)
+      )$state
+      seq_n <- seq_n + 1L
+      expect_identical(studio_journal_replay(s$base, s$journal), s$doc)
+    }
+    expect_identical(s$doc, s$base)
+  })
 })

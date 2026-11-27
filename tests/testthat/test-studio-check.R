@@ -385,6 +385,125 @@ describe("studio_faults() and studio_fixes()", {
     expect_identical(nrow(studio_faults(fixed)), 0L)
   })
 
+  it("catches broken changes rows and dangling args target, variant and highlight references", {
+    map <- full_map(title = "A map", target = "b", variant = "v1") |>
+      add_steps(
+        data.frame(id = "s1", label = "Step 1", stage = "write"),
+        changes = data.frame(step = "s1", card = "b", stage = "ship", status = "done")
+      ) |>
+      add_variants(data.frame(id = c("v1", "v2"), label = c("V1", "V2"))) |>
+      stage_map_highlight(c("a", "b", "c"), links = data.frame(from = "a", to = "b"))
+    base <- studio_doc(map_parts(map))
+
+    cases <- list(
+      list(
+        table = "changes",
+        field = "card",
+        ops = list(list(
+          op = "set",
+          table = "changes",
+          uid = base$tables$changes$.studio_uid[[1L]],
+          field = "card",
+          value = "bb"
+        )),
+        expected_fixes = c("use", "remove")
+      ),
+      list(
+        table = "changes",
+        field = "stage",
+        ops = list(list(
+          op = "set",
+          table = "changes",
+          uid = base$tables$changes$.studio_uid[[1L]],
+          field = "stage",
+          value = "shp"
+        )),
+        expected_fixes = c("use", "add", "remove")
+      ),
+      list(
+        table = "changes",
+        field = "step",
+        ops = list(list(
+          op = "set",
+          table = "changes",
+          uid = base$tables$changes$.studio_uid[[1L]],
+          field = "step",
+          value = "s2"
+        )),
+        expected_fixes = c("use", "remove")
+      ),
+      list(
+        table = "args",
+        field = "target",
+        ops = list(list(op = "arg", name = "target", value = "bb")),
+        expected_fixes = c("use", "clear")
+      ),
+      list(
+        table = "args",
+        field = "variant",
+        ops = list(list(op = "arg", name = "variant", value = "v3")),
+        expected_fixes = c("use", "clear")
+      ),
+      list(
+        table = "args",
+        field = "ids",
+        ops = list(list(
+          op = "arg",
+          name = "highlight",
+          value = list(ids = c("a", "bb"), links = data.frame(from = "a", to = "bb"))
+        )),
+        expected_fixes = c("use", "clear")
+      ),
+      list(
+        table = "args",
+        field = "ids",
+        ops = list(list(op = "arg", name = "highlight", value = list(ids = "bb", links = NULL))),
+        expected_fixes = c("use", "clear")
+      ),
+      list(
+        table = "args",
+        field = "ids",
+        ops = list(list(op = "arg", name = "highlight", value = list(ids = c("a", "bb"), links = NULL))),
+        expected_fixes = c("use", "clear")
+      ),
+      list(
+        table = "args",
+        field = "links",
+        ops = list(list(
+          op = "arg",
+          name = "highlight",
+          value = list(ids = c("a", "b"), links = data.frame(from = "a", to = "bb"))
+        )),
+        expected_fixes = c("use", "clear")
+      ),
+      list(
+        table = "args",
+        field = "links",
+        ops = list(list(
+          op = "arg",
+          name = "highlight",
+          value = list(ids = c("a", "b"), links = data.frame(from = c("a", "a"), to = c("b", "faraway")))
+        )),
+        expected_fixes = "clear"
+      )
+    )
+
+    for (case in cases) {
+      doc <- studio_doc_apply(base, case$ops)
+      expect_false(studio_build(doc)$ok, info = paste(case$table, case$field))
+      faults <- studio_faults(doc)
+      hit <- faults[faults$table == case$table & faults$field == case$field, , drop = FALSE]
+      expect_identical(nrow(hit), 1L, info = paste(case$table, case$field))
+      fixes <- studio_fixes(doc, hit)
+      expect_setequal(names(fixes), case$expected_fixes)
+      for (fix_name in names(fixes)) {
+        fixed <- studio_doc_apply(doc, fixes[[fix_name]]$ops)
+        expect_identical(nrow(studio_faults(fixed)), 0L, info = paste(case$table, case$field, fix_name))
+        expect_true(studio_build(fixed)$ok, info = paste(case$table, case$field, fix_name))
+      }
+    }
+  })
+
   it("checks its arguments", {
     expect_error(studio_build("doc"), "doc")
     expect_error(studio_faults("doc"), "doc")

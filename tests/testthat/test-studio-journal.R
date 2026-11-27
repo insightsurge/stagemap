@@ -65,7 +65,7 @@ describe("studio_journal_add(), undo(), replay() and can_undo()", {
     expect_false(studio_journal_can_undo(j_num))
   })
 
-  it("keeps earlier cascade ops when blanking and refuses to drop when cascades remain", {
+  it("replaces earlier cascade ops when joining against base and drops on round trip", {
     tpl <- studio_template("example")
     base <- studio_doc_apply(studio_doc(map_parts(tpl$map)), tpl$then)
     f_fix <- studio_resolve(base, list(type = "fix", data = list(fault = studio_faults(base)$id[[1L]], fix = "use")))
@@ -76,26 +76,29 @@ describe("studio_journal_add(), undo(), replay() and can_undo()", {
       base,
       list(type = "edit", data = list(table = "cards", uid = uid_calc, field = "id", value = "zz"))
     )
-    d1 <- studio_doc_apply(base, c1$ops)
     j <- studio_journal_add(list(), c1)
+    d1 <- studio_journal_replay(base, j)
+    expect_identical(d1$tables$links$to[[1L]], "zz")
 
     c2 <- studio_resolve(
       d1,
-      list(type = "edit", data = list(table = "cards", uid = uid_calc, field = "id", value = ""))
+      list(type = "edit", data = list(table = "cards", uid = uid_calc, field = "id", value = "")),
+      from_doc = base
     )
-    d2 <- studio_doc_apply(d1, c2$ops)
     j <- studio_journal_add(j, c2)
     expect_length(j, 1L)
-    expect_identical(studio_journal_replay(base, j), d2)
+    d2 <- studio_journal_replay(base, j)
+    expect_true(is.na(studio_row(d2, "cards", uid_calc)$id))
+    expect_identical(d2$tables$links$to[[1L]], "calc_dose")
 
     c3 <- studio_resolve(
       d2,
-      list(type = "edit", data = list(table = "cards", uid = uid_calc, field = "id", value = "calc_dose"))
+      list(type = "edit", data = list(table = "cards", uid = uid_calc, field = "id", value = "calc_dose")),
+      from_doc = base
     )
-    d3 <- studio_doc_apply(d2, c3$ops)
     j <- studio_journal_add(j, c3)
-    expect_length(j, 1L)
-    expect_identical(studio_journal_replay(base, j), d3)
+    expect_length(j, 0L)
+    expect_identical(studio_journal_replay(base, j), base)
   })
 
   it("does not join a new edit into an undone entry with the same key", {
@@ -147,24 +150,34 @@ describe("studio_journal_add(), undo(), replay() and can_undo()", {
       text = "First",
       key = "k1",
       target = NULL,
-      ops = list(list(op = "arg", name = "title", value = "One"))
+      ops = list(
+        list(op = "arg", name = "title", value = "One"),
+        list(op = "set", table = "cards", uid = "u1", field = "label", value = "One")
+      )
     )
     plain2 <- list(
       verb = "Edit",
       text = "Second",
       key = "k1",
       target = NULL,
-      ops = list(list(op = "arg", name = "title", value = "Two"))
+      ops = list(
+        list(op = "arg", name = "title", value = "Two"),
+        list(op = "set", table = "cards", uid = "u1", field = "label", value = "Two")
+      )
     )
     j <- studio_journal_add(list(), plain1)
     j <- studio_journal_add(j, plain2)
     expect_length(j, 1L)
     expect_identical(j[[1L]]$text, "Second")
-    expect_identical(studio_journal_replay(base, j)$args$title, "Two")
+    replayed <- studio_journal_replay(base, j)
+    expect_identical(replayed$args$title, "Two")
+    expect_identical(replayed$tables$cards$label[[1L]], "Two")
+    expect_null(studio_journal_match(studio_journal_undo(j), "k1"))
   })
 
   it("checks its arguments", {
     base <- studio_doc(map_parts(small))
+    expect_error(studio_journal_match("j", "k1"), "journal")
     expect_error(studio_journal_add("j", list()), "journal")
     expect_error(studio_journal_add(list(), list(1)), "change")
     expect_error(studio_journal_can_undo("j"), "journal")

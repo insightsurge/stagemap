@@ -286,16 +286,34 @@ studio_step <- function(state, event) {
     }
     state <- opened
   } else if (checked$type %in% names(studio_events())) {
+    from_doc <- NULL
+    if (
+      identical(checked$type, "edit") &&
+        identical(checked$data$field, "id") &&
+        checkmate::test_string(checked$data$table, min.chars = 1L) &&
+        checkmate::test_string(checked$data$uid, min.chars = 1L)
+    ) {
+      key <- paste("edit", checked$data$table, checked$data$uid, "id", sep = ":")
+      open_idx <- studio_journal_match(state$journal, key)
+      if (!is.null(open_idx)) {
+        from_doc <- studio_journal_replay(state$base, state$journal[-open_idx])
+      }
+    }
     change <- tryCatch(
-      studio_resolve(state$doc, checked),
+      studio_resolve(state$doc, checked, from_doc = from_doc),
       error = function(e) list(refused = cli::ansi_strip(conditionMessage(e)))
     )
     if (!is.null(change$refused)) {
       return(studio_refuse(state, change$refused))
     }
     if (length(change$ops) > 0L) {
-      state$doc <- studio_doc_apply(state$doc, change$ops)
+      old_len <- length(state$journal)
       state$journal <- studio_journal_add(state$journal, change)
+      state$doc <- if (length(state$journal) > old_len) {
+        studio_doc_apply(state$doc, change$ops)
+      } else {
+        studio_journal_replay(state$base, state$journal)
+      }
       state$rev <- state$rev + 1L
       state$notice <- NULL
       if (!is.null(change$target)) {

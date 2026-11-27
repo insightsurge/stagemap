@@ -11,8 +11,7 @@ studio_op_target <- function(op) {
   }
 }
 
-# Merges `old_ops` and `new_ops`: for any target present in `new_ops`, the new operation replaces the old one;
-# earlier operations for targets not in `new_ops` (such as an earlier cascade before a blank edit) stay.
+# Merges `old_ops` and `new_ops`: for any target present in `new_ops`, the new operation replaces the old one.
 studio_merge_ops <- function(old_ops, new_ops) {
   checkmate::assert_list(old_ops)
   checkmate::assert_list(new_ops)
@@ -21,8 +20,25 @@ studio_merge_ops <- function(old_ops, new_ops) {
   c(old_ops[!(old_keys %in% new_keys)], new_ops)
 }
 
+# Index of the last `"done"` entry in `journal` whose non-NA key equals `key`, or NULL when none matches.
+studio_journal_match <- function(journal, key) {
+  checkmate::assert_list(journal)
+  checkmate::assert_string(key, na.ok = TRUE)
+  if (is.na(key) || length(journal) == 0L) {
+    return(NULL)
+  }
+  states <- vapply(journal, function(entry) entry$state, "")
+  done_idx <- which(states == "done")
+  if (length(done_idx) == 0L) {
+    return(NULL)
+  }
+  last_idx <- done_idx[[length(done_idx)]]
+  last <- journal[[last_idx]]
+  if (!is.na(last$key) && identical(last$key, key)) last_idx else NULL
+}
+
 # Appends `change` to `journal`, or joins it with the last done entry when their keys match and are not NA.
-# Drops that entry if joining returns the cell to its first value without un-reverted cascade operations.
+# Drops that entry when a joined cell edit returns to its first value.
 studio_journal_add <- function(journal, change) {
   checkmate::assert_list(journal)
   checkmate::assert_list(change, names = "unique")
@@ -31,36 +47,28 @@ studio_journal_add <- function(journal, change) {
     return(journal)
   }
 
-  states <- vapply(journal, function(entry) entry$state, "")
-  done_idx <- which(states == "done")
-  key <- change$key
-  if (length(done_idx) > 0L && !is.na(key)) {
-    last_idx <- done_idx[[length(done_idx)]]
+  last_idx <- studio_journal_match(journal, change$key)
+  if (!is.null(last_idx)) {
     last <- journal[[last_idx]]
-    if (!is.na(last$key) && identical(last$key, key)) {
-      if (!is.null(last$join) && !is.null(change$join)) {
-        old_targets <- vapply(last$ops, studio_op_target, "")
-        new_targets <- vapply(change$ops, studio_op_target, "")
-        a <- change$join$new_val
-        b <- last$join$first_val
-        same_num <- is.numeric(a) && is.numeric(b) && length(a) == 1L && length(b) == 1L && isTRUE(a == b)
-        both_na <- length(a) == 1L && length(b) == 1L && is.na(a) && is.na(b)
-        back <- identical(a, b) || same_num || both_na
-        if (back && all(old_targets %in% new_targets)) {
-          return(journal[-last_idx])
-        }
-        last$text <- paste0(last$join$prefix, last$join$first_text, " > ", change$join$new_text)
-        last$ops <- studio_merge_ops(last$ops, change$ops)
-        last$target <- change$target
-        journal[[last_idx]] <- last
-        return(journal)
+    if (!is.null(last$join) && !is.null(change$join)) {
+      a <- change$join$new_val
+      b <- last$join$first_val
+      same_num <- is.numeric(a) && is.numeric(b) && length(a) == 1L && length(b) == 1L && isTRUE(a == b)
+      both_na <- length(a) == 1L && length(b) == 1L && is.na(a) && is.na(b)
+      if (identical(a, b) || same_num || both_na) {
+        return(journal[-last_idx])
       }
-      last$text <- change$text
-      last$ops <- studio_merge_ops(last$ops, change$ops)
+      last$text <- paste0(last$join$prefix, last$join$first_text, " > ", change$join$new_text)
+      last$ops <- change$ops
       last$target <- change$target
       journal[[last_idx]] <- last
       return(journal)
     }
+    last$text <- change$text
+    last$ops <- studio_merge_ops(last$ops, change$ops)
+    last$target <- change$target
+    journal[[last_idx]] <- last
+    return(journal)
   }
 
   next_n <- if (length(journal) == 0L) 1L else journal[[length(journal)]]$n + 1L
