@@ -20,5 +20,13 @@
     "rules": {
       "recommended": true
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["inst/kit/**"],
+      "formatter": { "enabled": false },
+      "linter": { "enabled": true, "rules": { "recommended": false } },
+      "assist": { "enabled": false }
+    }
+  ]
 }

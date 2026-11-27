@@ -1,0 +1,31 @@
+Who holds the copyright in what this package ships.
+
+The package's own code (R/, tests/, man/, the README and NEWS):
+  Copyright (c) 2026 Harsh Verma. MIT licence: see LICENSE.
+
+The stage-map engine, in inst/kit/: stage-map.js, stage-map.css, stage-map.json and stage-map.sha256:
+  Copyright (c) 2026 Harsh Verma. MIT licence: see LICENSE.
+  Source: the files are built from the source files of the engine's own private source repository, which is not
+  published. They are generated, never edited here. inst/kit/kit.json records the engine version, the source commit
+  and the sha256 of every file in inst/kit/; stage-map.sha256 holds the checksums of the three built files in the form
+  `shasum -c` reads.
+  The built stage-map.js holds icons from the Lucide set (https://lucide.dev), written out as SVG paths:
+  Copyright (c) 2026 Lucide Icons and Contributors, ISC licence; some of the icons derive from Feather, Copyright (c)
+  2013-present Cole Bemis, MIT licence. Both licences are in inst/kit/LICENSE-lucide.
+
+The widget binding, inst/htmlwidgets/stage_map.js:
+  Copyright (c) 2026 Harsh Verma. MIT licence: see LICENSE. Plain, unminified source, written for this package.
+
+The studio's page, inst/studio/ (studio.js and every file under inst/studio/js/ and inst/studio/css/, including files
+added there later):
+  Copyright (c) 2026 Harsh Verma. MIT licence: see LICENSE. Plain, unminified source, written for this package.
+
+The demo app, inst/examples/shiny-demo/app.R:
+  Copyright (c) 2026 Harsh Verma. MIT licence: see LICENSE. A made-up project, written for this package.
+
+The d3 library, inst/kit/d3.min.js (version 7.9.0, as published at https://d3js.org; the engine draws with it):
+  Copyright 2010-2023 Mike Bostock. ISC licence: see inst/kit/LICENSE-d3.
+  d3.min.js also bundles the libraries d3 is built from (among them delaunator, robust-predicates and the ColorBrewer
+  colour schemes), each under its own permissive licence (ISC, Unlicense, Apache-2.0, MIT), as published with d3.
+
+inst/kit/LICENSE-d3 and inst/kit/LICENSE-lucide are the licence texts of the two third-party works, copied unchanged.

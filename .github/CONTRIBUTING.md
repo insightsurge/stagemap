@@ -35,7 +35,7 @@ To report a bug or suggest an idea, open an issue with one of the issue forms.
 
 Update every text that describes what you changed, in the same pull request: help pages (through roxygen), articles,
 the README, `NEWS.md` and the examples; workflow comments, `tools/README.md`, `.github/workflows/README.md`,
-`tests/README.md` and the rules files; and any other page,
+`tests/testthat/README.md` and the rules files; and any other page,
 function or file that describes the behaviour, including ones added later. It works both ways: if you edit an article,
 guide or example, check that the help page still agrees. Search the repository for the old wording and list the search
 terms in the pull request.
@@ -93,7 +93,8 @@ The [standards][standards] explain the reasons and sources behind these rules.
 
 Tests use testthat in BDD style, one test file per R file (plus `-browser`, `-snap` and `-extended` files for the
 tests CRAN skips), with coverage at least 70%: see the [test rules][tests]. How the tests are organised, and how to
-run them as CRAN does: [`tests/README.md`](https://github.com/insightsurge/stagemap/blob/main/tests/README.md).
+run them as CRAN does:
+[`tests/testthat/README.md`](https://github.com/insightsurge/stagemap/blob/main/tests/testthat/README.md).
 
 ## NEWS.md
 
@@ -101,7 +102,7 @@ Add one bullet for each user-facing change, in the same pull request. Write it f
 with the function or feature, and end with the issue number:
 
 ```md
-* `sm_svg()` gains a `width` argument (#123).
+* `sm_trace()` gains a `depth` argument (#123).
 ```
 
 Where new bullets go and what is left out: the [NEWS rules][newsmd]. Release headings and versions belong to the
@@ -109,8 +110,12 @@ package creator ([release rules][releases]).
 
 ## Licence of contributions
 
-Contributions use the package's MIT licence. Before adding third-party files, follow the
-[bundled-file rules][bundled-files].
+Contributions use the package's MIT licence: by opening a pull request you agree that your change is released under
+it. You keep the copyright in what you wrote and release it under the same MIT terms. Before adding third-party
+files, follow the [bundled-file rules][bundled-files].
+
+The drawing engine in `inst/kit/` is built elsewhere and copied in by `tools/copy-kit.R`; it is never edited here. To
+report a problem with how a map is drawn, open an issue. A pull request that edits `inst/kit/` cannot be merged.
 
 ## Conduct and data
 

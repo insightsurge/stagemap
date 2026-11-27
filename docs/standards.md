@@ -156,9 +156,8 @@ The engine is most of what a user sees, so it has its own rules. All of these ar
   `mount`, `update` and `resize` (htmlwidgets has no destroy hook; `destroy` serves re-renders and a later own
   binding). The engine never depends on htmlwidgets, so the wrapper can later be replaced by stagemap's own Shiny
   output binding (dropping a hard dependency) without changing the engine or the R functions.
-- The widget's markup comes from a `stagemap_html()` hook that ignores htmlwidgets' `style` argument, so sizes travel
-  as `data-*` attributes rather than an inline `style=` in the markup. (htmlwidgets' runtime still sets sizes through
-  `el.style` in standalone pages, such as `saveWidget()` output and the RStudio viewer.)
+- The widget's markup is htmlwidgets' own container, sized by the widget's `width` and `height` (htmlwidgets' runtime
+  sets sizes through `el.style` in standalone pages, such as `saveWidget()` output and the RStudio viewer).
 - shiny stays in `Suggests`: maps work in Quarto, R Markdown and pkgdown without it.
 - One accepted exception to "no `eval`" below: htmlwidgets' own runtime uses `eval()` for `JS()` and `onRender()`.
   stagemap's own R and JS code never uses `JS()` or `onRender()`; a user who adds them opts into that `eval()`.
@@ -313,13 +312,14 @@ use plain words in help pages:
 - **"Do X, then Y at once."** Every action in a Shiny app or view the package ships (Copy, Download, Build, Check, a
   busy button) gets one browser test that makes a change and fires the action without waiting for the server in
   between, then checks that the action used the change. A test that waits after each step lets the server catch up,
-  so it passes with the bugs of section 3, "Shiny apps", still in place. How: `tests/README.md`.
+  so it passes with the bugs of section 3, "Shiny apps", still in place. How: `tests/testthat/README.md`.
 - Chrome skips respect CRAN's request; app cleanup avoids leftover processes. See the
   [Shiny test rules](https://github.com/insightsurge/stagemap/blob/main/.claude/rules/tests.md).
 - **The tests CRAN skips have files of their own** (`-browser.R`, `-snap.R`, `-extended.R`;
-  [tests/README.md](https://github.com/insightsurge/stagemap/blob/main/tests/README.md)). Browser and extended files
-  start with their skip, so CRAN skips the whole file before any of its code runs: in mascot, whose layout this follows,
-  a skip inside each test came after the test had built its fixtures and cost about an eighth of the test time on CRAN.
+  [tests/testthat/README.md](https://github.com/insightsurge/stagemap/blob/main/tests/testthat/README.md)).
+  Browser and extended files start with their skip, so CRAN skips the whole file before any of its code runs: in
+  mascot, whose layout this follows, a skip inside each test came after the test had built its fixtures and cost
+  about an eighth of the test time on CRAN.
   Snapshot files keep the skip in each `expect_snapshot()`, because a snapshot file skipped as a whole reports no
   snapshots and testthat deletes their saved files.
 - **CRAN runs what it must, not everything.** CRAN asks for examples, vignettes and tests to take under 10 minutes
@@ -383,8 +383,8 @@ What each workflow runs and when, which test files run where, and the gate mode 
 A ruleset on `main` blocks force-pushes and deleting the branch; it does not require passing checks, so the rule is:
 CI green, then ask before merging.
 
-While the repository is private, the checks run on Ubuntu only, to save the shared Actions minutes; Windows and macOS
-join when it goes public. Keep new runs on Ubuntu unless the platform is the point.
+The checks run on Windows, macOS and Ubuntu, and R CMD check also runs on R devel, the previous release and the
+oldest R the package supports, so platform and version differences show before CRAN's own checks.
 
 The site is built from `main` only, never on pull requests: a site build may need packages that outside
 contributors' pull requests can't install. The checks' own jobs (runner images, permissions, time limits, pinned

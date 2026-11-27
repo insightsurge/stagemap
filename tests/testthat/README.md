@@ -1,0 +1,105 @@
+# tests/
+
+How the tests are organised, and where each kind runs. The rules (what to test, BDD style, skips, coverage) are in
+`.claude/rules/tests.md`; what each CI workflow runs is in
+[`.github/workflows/README.md`](../../.github/workflows/README.md).
+
+## In brief
+
+- CRAN runs the package's own tests, apart from the long, detailed ones and checks too slow for it.
+- The tests CRAN skips live in files of their own, by kind: browser, snapshot and extended. CI runs all of them.
+
+## The four kinds of test file
+
+One test file per R file (`R/trace.R` is tested in `tests/testthat/test-trace.R`), plus, when it has them:
+
+| Kind | File | What goes in it | Its first line | Runs when |
+|---|---|---|---|---|
+| plain | `test-<name>.R` | the package's functions | (no skip) | always, CRAN included |
+| browser | `test-<name>-browser.R` | anything that starts Chrome (shinytest2, chromote) | `skip_without_chrome()` | `NOT_CRAN` is true and Chrome is found |
+| snapshot | `test-<name>-snap.R` | `expect_snapshot()` tests, and nothing else | (no skip, on purpose) | `NOT_CRAN` is true |
+| extended | `test-<name>-extended.R` | long, detailed tests CRAN needn't run: many map cases, every widget scenario; checks too slow for CRAN | `skip_unless_extended()` | `NOT_CRAN` is true, or `EXTENDED_TESTS` is `"true"` |
+
+- **First lines.** A browser or extended file skips from its first line, so CRAN skips the whole file before any of its
+  code runs (a skip inside each test would come after the test had built what it needs). A snapshot file has no such
+  line: skipped as a whole, it reports no snapshots, and testthat then deletes their saved files in `_snaps/`. Each
+  `expect_snapshot()` skips itself on CRAN instead.
+- **Helpers** live in `tests/testthat/helper-<name>.R`, which testthat loads before every file: `helper-extended.R`
+  (`skip_unless_extended()`), `helper-chrome.R` (`skip_without_chrome()` and the shared Chromes), `helper-page.R`
+  (drawing a widget on a page in that Chrome), `helper-stage_map.R` (the stage map's made-up data), `helper-kit.R`
+  (the names the package relies on in the bundled engine, and where to find its files) and `helper-studio.R` (starting
+  the studio's test app, waiting on its page, holding its answers, dropping and reopening its connection and standing
+  in for the clipboard). A helper used by one file only stays at the top of that file.
+- **Layout check.** `test-helper-layout.R` keeps each file to its kind: it fails a browser or extended file that
+  doesn't start with its skip, a `skip_on_cran()` or a browser call in a plain file (also written as `pkg::fn()` or
+  `pkg::Class$new()`), an `expect_snapshot*()` outside a `-snap.R` file, and a snapshot file with a test that doesn't
+  snapshot or with a skip of its own at file level.
+- **Apps** for shinytest2 are in `tests/testthat/apps/<name>/app.R`.
+
+## Where each kind runs
+
+| Where | plain | browser | snapshot | extended |
+|---|---|---|---|---|
+| CRAN, and R CMD check in CI | yes | | | |
+| Coverage in CI, and the weekly `r-cmd-check-extended` run | yes | | | yes |
+| CI's `full-tests` check (with Chrome) | | yes | yes | yes |
+| `devtools::test()` and the gate's `tests` mode, locally | yes | yes | yes | yes |
+
+## Running the tests locally
+
+- Everything: the gate's `tests` mode (with coverage; `tools/README.md` says how to run the gate), or `devtools::test()`; both set `NOT_CRAN` to true.
+  The browser tests need Chrome or Chromium.
+- As CRAN runs them: `NOT_CRAN=false Rscript -e 'testthat::test_local()'` (`devtools::test()` always sets `NOT_CRAN`
+  to true). Add `EXTENDED_TESTS=true` to include the extended tests, as the coverage job does.
+- One file: `devtools::test(filter = "trace")`.
+
+## Keeping CRAN's share small
+
+CRAN asks for examples, vignettes and tests to take under 10 minutes together. R CMD check in CI fails when the tests
+take longer than 180 s on Ubuntu with R release. When a pull request gets near that limit, move detailed tests to an
+extended file, or make the slow tests cheaper (build a fixture once per file with `delayedAssign()`, draw a page once
+and reuse it).
+
+## Testing actions in a Shiny app: "do X, then Y at once"
+
+In a Shiny app the page changes at once and the server answers a moment later, so a quick click can act on an earlier
+state: Copy copies the colour from before the change, a late update puts a menu back. A test that waits for the server
+after each step never sees that gap. So every action (Copy, Download, Build, Check, a busy button) gets one browser test
+that makes a change and fires the action without waiting in between, then checks that the action used the change.
+
+- Make both steps in one `app$run_js()` call (for example, set a colour input and click Copy), or use no
+  `app$set_inputs()` between them: it waits for the server.
+- To widen the gap, hold back what the page sends (wrap `Shiny.setInputValue()` so it queues the values until the test
+  releases them) or what the server answers, with a helper in `helper-<name>.R`. mascot's studio tests have examples:
+  `hold_studio_inputs()` and `hold_studio_replies()` in its `tests/testthat/helper-studio.R`.
+- The app-side rules these tests check are in `.claude/rules/r-code.md` and `.claude/rules/js-css.md` ("Shiny apps").
+
+## Adding tests for a new R file
+
+1. Its tests in `test-<name>.R`, the plain file.
+2. Long, detailed tests and checks too slow for CRAN in `test-<name>-extended.R`, starting with
+   `skip_unless_extended()`.
+3. Its browser tests in `test-<name>-browser.R`, starting with `skip_without_chrome()`; its snapshot tests in
+   `test-<name>-snap.R`. A Shiny app or view gets one "do X, then Y at once" test for each action (above).
+
+## Studio helpers and scenarios
+
+- **Helpers** (`helper-studio.R`): `studio_small()`, `studio_large()`, and `studio_steps()` build the studio's test maps
+  with no random numbers. `studio_driver()` starts `apps/studio/app.R` on the chosen fixture, installs
+  `studio_count_shim()` before the page's scripts, and waits for the first drawn message and map. Browser tests act
+  and synchronise through `studio_do()`, `studio_wait_step()`, `studio_wait_map()`, `studio_stamp()`,
+  `studio_section()`, `studio_type()`, `studio_press()`, `studio_emulate()`, `hold_studio_events()` /
+  `release_studio_events()`, `hold_studio_messages()` / `release_studio_messages()`, `wait_studio_held()`,
+  `stub_studio_clipboard()`, `studio_counts()`, and `expect_studio_clean()`.
+- **Scenarios** (`apps/studio/scenarios.csv`): lists every studio user action (`SMS-001` onwards, `auto` or `manual`).
+  `test-studio-scenarios.R` verifies the table's structure and checks that each `auto` scenario ID appears in an `it()`
+  description of its area's browser test file.
+- **Leak count** (`test-studio-leak-browser.R`): runs 30 rounds of each kind of action (the shell, targets and forms,
+  layout and fixes, code, Ask, and the guide with the rooms and the phone width) and compares `studio_counts()`
+  (listeners, active observers, pending timers, DOM nodes) against the warm-up reading.
+- **Guide, keyboard and phone** (`test-studio-guide-browser.R`, `test-studio-keyboard-browser.R`,
+  `test-studio-phone-browser.R`): the guide ticks on real actions; the keyboard file uses key events for what
+  it tests (`studio_press()`; SMS-086 alone is pointer-free and checks that itself) and asserts where focus is; the
+  phone file runs at 390px and 360px, with one touch tap and the contrast of the page's own colour tokens in both
+  themes. `studio_emulate(app, "width", px)`
+  sets the width; wait for `document.getAnimations().length === 0` before measuring a box that slides in.

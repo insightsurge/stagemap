@@ -2,10 +2,11 @@
 % Please edit documentation in R/stagemap-package.R
 \docType{package}
 \name{stagemap-package}
+\alias{stagemap}
 \alias{stagemap-package}
 \title{stagemap: Relation Maps for 'Shiny' and 'Quarto'}
 \description{
-Builds relation maps from nodes placed by stage and lane and links that join them. Checks node identifiers, link endpoints and column values, lays the map out the same way on every run and writes it as an SVG image.
+Draws maps of cards placed by stage and lane and joined by typed links, as an interactive widget, in 'Shiny' apps and in 'Quarto' documents. Checks card identifiers, link endpoints and column values, and lays the map out the same way on every run. Functions trace links from a card and list cards with no link, or with no link to a given stage.
 }
 \seealso{
 Useful links:

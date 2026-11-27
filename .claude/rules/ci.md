@@ -17,9 +17,9 @@ the checks locally: `.github/workflows/README.md`. The gate: `tools/README.md`.
   move to the next launchR version (Dependabot proposes each new minor version). stagemap's choices live in the
   workflow files' inputs (platforms, time limits), `DESCRIPTION` (`Config/quality-gate/*`, `Config/launchR/*`),
   `air.toml`, `.lintr`, `biome.json` and `codecov.yml`.
-- While the repository is private, the checks run on Ubuntu only (R release and the previous release), to save the
-  shared Actions minutes; Windows and macOS are added when it goes public. Keep new runs on Ubuntu unless the platform
-  is the point (macOS minutes count 10x, Windows 2x).
+- R CMD check runs on Windows and macOS (R release) and on Ubuntu (R devel, release, the previous release and 4.1, the
+  oldest R in `DESCRIPTION`); the full and extended tests run on all three systems with R release. Change the lists
+  in each workflow's `platforms` input.
 - The checks run for pull requests into `main` and pushes to `main`, not for pull requests into other branches. Work
   merged into an integration branch is checked with the local gate; CI checks it when that branch's pull request into
   `main` opens.

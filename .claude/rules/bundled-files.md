@@ -17,6 +17,10 @@ Labels as in `r-code.md` (CRAN / house). Reasons and sources: `docs/standards.md
 - **CRAN:** `inst/` must not use R's reserved names (`R`, `data`, `demo`, `exec`, `libs`, `man`, `help`, `html`,
   `Meta`, `src`); file names are ASCII, portable, without spaces or names differing only by case; paths are under
   100 bytes. The case used in code must match the file on disk: Linux is case-sensitive.
+- **house:** `inst/kit/` (the stage-map engine, d3 and their licences) is a copy, never edited by hand: update it with
+  `tools/copy-kit.R` ([tools/README.md](../../tools/README.md)), which also writes `inst/kit/kit.json` (version, source
+  commit, date, checksums). `biome.json` leaves it as built. Its third-party files each ship with their licence text
+  and have a line in `inst/COPYRIGHTS`; `test-kit.R` checks both.
 - **house:** the built tarball stays under 5 MB (CRAN: under 10 MB if possible); the gate's `full` mode checks the
   size and that every `inst/` file is in the tarball.
 

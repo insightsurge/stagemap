@@ -2,33 +2,38 @@
 % Please edit documentation in R/trace.R
 \name{sm_orphans}
 \alias{sm_orphans}
-\title{Find nodes with no links}
+\title{Find cards with no links}
 \usage{
 sm_orphans(map)
 }
 \arguments{
-\item{map}{A \code{stagemap} object.}
+\item{map}{A \code{\link[=stage_map]{stage_map()}} widget.}
 }
 \value{
-A plain data frame in node order with columns \code{id} (character node
-id), \code{label} (character node label) and \code{stage} (the same type and factor
-levels as the map's stage column). With no matches, the columns retain their
-types and have zero rows. Row names are consecutive integers.
+A plain data frame with row names \code{1} to \code{n} and character columns \code{id}, \code{label}, \code{stage} and \code{lane}. With
+no matches, the data frame has zero rows and the same column types. A wrong \code{map} stops with
+\code{stagemap_error_widget}.
 }
 \description{
-Find nodes that appear at neither end of any link.
+Lists cards that appear at neither end of any link, in the order of \code{cards} in the map. When the map has no links,
+every card is returned. Every card and link in the map counts: hidden cards, variants and the changes of
+\code{\link[=add_steps]{add_steps()}} are ignored.
 }
 \examples{
-nodes <- data.frame(
-  id = c("REQ-1", "REQ-2", "TST-1", "RES-1"),
-  stage = c("Requirement", "Requirement", "Test", "Result")
-)
-links <- data.frame(from = c("REQ-1", "TST-1"), to = c("TST-1", "RES-1"))
-sm_orphans(stagemap(nodes, links))
+map <- stage_map(
+  cards = data.frame(
+    id = c("req-1", "req-2", "tst-1"),
+    label = c("First", "Orphan", "Test"),
+    stage = c("req", "req", "test"),
+    lane = "core"
+  )
+) |>
+  add_links(data.frame(from = "req-1", to = "tst-1"))
+sm_orphans(map)
 }
 \seealso{
-Other ask:
+Other trace:
 \code{\link[=sm_missing]{sm_missing()}},
 \code{\link[=sm_trace]{sm_trace()}}
 }
-\concept{ask}
+\concept{trace}

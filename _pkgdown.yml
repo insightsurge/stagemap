@@ -40,33 +40,36 @@ home:
       href: SECURITY.html
 
 navbar:
+  components:
+    intro:
+      text: Get started
+      href: articles/stagemap.html
   structure:
-    left: [reference, news]
+    left: [intro, reference, news]
     right: [search, github, lightswitch]
 
 reference:
   - title: Package
     contents:
       - stagemap-package
-  - title: Build a map
+  - title: Stage maps
     contents:
-      - stagemap
-  - title: Say what a map means
-    contents:
-      - sm_stages
-      - sm_lanes
-      - sm_kinds
-      - sm_kind
-      - sm_groups
-      - sm_status
-  - title: Lay out a map
-    contents:
-      - sm_layout
-  - title: Draw a map
-    contents:
-      - sm_svg
-  - title: Ask questions of a map
+      - stage_map
+      - add_links
+      - add_zones
+      - add_steps
+      - add_variants
+      - stage_map_tables
+      - stage_map_code
+  - title: Ask a map
     contents:
       - sm_trace
       - sm_orphans
       - sm_missing
+  - title: Stage maps in Shiny
+    contents:
+      - stage_map_output
+      - stage_map_select
+  - title: Studio
+    contents:
+      - stage_map_studio

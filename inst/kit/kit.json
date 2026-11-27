@@ -1,0 +1,32 @@
+{
+  "engine": "0.60.0",
+  "commit": "b99d701d004bcc948bf8d46cb7640c928c778781",
+  "date": "2026-11-27",
+  "d3": "7.9.0",
+  "files": [
+    "LICENSE-d3",
+    "LICENSE-lucide",
+    "d3.min.js",
+    "stage-map.css",
+    "stage-map.js",
+    "stage-map.json",
+    "stage-map.sha256"
+  ],
+  "sha256": {
+    "LICENSE-d3": "823a20e14faceca92891e0eb9e5bbea3123f9e5cbe5bd31d9c7fac5d86d513e7",
+    "LICENSE-lucide": "b495047bd93a9b06913511076f504daba17d5bbeb3e0650f3bb53a4220329c57",
+    "d3.min.js": "8b56e04f36583949cb0832c5cb863785ad26d6b9d444068f069764ea154f379a",
+    "stage-map.css": "aec293743e221afc19cf39fa0272710803957b9c2fb4cd4b588c5cefde4f4afe",
+    "stage-map.js": "93fcbbd54116e3576b8588e5ed4ba9026ca7ca8bf3648ae6e11f0bd88a25e064",
+    "stage-map.json": "1547039d28485ddd1eaec0b90294aec5edfea7e751c0f4e98540fc4be6129ea7",
+    "stage-map.sha256": "b74a7690cbbfa6d80f572b42c2d3bce782ccbfaba1bee8650378d4a9088000f5"
+  },
+  "names": {
+    "global": "stagemap",
+    "prefix": "stagemap",
+    "css": "sm",
+    "product": "stagemap",
+    "root_class": "sm",
+    "root_attribute": "data-stagemap-visual"
+  }
+}

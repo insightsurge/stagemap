@@ -1,14 +1,30 @@
 # stagemap 0.0.0.9000
 
-* `stagemap()` builds a map object from nodes and links data frames and checks them, naming the rows that are wrong (#13).
-* `sm_groups()` sets group colours and legend labels (#14).
-* `sm_kind()` describes a link's line, colour, width, arrow and middle mark (#14).
-* `sm_kinds()` sets and combines styles for named link kinds (#14).
-* `sm_layout()` sets the direction, the order of nodes within a stage and the spacing; the layout is computed in R and is the same on every run (#15).
-* `sm_lanes()` sets lane order, including empty bands (#14).
-* `sm_missing()` finds nodes without a direct link to a chosen stage (#20).
-* `sm_orphans()` finds nodes with no links (#20).
-* `sm_stages()` sets stage order, including empty columns (#14).
-* `sm_status()` sets badge text for built-in and custom status words (#14).
-* `sm_svg()` writes a map as an SVG image, or returns it as text, drawn in R with no extra packages, in a light or dark theme (#16).
-* `sm_trace()` follows links from a node, with direction, kind and depth limits (#20).
+* The first R API (`stagemap()`, the `sm_*()` functions that set stages, lanes, kinds, groups, status and layout, `sm_svg()`, `sm_trace()`, `sm_orphans()` and `sm_missing()`) is replaced by a rebuild as an `htmlwidgets` widget with a bundled JavaScript engine; this is before the first release (#57).
+
+* `stage_map()` draws cards placed in stages and lanes, with a legend, the details of a card, a side panel for a stage and the notes of zones; `panels = FALSE` hides those three. It takes `layout` from the layouts the engine lists and `dismiss = "no_outside"` by default. Columns the engine has no field for stay in the widget's R data and are not sent to it (#65).
+* `add_links()` adds links between cards and the kinds of link; an empty data frame adds none (#65).
+* `add_zones()` adds labelled outlines around groups of cards (#65).
+* `add_steps()` adds steps to play through, with the changes each step makes to cards, and brings the step player (#65).
+* `add_variants()` adds the variants a reader switches between (#65).
+* `stage_map()` takes its table as `cards`, and `code_lines` marks the lines of a stage's or step's code; `map` is the first argument of `add_links()`, `add_zones()`, `add_steps()` and `add_variants()` (#67).
+* `stages` and `lanes` can be left out: they are taken from the cards' `stage` and `lane` columns. `layout`, `motion`, `legend`, `cell_columns` and `bundle_links` have real defaults and no longer take `NULL`; a blank status label is refused (#67).
+* Ids that do not join (a card's stage or lane, a link's cards, kind, step or variants, a card's zone, a step's stage, `target`, `variant`) and an id given twice in a table stop with an error of class `stagemap_error_data` that names the ids, when the second table arrives, in either order. The id checks of `changes` in `add_steps()` use the same class (#67).
+* `add_variants()`, the `"levels"` and `"dates"` layouts, `target` and `variant` are marked experimental, with a badge in the help pages (#67).
+* `sm_trace()` traces upstream, downstream or both walks from one or more start cards (with `direction`, `kinds` and `max_distance`), returning a plain data frame with `direction`, `distance`, `through` and `kind` (#71).
+* `sm_orphans()` and `sm_missing()` list unlinked cards and cards of `stage` with no direct link to `linked_to` (filtered by `kinds`), returning plain data frames; unknown ids, stages and kinds stop with `stagemap_error_id` (#71).
+* `stage_map_output()`, `render_stage_map()` and `stage_map_proxy()` put a map in a Shiny app. The server reads `input$<id>_selected` (the selected card ids), `input$<id>_pick` (the reader's last pick), `input$<id>_state` (what the map holds) and, experimental, `input$<id>_hovered` (#72).
+* Six verbs change a map that is already drawn: `stage_map_select()`, `stage_map_highlight()`, and, experimental, `stage_map_show()`, `stage_map_hide()`, `stage_map_enable()` and `stage_map_disable()`. `stage_map_highlight()` also takes a `stage_map()` widget and lights cards from the first draw; `stage_map()` has no `highlight` argument (#72).
+* A render function given a promise of a map draws it once the promise resolves (#72).
+* `stage_map_output()` refuses `NULL` for `width` and `height`, as its help says. The help of `stage_map_output()` says which inputs are `NULL` before the map is drawn or the reader has picked, `stage_map()` says what a missing status label does, and the help says what a new map keeps of the hidden, disabled, lit and selected cards. The README and the Shiny demo app describe the exported functions (#77).
+* One rule for ids everywhere: an id is text that is not blank, or a whole number of any size. An empty or blank id in a table stops with `stagemap_error_data` that names it, and `target`, `variant`, `sm_trace()`, `sm_missing()` and the Shiny verbs take whole numbers beyond the largest integer, as the tables do. `stage_map_highlight(links =)` checks `kind` like the other ids. The help for `dismiss` says it applies to a picked card or stage, and the help for `stage_map_output()` says the `kind` of `input$<id>_pick` and the fields of `input$<id>_state` may grow (#75).
+* In the Shiny demo app, the action and trace buttons use the cards picked on the map when the list is empty, or show a "Choose cards first" note when both are empty. On a narrow screen, the map appears before the controls (#79).
+* The README and a "Get started" article say why the package exists and show a first map with the trace functions, using a made-up traceability example (#79).
+* `stage_map_studio()`, experimental, opens a map in a 'Shiny' app and changes it through forms. Clicking a card, a stage, a lane or a link opens its form; a journal lists the changes with **Undo**. The **Map** room sets the layout, the cards per cell, bundled links and the legend; **Ask** runs `sm_trace()`, `sm_orphans()` and `sm_missing()` and lights the answer on the map; **Check** shows what stops `stage_map()`, with the fixes it offers; **R code** shows the code with the changed lines marked, **Copy** (also when clicked before the server has answered), a `.R` download and a CSV download for each table. **Done** returns the map, and closing the page without it returns `NULL`. `run = FALSE` returns the app (#88, #90, #96).
+* The studio opens on a built-in example map with a broken link when `map` is `NULL`, with a start card to choose between the example and a one-card map, and a guide, **Try it**, that lists six steps and ticks each one when it is done (#90, #96).
+* The studio can be used with the keyboard alone, with a skip link, a visible focus ring and Escape closing the layer on top, and on a phone-sized screen with a dock of four buttons and one sheet at a time (#96).
+* `stage_map_tables()` gives back the tables a map was built from, as a named list of data frames with every column (#87).
+* `stage_map_code()` writes the R code that builds a map again: the tables as `data.frame()` calls, then the pipeline, with only the arguments that differ from their defaults (#87).
+* With `run = TRUE`, the studio keeps its work when its page reloads or its connection drops: the new page shows the document, the journal and the answer of **Ask** again. An app from `run = FALSE` starts every session from the map it was given and, after a dropped connection, says that the studio started again. On a hosted copy a visitor's **Done** ends the app for every visitor, and a hosted copy is not what the studio is made for yet (#112).
+* The studio refuses a map whose table has a column named `.studio_uid` when `stage_map_studio()` is called, a **Distance** in **Ask** that is not a whole number up to 2147483647 as an answer, and an event with repeated or blank names in its data with a notice. **Ask** puts the map back to the highlight of `stage_map_highlight()` when it clears its answer, and the **Check** room's nearest-id suggestion skips ids of more than 200 characters (#112).
+* `stage_map_code()` and the studio's code write the Unicode bidirectional controls in labels as `\u` escapes, so the code parses in a UTF-8 locale (#112).

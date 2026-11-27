@@ -1,0 +1,723 @@
+/*
+ * The studio's shell: a drawing sheet with a title block along the bottom edge. The sheet is the only scroller; the
+ * tray of rooms slides up from the title block. Everything is scoped under .sms, and the studio covers the window
+ * whatever the page around it sets.
+ */
+.sms,
+.sms *,
+.sms *::before,
+.sms *::after {
+  box-sizing: border-box;
+}
+
+.sms {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  overflow: hidden;
+  margin: 0;
+  background: var(--_stagemap-studio-bg);
+  color: var(--_stagemap-studio-ink);
+  font: 14px / 1.45 var(--_stagemap-studio-font);
+  -webkit-font-smoothing: antialiased;
+}
+
+.sms [hidden] {
+  /* biome-ignore lint/complexity/noImportantStyles: a hidden part stays hidden whatever display its class sets */
+  display: none !important;
+}
+
+.sms button,
+.sms input,
+.sms select,
+.sms textarea {
+  font: inherit;
+  color: inherit;
+}
+
+.sms button {
+  cursor: pointer;
+}
+
+/* The ring is a box-shadow, which forced-colors mode removes; the outline is transparent, so there it shows in the
+   system's colour. */
+.sms :focus-visible {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  box-shadow: var(--_stagemap-studio-ring);
+  border-radius: 3px;
+}
+
+@media (forced-colors: active) {
+  .sms :focus-visible {
+    outline-color: Highlight;
+  }
+}
+
+.sms .sms-skip {
+  position: absolute;
+  left: 12px;
+  top: -60px;
+  z-index: 40;
+  padding: 8px 12px;
+  background: var(--_stagemap-studio-panel);
+  color: var(--_stagemap-studio-ink);
+  border: 1px solid var(--_stagemap-studio-line2);
+}
+
+.sms .sms-skip:focus {
+  top: 12px;
+}
+
+/* The sheet: a dotted field, the header and the map paper. */
+.sms .sms-sheet {
+  grid-row: 1;
+  position: relative;
+  overflow: auto;
+  background-color: var(--_stagemap-studio-field);
+  background-image: radial-gradient(var(--_stagemap-studio-dot) 1px, transparent 1.3px);
+  background-size: 22px 22px;
+  padding: 26px 40px 74px;
+}
+
+.sms[data-sms-tray] .sms-sheet {
+  padding-bottom: calc(var(--_stagemap-studio-tray-h) + 74px);
+}
+
+/* Wide: the inspector takes its own column. Below that it lies over the map instead of squeezing it. */
+@media (min-width: 1180px) {
+  .sms[data-sms-inspector] .sms-sheet {
+    padding-right: 340px;
+  }
+}
+
+.sms .sms-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 24px;
+  align-items: end;
+  max-width: 1100px;
+  margin-bottom: 18px;
+}
+
+.sms .sms-top .sms-kick {
+  grid-column: 1 / -1;
+}
+
+.sms .sms-title {
+  grid-column: 1;
+  width: 100%;
+  max-width: 640px;
+  font: 650 30px / 1.15 var(--_stagemap-studio-font);
+  letter-spacing: -0.012em;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  padding: 2px 0 4px;
+  margin: 0;
+  border-radius: 0;
+}
+
+.sms .sms-title:hover {
+  border-bottom-color: var(--_stagemap-studio-line2);
+}
+
+.sms .sms-title:focus-visible {
+  border-bottom-color: var(--_stagemap-studio-blue);
+}
+
+.sms .sms-title[data-sms-wait] {
+  border-bottom: 2px dotted var(--_stagemap-studio-blue);
+}
+
+.sms .sms-facts {
+  grid-column: 1;
+  margin: 0;
+  color: var(--_stagemap-studio-muted);
+  font-size: 13px;
+}
+
+.sms .sms-acts {
+  grid-column: 2;
+  grid-row: 2 / 4;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.sms .sms-phone-theme {
+  display: none;
+}
+
+/* The map paper, with crop marks at two corners. */
+.sms .sms-paper {
+  position: relative;
+  max-width: 1100px;
+  background: var(--_stagemap-studio-panel);
+  border: 1px solid var(--_stagemap-studio-line2);
+  padding: 18px 18px 14px;
+  border-radius: 2px;
+  box-shadow: var(--_stagemap-studio-shadow);
+}
+
+.sms .sms-paper::before,
+.sms .sms-paper::after {
+  content: "";
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--_stagemap-studio-blue);
+  pointer-events: none;
+  opacity: 0.9;
+}
+
+.sms .sms-paper::before {
+  left: -6px;
+  top: -6px;
+  border-right: 0;
+  border-bottom: 0;
+}
+
+.sms .sms-paper::after {
+  right: -6px;
+  bottom: -6px;
+  border-left: 0;
+  border-top: 0;
+}
+
+.sms .sms-stamp:empty {
+  display: none;
+}
+
+.sms .sms-stamp {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  padding: 6px 10px;
+  border-left: 3px solid var(--_stagemap-studio-red);
+  background: var(--_stagemap-studio-red-soft);
+  font-size: 13px;
+}
+
+.sms .sms-stamp svg {
+  flex: none;
+  color: var(--_stagemap-studio-red);
+}
+
+.sms .sms-hint {
+  position: relative;
+  z-index: 6;
+  max-width: 1100px;
+  margin-top: 12px;
+  padding: 8px 12px;
+  background: var(--_stagemap-studio-panel);
+  border: 1px solid var(--_stagemap-studio-line2);
+  border-left: 3px solid var(--_stagemap-studio-blue);
+  font-size: 13px;
+}
+
+/* The bar stays in view at the foot of the sheet while the map is longer than the screen; an open tray covers that
+   foot, so then it sits where it falls. */
+.sms:not([data-sms-tray]) .sms-hint {
+  position: sticky;
+  bottom: 12px;
+}
+
+.sms .sms-paper [data-stagemap-visual] {
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+}
+
+/* The tray: the rooms slide up from the title block. */
+.sms .sms-tray {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: var(--_stagemap-studio-block-h);
+  height: var(--_stagemap-studio-tray-h);
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  background: var(--_stagemap-studio-panel);
+  border-top: 2px solid var(--_stagemap-studio-ink);
+  box-shadow: 0 -14px 30px -18px rgba(0, 0, 0, 0.45);
+  z-index: 14;
+  transform: translateY(calc(100% + var(--_stagemap-studio-block-h)));
+  visibility: hidden;
+  transition:
+    transform 0.28s var(--_stagemap-studio-ease),
+    visibility 0s 0.28s;
+}
+
+.sms[data-sms-tray] .sms-tray {
+  transform: none;
+  visibility: visible;
+  transition: transform 0.28s var(--_stagemap-studio-ease);
+}
+
+.sms .sms-room {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* A rule between two open rooms side by side. */
+.sms .sms-room:not([hidden]) ~ .sms-room:not([hidden]) {
+  border-left: 1px solid var(--_stagemap-studio-line);
+}
+
+.sms .sms-room-head {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--_stagemap-studio-line);
+  flex: none;
+}
+
+.sms .sms-room-head h2 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.sms .sms-room-head > .sms-btn:first-of-type {
+  margin-left: auto;
+}
+
+.sms .sms-room-body {
+  overflow: auto;
+  padding: 12px 16px 16px;
+  min-height: 0;
+  flex: 1;
+}
+
+/* The title block: the navigation along the bottom edge. */
+.sms .sms-block {
+  grid-row: 2;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1.5fr) repeat(3, minmax(0, 1fr)) auto auto;
+  min-height: var(--_stagemap-studio-block-h);
+  background: var(--_stagemap-studio-panel);
+  border-top: 2px solid var(--_stagemap-studio-ink);
+  position: relative;
+  z-index: 16;
+}
+
+.sms .sms-block > * {
+  border-left: 1px solid var(--_stagemap-studio-line);
+  min-width: 0;
+}
+
+.sms .sms-block > *:first-child {
+  border-left: 0;
+}
+
+.sms .sms-cell {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  padding: 8px 18px;
+  background: transparent;
+  border-top: 0;
+  border-right: 0;
+  border-bottom: 0;
+  text-align: left;
+  border-radius: 0;
+}
+
+.sms .sms-lab {
+  font-size: 12px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--_stagemap-studio-muted);
+  font-weight: 650;
+}
+
+.sms .sms-val {
+  font-size: 15px;
+  font-weight: 650;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.sms button.sms-cell:hover {
+  background: var(--_stagemap-studio-panel2);
+}
+
+.sms button.sms-cell[aria-expanded="true"] {
+  background: var(--_stagemap-studio-blue-soft);
+  box-shadow: inset 0 3px 0 var(--_stagemap-studio-blue);
+}
+
+.sms button.sms-cell:focus-visible {
+  box-shadow: inset 0 0 0 3px var(--_stagemap-studio-blue);
+  border-radius: 0;
+  outline-offset: -4px;
+}
+
+.sms .sms-brand {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+}
+
+.sms .sms-brand b {
+  font-size: 16px;
+  letter-spacing: -0.01em;
+}
+
+.sms .sms-brand span {
+  font-weight: 400;
+  color: var(--_stagemap-studio-muted);
+}
+
+.sms .sms-mark rect,
+.sms .sms-mark path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+}
+
+.sms .sms-mark path {
+  stroke-width: 1.6;
+}
+
+.sms .sms-mark .sms-mark-on {
+  fill: var(--_stagemap-studio-blue);
+  stroke: var(--_stagemap-studio-blue);
+}
+
+.sms [data-sms-room="map"] .sms-val {
+  font-weight: 500;
+  color: var(--_stagemap-studio-muted);
+}
+
+.sms .sms-short {
+  display: none;
+}
+
+.sms .sms-done {
+  background: var(--_stagemap-studio-blue);
+  color: var(--_stagemap-studio-blue-ink);
+  justify-content: center;
+  padding: 8px 22px;
+}
+
+/* The arrow is drawn, not read: its alternative text is empty. */
+.sms .sms-back::after {
+  content: "\2192" / "";
+}
+
+.sms .sms-done .sms-lab {
+  color: inherit;
+  opacity: 0.85;
+}
+
+.sms button.sms-done:hover {
+  filter: brightness(1.08);
+  background: var(--_stagemap-studio-blue);
+}
+
+.sms button.sms-done:focus-visible {
+  box-shadow:
+    inset 0 0 0 3px var(--_stagemap-studio-panel),
+    inset 0 0 0 5px var(--_stagemap-studio-ink);
+  outline-offset: -4px;
+}
+
+.sms .sms-theme {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  padding: 8px 18px;
+  background: transparent;
+  border: 0;
+  border-left: 1px solid var(--_stagemap-studio-line);
+  text-align: left;
+  border-radius: 0;
+}
+
+.sms .sms-theme-opts {
+  display: flex;
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.sms .sms-theme-opts span {
+  padding: 0 7px 0 0;
+  color: var(--_stagemap-studio-faint);
+}
+
+.sms .sms-theme-opts span + span {
+  padding: 0 0 0 7px;
+  border-left: 1px solid var(--_stagemap-studio-line2);
+}
+
+.sms .sms-theme-opts span[data-sms-on] {
+  color: var(--_stagemap-studio-ink);
+  text-decoration: underline;
+  text-decoration-thickness: 3px;
+  text-underline-offset: 5px;
+  text-decoration-color: var(--_stagemap-studio-blue);
+}
+
+.sms .sms-theme:hover {
+  background: var(--_stagemap-studio-panel2);
+}
+
+.sms .sms-theme:focus-visible {
+  box-shadow: inset 0 0 0 3px var(--_stagemap-studio-blue);
+  border-radius: 0;
+  outline-offset: -4px;
+}
+
+/* After Done: the page says the map has gone back to R. */
+.sms .sms-closed:empty {
+  display: none;
+}
+
+.sms .sms-closed {
+  position: absolute;
+  left: 50%;
+  top: 40%;
+  transform: translate(-50%, -50%);
+  width: min(460px, calc(100% - 32px));
+  z-index: 40;
+  padding: 18px 20px;
+  background: var(--_stagemap-studio-panel);
+  border: 1px solid var(--_stagemap-studio-line2);
+  border-top: 3px solid var(--_stagemap-studio-blue);
+  box-shadow: var(--_stagemap-studio-shadow);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.sms[data-sms-closed] .sms-sheet,
+.sms[data-sms-closed] .sms-block {
+  opacity: 0.55;
+}
+
+/* Motion: the tray and the inspector's slip only, and none when the reader asks for less. */
+@media (prefers-reduced-motion: no-preference) {
+  .sms .sms-inspector:not([hidden]) {
+    animation: sms-slip 0.24s var(--_stagemap-studio-ease);
+  }
+
+  @keyframes sms-slip {
+    from {
+      opacity: 0;
+      transform: translateX(18px);
+    }
+
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .sms .sms-inspector:not([hidden]) {
+      animation-name: sms-rise;
+    }
+
+    @keyframes sms-rise {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+
+      to {
+        opacity: 1;
+        transform: none;
+      }
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sms *,
+  .sms *::before,
+  .sms *::after {
+    /* biome-ignore lint/complexity/noImportantStyles: reduced motion wins over every rule that moves something */
+    animation: none !important;
+    /* biome-ignore lint/complexity/noImportantStyles: as above */
+    transition: none !important;
+    /* biome-ignore lint/complexity/noImportantStyles: as above */
+    scroll-behavior: auto !important;
+  }
+}
+
+@media (max-width: 1179px) {
+  .sms .sms-inspector {
+    box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.5);
+  }
+}
+
+/* Between a phone and a desk the title block keeps every room, with the short words and without the name. */
+@media (min-width: 641px) and (max-width: 1040px) {
+  .sms .sms-brand div {
+    display: none;
+  }
+
+  .sms .sms-cell,
+  .sms .sms-theme {
+    padding: 8px 12px;
+  }
+
+  .sms .sms-long {
+    display: none;
+  }
+
+  .sms .sms-short {
+    display: inline;
+  }
+
+  .sms .sms-done {
+    padding: 8px 14px;
+  }
+}
+
+@media (max-width: 1040px) {
+  .sms .sms-top {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+
+  .sms .sms-acts {
+    grid-column: 1;
+    grid-row: auto;
+    justify-content: flex-start;
+    margin-top: 8px;
+  }
+}
+
+/* Phone: a dock of four, one room at a time. */
+@media (max-width: 640px) {
+  .sms {
+    --_stagemap-studio-block-h: 60px;
+    --_stagemap-studio-tray-h: 64dvh;
+  }
+
+  .sms .sms-sheet {
+    padding: 14px 12px 80px;
+  }
+
+  /* The inspector is a bottom sheet: the map can scroll up above it. */
+  .sms[data-sms-inspector] .sms-sheet {
+    padding-right: 12px;
+    padding-bottom: calc(58dvh + 24px);
+  }
+
+  .sms[data-sms-covered] .sms-sheet {
+    padding-bottom: 80px;
+  }
+
+  .sms[data-sms-tray] .sms-sheet {
+    padding-bottom: calc(var(--_stagemap-studio-tray-h) + 24px);
+  }
+
+  /* One sheet at a time: the bar gives way to an open sheet. */
+  .sms[data-sms-inspector] .sms-hint,
+  .sms[data-sms-tray] .sms-hint {
+    display: none;
+  }
+
+  .sms .sms-top {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+
+  .sms .sms-title {
+    font-size: 24px;
+  }
+
+  .sms .sms-acts {
+    grid-column: 1;
+    grid-row: auto;
+    justify-content: flex-start;
+    margin-top: 8px;
+  }
+
+  .sms .sms-phone-theme {
+    display: inline-flex;
+  }
+
+  .sms .sms-paper {
+    padding: 10px 8px;
+  }
+
+  .sms .sms-paper::before,
+  .sms .sms-paper::after {
+    display: none;
+  }
+
+  /* minmax(0, 1fr): a plain 1fr never shrinks below its widest label, so a wide font pushed the dock past 360px. */
+  .sms .sms-block {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .sms .sms-block .sms-brand,
+  .sms .sms-block [data-sms-room="map"],
+  .sms .sms-block .sms-theme {
+    display: none;
+  }
+
+  .sms .sms-cell {
+    align-items: center;
+    text-align: center;
+    padding: 6px 4px;
+    min-height: 44px;
+  }
+
+  /* A centred cell value is as wide as its text; max-width lets its ellipsis work instead of pushing the dock wide. */
+  .sms .sms-val {
+    font-size: 14px;
+    max-width: 100%;
+  }
+
+  .sms .sms-lab {
+    font-size: 11px;
+    letter-spacing: 0.05em;
+  }
+
+  .sms .sms-done {
+    padding: 6px 4px;
+  }
+
+  .sms .sms-long {
+    display: none;
+  }
+
+  .sms .sms-short {
+    display: inline;
+  }
+
+  .sms .sms-tray {
+    grid-auto-flow: row;
+    grid-auto-columns: auto;
+  }
+
+  .sms .sms-room-head {
+    padding: 8px 12px;
+  }
+
+  .sms .sms-room-head h2 {
+    white-space: nowrap;
+  }
+
+  .sms .sms-code-sum {
+    display: none;
+  }
+}

@@ -1,114 +1,156 @@
+# The test files keep to their kinds (tests/testthat/README.md): browser tests only in -browser.R files, which start
+# with their skip; snapshot tests only in -snap.R files, which hold nothing else and have no file-level skip.
 describe("the test file layout", {
-  plant <- function(dir, file, lines) writeLines(lines, file.path(dir, file))
+  files <- function(pattern) list.files(test_path(), pattern = pattern, full.names = TRUE)
+  first_call <- function(file) {
+    exprs <- parse(file, keep.source = FALSE)
+    if (length(exprs) == 0L) "" else all_calls(exprs[[1]])[[1]]
+  }
+  # The names a call is made through, at any depth: `f()` gives "f", `pkg::f()` gives "::", "pkg" and "f", and
+  # `pkg::Class$new()` gives "$", "::", "pkg", "Class" and "new", so a qualified or R6 call is seen like a plain one. The
+  # first name is the outermost call's own: "f", "::" or "$".
+  all_calls <- function(x) {
+    if (is.symbol(x)) {
+      return(as.character(x))
+    }
+    if (!is.call(x)) {
+      return(character())
+    }
+    c(unlist(lapply(as.list(x)[1], all_calls)), unlist(lapply(as.list(x)[-1], all_calls)))
+  }
+  calls_in <- function(file) unlist(lapply(as.list(parse(file, keep.source = FALSE)), all_calls))
+  skips_on_cran <- function(file) "skip_on_cran" %in% calls_in(file)
+  uses_browser <- function(file) {
+    browser_calls <- c("open_widget", "local_chrome_session", "app_driver", "AppDriver", "ChromoteSession")
+    any(browser_calls %in% calls_in(file))
+  }
+  uses_snapshot <- function(file) any(startsWith(calls_in(file), "expect_snapshot"))
+  # The top-level calls of a file that skip it as a whole.
+  file_skips <- function(file) {
+    skips <- c("skip_on_cran", "skip_without_chrome", "skip_unless_extended")
+    top <- lapply(as.list(parse(file, keep.source = FALSE)), function(expr) {
+      if (is.call(expr)) all_calls(expr[[1]]) else character()
+    })
+    intersect(unlist(top), skips)
+  }
+  # A temporary test file with `lines`, and its path.
+  temp_file <- function(lines, name = "test-a.R", env = parent.frame()) {
+    path <- file.path(withr::local_tempdir(.local_envir = env), name)
+    writeLines(lines, path)
+    path
+  }
+  # The plain test files: every test file but the browser, snapshot and extended ones, this file, and
+  # test-helper-chrome.R, which tests the Chrome helpers' own argument checks. Those fail before any Chrome starts (the
+  # rule in tests.md allows that in a plain file), and the file names the helpers only to describe them.
+  plain_files <- function() {
+    everything <- files("^test-.*[.]R$")
+    everything[
+      !grepl("-(browser|snap|extended)[.]R$", everything) &
+        !basename(everything) %in% c("test-helper-layout.R", "test-helper-chrome.R")
+    ]
+  }
+  blocks <- function(file) {
+    found <- list()
+    walk <- function(x) {
+      if (is.call(x)) {
+        if (all_calls(x)[[1]] %in% c("it", "test_that")) {
+          found[[length(found) + 1L]] <<- x
+        }
+        for (part in as.list(x)[-1]) {
+          walk(part)
+        }
+      }
+    }
+    for (expr in parse(file, keep.source = FALSE)) {
+      walk(expr)
+    }
+    found
+  }
 
-  it("keeps every browser, snapshot and extended test in a -browser.R, -snap.R or -extended.R file", {
-    expect_identical(layout_problems(test_path()), character())
+  it("starts every -browser.R file with its skip", {
+    found <- files("^test-.*-browser[.]R$")
+    wrong <- found[vapply(found, first_call, "") != "skip_without_chrome"]
+    expect_identical(basename(wrong), character())
   })
 
-  it("finds a Chrome helper outside a -browser.R file, also through a helper of the file's own", {
-    # Given a helper file that starts Chrome, and plain and snapshot files that reach it
+  it("starts every -extended.R file with its skip", {
+    found <- files("^test-.*-extended[.]R$")
+    wrong <- found[vapply(found, first_call, "") != "skip_unless_extended"]
+    expect_identical(basename(wrong), character())
+  })
+
+  it("keeps skip_on_cran() out of the plain test files", {
+    wrong <- plain_files()[vapply(plain_files(), skips_on_cran, NA)]
+    expect_identical(basename(wrong), character())
+  })
+
+  it("finds a skip_on_cran() inside a plain test file, also in a nested it()", {
     dir <- withr::local_tempdir()
-    plant(
-      dir,
-      "helper-page.R",
-      c(
-        "open_page <- function() skip_without_chrome()",
-        "skip_without_chrome <- function() {",
-        "  testthat::skip_on_cran()",
-        "  chromote::find_chrome()",
-        "}"
-      )
+    writeLines(
+      c("describe('a', {", "  it('b', {", "    skip_on_cran()", "    expect_true(TRUE)", "  })", "})"),
+      file.path(dir, "test-a.R")
     )
-    plant(dir, "test-thing.R", c("drive <- function() open_page()", "describe('a', { it('b', { drive() }) })"))
-    plant(
-      dir,
-      "test-thing-snap.R",
-      "describe('a', { it('c', { open_page(); expect_snapshot(1) }) })"
-    )
-    # When the layout is checked
-    problems <- layout_problems(dir)
-    # Then both files are named, with the call that starts Chrome
-    expect_length(problems, 2L)
-    expect_match(problems[[1]], "test-thing-snap.R starts Chrome", fixed = TRUE)
-    expect_match(problems[[2]], "test-thing.R starts Chrome or skips on CRAN (`open_page` and `drive`)", fixed = TRUE)
-    expect_match(problems[[2]], "-browser.R or -extended.R file", fixed = TRUE)
+    expect_true(skips_on_cran(file.path(dir, "test-a.R")))
   })
 
-  it("finds a direct shinytest2 or chromote call, and a snapshot, outside the files for them", {
+  it("keeps snapshots only, and every test in them, in -snap.R files", {
+    found <- files("^test-.*-snap[.]R$")
+    wrong <- found[vapply(
+      found,
+      function(file) !all(vapply(blocks(file), function(block) "expect_snapshot" %in% all_calls(block), NA)),
+      NA
+    )]
+    expect_identical(basename(wrong), character())
+  })
+
+  it("keeps browser calls out of the plain test files", {
+    wrong <- plain_files()[vapply(plain_files(), uses_browser, NA)]
+    expect_identical(basename(wrong), character())
+  })
+
+  it("keeps expect_snapshot() and its variants out of every file but -snap.R files", {
+    everything <- files("^test-.*[.]R$")
+    others <- everything[!grepl("-snap[.]R$", everything) & basename(everything) != "test-helper-layout.R"]
+    expect_identical(basename(others[vapply(others, uses_snapshot, NA)]), character())
+  })
+
+  it("refuses a file-level skip in a -snap.R file, which would delete its saved snapshots on CRAN", {
+    found <- files("^test-.*-snap[.]R$")
+    expect_identical(basename(found[vapply(found, function(file) length(file_skips(file)) > 0L, NA)]), character())
+  })
+
+  it("sees qualified and R6 calls, not only plain ones", {
+    qualified <- temp_file(c(
+      "testthat::skip_on_cran()",
+      "shinytest2::AppDriver$new('app')",
+      "testthat::expect_snapshot(1)"
+    ))
+    expect_true(skips_on_cran(qualified))
+    expect_true(uses_browser(qualified))
+    expect_true(uses_snapshot(qualified))
+    expect_true(uses_browser(temp_file("session <- chromote::ChromoteSession$new()")))
+    expect_true(uses_browser(temp_file("app <- shinytest2::AppDriver$new()")))
+    expect_true(skips_on_cran(temp_file("describe('a', { it('b', { testthat::skip_on_cran() }) })")))
+    expect_true(uses_snapshot(temp_file("it('a', { testthat::expect_snapshot_value(1) })")))
+  })
+
+  it("does not take a plain call for a browser, a skip or a snapshot", {
+    plain <- temp_file(c("expect_true(TRUE)", "x <- list(AppDriver = 1)", "skip_if_not_installed('withr')"))
+    expect_false(uses_browser(plain))
+    expect_false(skips_on_cran(plain))
+    expect_false(uses_snapshot(plain))
+    expect_identical(file_skips(plain), character())
+  })
+
+  it("finds a file-level skip, qualified or not, and none inside a test", {
+    expect_identical(file_skips(temp_file(c("skip_on_cran()", "it('a', {})"))), "skip_on_cran")
+    expect_identical(file_skips(temp_file(c("testthat::skip_on_cran()", "it('a', {})"))), "skip_on_cran")
+    expect_identical(file_skips(temp_file("it('a', { skip_on_cran() })")), character())
+  })
+
+  it("finds a -browser.R file that does not start with the skip", {
     dir <- withr::local_tempdir()
-    plant(dir, "test-app.R", "it('a', { app <- shinytest2::AppDriver$new(); expect_snapshot(app) })")
-    problems <- layout_problems(dir)
-    expect_length(problems, 2L)
-    expect_match(problems[[1]], "shinytest2::", fixed = TRUE)
-    expect_match(problems[[2]], "test-app.R has snapshot tests (`expect_snapshot`)", fixed = TRUE)
-  })
-
-  it("finds a test that runs on CRAN inside a -browser.R or -snap.R file", {
-    dir <- withr::local_tempdir()
-    plant(
-      dir,
-      "test-app-browser.R",
-      c(
-        "skip_without_chrome()",
-        "describe('app', {",
-        "  it('opens', { chromote::ChromoteSession$new() })",
-        "  for (n in 1:2) it(paste('adds', n), { expect_equal(n + 0, n) })",
-        "})"
-      )
-    )
-    plant(dir, "test-app-snap.R", "it('prints', { expect_true(TRUE) })")
-    problems <- layout_problems(dir)
-    expect_identical(
-      problems,
-      c(
-        "test-app-browser.R: \"paste(\\\"adds\\\", n)\" runs on CRAN too, so it belongs in the plain test file.",
-        "test-app-snap.R: \"prints\" runs on CRAN too, so it belongs in the plain test file."
-      )
-    )
-  })
-
-  it("finds a -browser.R or -extended.R file that does not start with its skip, and needs none in a -snap.R file", {
-    # Given files whose first expression is something else, or the skip with an argument, or nothing at all
-    dir <- withr::local_tempdir()
-    plant(
-      dir,
-      "test-app-browser.R",
-      c("skip_without_chrome(TRUE)", "skip_without_chrome()", "it('a', { chromote::find_chrome() })")
-    )
-    plant(dir, "test-app-snap.R", c("page <- 1", "it('b', { expect_snapshot(1) })"))
-    plant(dir, "test-app-extended.R", "# nothing here yet")
-    plant(dir, "test-app.R", "it('c', { expect_true(TRUE) })")
-    # When the layout is checked
-    problems <- layout_problems(dir)
-    # Then each file is named with the skip it must start with, and the snapshot and plain files pass
-    expect_identical(
-      problems,
-      c(
-        "test-app-browser.R must start with `skip_without_chrome()`, so CRAN skips the whole file before any of its code runs.",
-        "test-app-extended.R must start with `skip_unless_extended()`, so CRAN skips the whole file before any of its code runs."
-      )
-    )
-  })
-
-  it("keeps Chrome and snapshots out of -extended.R files, and the extended skip out of plain files", {
-    dir <- withr::local_tempdir()
-    plant(dir, "helper-x.R", "skip_unless_extended <- function() testthat::skip_on_cran()")
-    plant(
-      dir,
-      "test-app-extended.R",
-      c("skip_unless_extended()", "it('a', { shinytest2::AppDriver$new() })", "it('b', { expect_snapshot(1) })")
-    )
-    plant(dir, "test-app.R", "it('c', { skip_unless_extended(); expect_true(TRUE) })")
-    problems <- layout_problems(dir)
-    expect_length(problems, 3L)
-    expect_match(problems[[1]], "test-app-extended.R starts Chrome (`shinytest2::`)", fixed = TRUE)
-    expect_match(problems[[2]], "test-app-extended.R has snapshot tests (`expect_snapshot`)", fixed = TRUE)
-    expect_match(problems[[3]], "test-app.R starts Chrome or skips on CRAN (`skip_unless_extended`", fixed = TRUE)
-  })
-
-  it("rejects a folder that does not exist", {
-    expect_error(layout_problems(file.path(withr::local_tempdir(), "missing")), "Directory")
-    expect_error(layout_names_reaching(list(1), "skip_on_cran"), "names")
-    expect_error(layout_names_reaching(list(a = "x"), character()), "length")
+    writeLines(c("x <- 1", "skip_without_chrome()"), file.path(dir, "test-a-browser.R"))
+    expect_false(identical(first_call(file.path(dir, "test-a-browser.R")), "skip_without_chrome"))
   })
 })

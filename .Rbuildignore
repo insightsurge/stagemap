@@ -25,6 +25,7 @@
 ^tools$
 ^biome\.json$
 ^codecov\.yml$
-^tests/README\.md$
+^tests/testthat/README\.md$
 ^site$
 ^\.gitleaksignore$
+^\.launchr$

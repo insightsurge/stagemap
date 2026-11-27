@@ -1,0 +1,218 @@
+---
+title: "Get started"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Get started}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+library(stagemap) # nolint: undesirable_function_linter.
+```
+
+A missing arrow is easy to overlook in a flowchart, and a tracking table can fall behind the specification. `stagemap` keeps cards, links and stages in R tables, draws them as a map and checks them in code.
+
+Attach the package with `library(stagemap)`.
+
+## A first map
+
+Each part of the map is a data frame: the cards, the links, the kinds of link, the stages, the steps and the changes each step makes. Pass `cards` and `stages` to `stage_map()`, pipe into `add_links()` and `add_steps()`, and print `map` to draw the live widget.
+
+```{r first-map}
+cards <- data.frame(
+  id = c(
+    "req_dur", "req_ae", "req_eff", "req_site",
+    "spec_dur", "spec_ae", "spec_eff",
+    "prog_adsl", "prog_adae", "prog_adeff",
+    "test_dur", "test_ae", "test_tbl",
+    "run_dur", "run_ae", "run_tbl"
+  ),
+  label = c(
+    "Treatment duration in days", "Flag severe adverse events", "Response at week 12", "List subjects by site",
+    "ADSL: TRTDURD", "ADAE: severity flag", "ADEFF: response flag",
+    "adsl.R", "adae.R", "adeff.R",
+    "One-day stay gives 1", "Grade 3 and above is severe", "AE table matches the listing",
+    "Duration check run", "Severity check run", "Table check run"
+  ),
+  stage = rep(c("requirement", "specification", "program", "test", "result"), c(4, 3, 3, 3, 3)),
+  lane = c(
+    "Dosing", "Safety", "Efficacy", "Reporting",
+    "Dosing", "Safety", "Efficacy",
+    "Dosing", "Safety", "Efficacy",
+    "Dosing", "Safety", "Reporting",
+    "Dosing", "Safety", "Reporting"
+  ),
+  status = c("done", "done", "done", "waiting", rep("waiting", 12))
+)
+links <- data.frame(
+  from = c(
+    "req_dur", "req_ae", "req_eff",
+    "spec_dur", "spec_ae", "spec_eff", "spec_dur", "prog_adsl",
+    "prog_adsl", "prog_adae", "prog_adae", "prog_adsl",
+    "test_dur", "test_ae", "test_tbl"
+  ),
+  to = c(
+    "spec_dur", "spec_ae", "spec_eff",
+    "prog_adsl", "prog_adae", "prog_adeff", "prog_adae", "prog_adeff",
+    "test_dur", "test_ae", "test_tbl", "test_tbl",
+    "run_dur", "run_ae", "run_tbl"
+  ),
+  kind = c(
+    rep("specified", 3),
+    rep("built", 5),
+    rep("tested", 4),
+    rep("result", 3)
+  )
+)
+kinds <- data.frame(
+  id = c("specified", "built", "tested", "result"),
+  label = c("Specified by", "Built as", "Tested by", "Run gave"),
+  line = c("solid", "dashdot", "dotted", "dashed")
+)
+stages <- data.frame(
+  id = c("requirement", "specification", "program", "test", "result"),
+  label = c("Requirement", "Specification", "Program", "Test", "Result")
+)
+steps <- data.frame(
+  id = c("agreed", "specified", "built", "tested", "run"),
+  label = c("Requirements agreed", "Specifications written", "Programs built", "Tests written", "Tests run"),
+  stage = stages$id,
+  text = c(
+    "Four requirements are agreed with the study team.",
+    "Three of them get a specification. One has none yet.",
+    "Each specification becomes a program. ADAE also uses the duration rule, and ADEFF reads ADSL.",
+    "Each program gets a test. One program has none.",
+    "The duration check passes, the severity check fails and the table check is still running."
+  )
+)
+changes <- data.frame(
+  step = c(rep("specified", 3), rep("built", 3), rep("tested", 3), rep("run", 3)),
+  card = c(
+    "spec_dur", "spec_ae", "spec_eff", "prog_adsl", "prog_adae", "prog_adeff",
+    "test_dur", "test_ae", "test_tbl", "run_dur", "run_ae", "run_tbl"
+  ),
+  status = c(rep("done", 9), "done", "failed", "running")
+)
+map <- stage_map(cards, stages, title = "Analysis traceability") |>
+  add_links(links, kinds = kinds) |>
+  add_steps(steps, changes = changes, intro = "Follow one analysis from requirement to result.")
+map
+```
+
+## What you see
+
+Columns show stages from left to right, and rows group cards into lanes. Arrows follow the `links` table, and the legend above the grid matches each line style to its kind label. Hover over a card, or tap it, to read its stage, lane and status in the panel below the map. A click picks the card; a second click lets go. In Shiny the pick reaches the server (see "Stage maps in Shiny" below).
+
+The player at the top right plays the steps: Play, Back, Next and Reset, and a list of the steps below. Each step changes the statuses of some cards, so the map shows the analysis as it moved from requirement to result.
+
+## Why stagemap exists
+
+A week before a review, a programmer is asked which study requirements have no test. When the links live in a slide and a spreadsheet, the answer means cross-checking by hand. With cards and links in R, the map and the checks read the same tables, so the answer is a function call and a highlighted card. The map and the checks help reviewers inspect links; qualification of the software stays with your own procedures.
+
+## Ask the map questions
+
+Three functions inspect the same `map` widget and return plain data frames. `sm_trace()` walks links from a starting card, `sm_orphans()` finds cards with no links at all, and `sm_missing()` lists cards in one stage with no direct link to another stage.
+
+```{r ask-map}
+ae_trace <- sm_trace(map, "req_ae")
+ae_trace
+
+sm_orphans(map)
+
+sm_missing(map, "requirement", linked_to = "specification")
+
+sm_missing(map, "program", linked_to = "test")
+```
+
+Pass the traced card identifiers to `stage_map_highlight()` to keep that path clear and fade the rest on the first draw.
+
+```{r highlight-trace}
+stage_map_highlight(map, ae_trace$id)
+```
+
+## Kinds of link and statuses
+
+`add_links()` accepts a `kinds` data frame with `id`, `label`, `line` (`"solid"`, `"dashed"`, `"dotted"`, or `"dashdot"`), `end` (`"arrow"`, `"ring"`, or `"none"`), `tone`, and `quiet`. Leaving `kinds = NULL` draws every link as a plain arrow.
+
+Cards take one of five built-in `status` values: `"done"`, `"running"`, `"waiting"`, `"failed"`, and `"skipped"`. Pass `statuses` to `stage_map()` as a named character vector such as `c(done = "Pass", failed = "Not passed")` to relabel built-in statuses, or as a data frame with `id`, `label`, `tone`, and `icon` to restyle them or add your own.
+
+## Zones and steps
+
+`add_zones()` draws a labelled outline around cards that share a `zone` column value. `add_steps()`, used in the first map, takes `steps` (one row per step, with an optional caption in `text`) and `changes`, which lists the cards whose status, stage or visibility change at a step. A card given a new `stage` glides there.
+
+```{r zones}
+cards_review <- cards
+cards_review$zone <- ifelse(cards_review$lane == "Safety", "qc", NA)
+
+stage_map(cards_review, stages, title = "Safety review") |>
+  add_links(links, kinds = kinds) |>
+  add_zones(data.frame(
+    id = "qc",
+    label = "Safety review",
+    note = "Re-run after updating the severity rule."
+  ))
+```
+
+## Stage maps in Shiny
+
+Put `stage_map_output()` in the UI and `render_stage_map()` in the server. Read the reader's selection from `input$map_selected`, and update the drawn map without redrawing it through `stage_map_proxy()`.
+
+```{r shiny-app, eval = FALSE}
+library(shiny)
+library(stagemap)
+
+cards <- data.frame(
+  id = c("req_ae", "spec_ae", "test_ae"),
+  label = c("Flag severe adverse events", "ADAE: severity flag", "Grade 3 and above is severe"),
+  stage = c("requirement", "specification", "test"),
+  lane = "Safety"
+)
+links <- data.frame(from = c("req_ae", "spec_ae"), to = c("spec_ae", "test_ae"))
+map <- stage_map(cards, title = "Safety check") |> add_links(links)
+
+ui <- fluidPage(
+  stage_map_output("map"),
+  actionButton("trace_ae", "Highlight AE trace"),
+  verbatimTextOutput("selected")
+)
+
+server <- function(input, output, session) {
+  output$map <- render_stage_map(map)
+  output$selected <- renderPrint(input$map_selected)
+
+  observeEvent(input$trace_ae, {
+    ids <- sm_trace(map, "req_ae")$id
+    stage_map_proxy("map") |> stage_map_highlight(ids)
+  })
+}
+
+shinyApp(ui, server)
+```
+
+Run the bundled demo app with `shiny::runApp(system.file("examples", "shiny-demo", package = "stagemap"))`.
+
+## Change a map in the studio
+
+`stage_map_studio()` opens an app where a map is changed through forms. Click a card, a stage, a lane or a link and a form opens beside the map; a journal above the map lists the changes and has **Undo** (on a phone it shows the newest one). The **Ask** room runs `sm_trace()`, `sm_orphans()` and `sm_missing()` and lights the answer on the map, **Check** shows what stops `stage_map()` and offers fixes, and **R code** shows the code that builds the map, with the changed lines marked. **Done** closes the studio and returns the map. Without a map, it opens on a small example with a guide, **Try it**, that lists six steps.
+
+```{r studio, eval = FALSE}
+map <- stage_map_studio(map)
+```
+
+The code the studio shows is what `stage_map_code()` writes, and the tables are what `stage_map_tables()` gives back, so a map from the studio can be read in R again.
+
+```{r studio-read-back}
+names(stage_map_tables(map))
+
+small <- stage_map(
+  data.frame(id = c("draft", "review"), label = c("Draft", "Review"), stage = c("write", "check"), lane = "Team"),
+  title = "Two cards"
+)
+stage_map_code(small)
+```
+
+## Where to go next
+
+Read the [function reference](https://insightsurge.github.io/stagemap/reference/index.html) for every argument, Shiny input and proxy verb, or run `?stage_map` in R.

@@ -1,0 +1,113 @@
+/*
+ * The R code room: numbered lines on a dark code sheet, in both themes. A changed line is marked with the yellow
+ * pencil and the word for it (from the page's labels), so the mark does not rest on colour alone; token kinds use the studio's private
+ * tokens and differ by weight or style as well as colour.
+ */
+.sms .sms-code {
+  background: var(--_stagemap-studio-code-bg);
+  color: var(--_stagemap-studio-code-ink);
+  font: 13px / 1.6 var(--_stagemap-studio-mono);
+  margin: 0;
+  padding: 10px 0;
+  overflow: auto;
+  max-width: 100%;
+  border-radius: 2px;
+  counter-reset: sms-line;
+  tab-size: 2;
+}
+
+.sms .sms-code .sms-l {
+  display: block;
+  white-space: pre;
+  padding: 0 14px 0 52px;
+  position: relative;
+  min-height: 1.6em;
+  min-width: 100%;
+  width: max-content;
+}
+
+.sms .sms-code .sms-l::before {
+  counter-increment: sms-line;
+  content: counter(sms-line);
+  position: absolute;
+  left: 0;
+  width: 36px;
+  text-align: right;
+  color: var(--_stagemap-studio-code-mute);
+  font-size: 12px;
+}
+
+.sms .sms-code .sms-l[data-sms-changed] {
+  background: color-mix(in srgb, var(--_stagemap-studio-mark) 20%, transparent);
+  box-shadow: inset 3px 0 0 var(--_stagemap-studio-mark);
+}
+
+/* The word comes from the page's labels (the line's attribute). It follows the line's text and stays at the right edge of
+   the code while a long line is scrolled, so it is never off screen. */
+.sms .sms-code .sms-l[data-sms-changed]::after {
+  content: attr(data-sms-changed);
+  position: sticky;
+  right: 10px;
+  display: inline-block;
+  margin-left: 16px;
+  padding: 0 6px;
+  background: var(--_stagemap-studio-code-bg);
+  border-left: 3px solid var(--_stagemap-studio-mark);
+  font: 600 12px var(--_stagemap-studio-mono);
+  color: var(--_stagemap-studio-mark);
+}
+
+.sms .sms-code .sms-tok-com {
+  color: var(--_stagemap-studio-code-mute);
+  font-style: italic;
+}
+
+.sms .sms-code .sms-tok-str {
+  color: var(--_stagemap-studio-code-str);
+  font-weight: 500;
+}
+
+.sms .sms-code .sms-tok-fn {
+  color: var(--_stagemap-studio-code-fn);
+  font-weight: 700;
+}
+
+.sms .sms-code .sms-tok-op,
+.sms .sms-code .sms-tok-num {
+  color: var(--_stagemap-studio-code-kw);
+}
+
+.sms .sms-code .sms-tok-arg,
+.sms .sms-code .sms-tok-name {
+  color: var(--_stagemap-studio-code-ink);
+}
+
+.sms .sms-code-note:empty {
+  display: none;
+}
+
+.sms .sms-code-note {
+  font-size: 13px;
+  color: var(--_stagemap-studio-ink);
+  margin: 0 0 10px;
+  padding: 6px 10px;
+  border-left: 3px solid var(--_stagemap-studio-red);
+  background: var(--_stagemap-studio-red-soft);
+}
+
+@media (forced-colors: active) {
+  .sms .sms-code .sms-l[data-sms-changed] {
+    border-left: 3px solid Highlight;
+  }
+
+  .sms .sms-code-note {
+    border: 1px solid CanvasText;
+    border-left: 3px solid CanvasText;
+  }
+}
+
+@media (max-width: 640px) {
+  .sms .sms-code {
+    font-size: 12px;
+  }
+}
