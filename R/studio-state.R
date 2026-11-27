@@ -70,6 +70,7 @@ studio_state_new <- function(map = NULL) {
     doc = doc,
     rev = 0L,
     base = doc,
+    base_code = code_map(studio_doc_parts(doc)),
     journal = list(),
     good = checked$good,
     check = checked$check,
@@ -149,6 +150,7 @@ studio_step_open <- function(state, data) {
   checked <- studio_state_build(doc, new_rev, good = state$good, fallback_map = base_map)
   state$doc <- doc
   state$base <- doc
+  state$base_code <- code_map(studio_doc_parts(doc))
   state$next_uid <- doc$next_uid
   state$journal <- list()
   state$rev <- new_rev

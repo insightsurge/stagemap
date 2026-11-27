@@ -186,6 +186,35 @@ describe("the studio leak count", {
     expect_studio_clean(app)
   })
 
+  it("keeps listener, observer, timer and node counts flat across 30 code room opens, closes and copies", {
+    app <- studio_driver("small")
+    stub_studio_clipboard(app)
+    studio_open_code(app)
+    app$run_js(studio_copy_js)
+    expect_identical(studio_wait_copy(app), "item")
+    click_now(app, "[data-sms-close='code']")
+    studio_wait_step(app)
+    app$wait_for_js("document.querySelector('.sms-toast').dataset.smsOn === undefined")
+
+    before <- studio_counts(app)
+    for (i in seq_len(30L)) {
+      studio_open_code(app)
+      app$run_js(studio_copy_js)
+      expect_identical(studio_wait_copy(app), "item")
+      click_now(app, "[data-sms-close='code']")
+    }
+
+    studio_wait_step(app)
+    app$wait_for_js("document.querySelector('.sms-toast').dataset.smsOn === undefined")
+    after <- studio_counts(app)
+
+    expect_identical(after$listeners, before$listeners)
+    expect_identical(after$observers, before$observers)
+    expect_identical(after$timers, before$timers)
+    expect_identical(after$nodes, before$nodes)
+    expect_studio_clean(app)
+  })
+
   it("keeps listener, observer, timer and node counts flat across 30 Ask runs and clears", {
     app <- studio_driver("small")
     open_ask <- function() {

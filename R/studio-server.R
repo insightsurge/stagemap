@@ -94,6 +94,28 @@ studio_server <- function(id, map = NULL, on_done = shiny::stopApp, options = li
     })
 
     output$map <- render_stage_map(studio_display_map(drawn_map()))
+
+    output$download_r <- shiny::downloadHandler(
+      filename = function() "map.R",
+      content = function(file) {
+        writeBin(charToRaw(enc2utf8(studio_code_file(shiny::isolate(store())))), file)
+      }
+    )
+    shiny::outputOptions(output, "download_r", suspendWhenHidden = FALSE)
+
+    for (tbl_name in map_table_names) {
+      local({
+        name <- tbl_name
+        id <- paste0("download_csv_", name)
+        output[[id]] <- shiny::downloadHandler(
+          filename = function() paste0(name, ".csv"),
+          content = function(file) {
+            writeBin(charToRaw(enc2utf8(studio_csv(shiny::isolate(store()), name))), file)
+          }
+        )
+        shiny::outputOptions(output, id, suspendWhenHidden = FALSE)
+      })
+    }
   })
 }
 

@@ -1,6 +1,7 @@
 /*
  * The R code room: numbered lines on a dark code sheet, in both themes. A changed line is marked with the yellow
- * pencil and the word "changed", so the mark does not rest on colour alone.
+ * pencil and the word "changed", so the mark does not rest on colour alone; token kinds use the studio's private
+ * tokens and differ by weight or style as well as colour.
  */
 .sms .sms-code {
   background: var(--_stagemap-studio-code-bg);
@@ -9,6 +10,7 @@
   margin: 0;
   padding: 10px 0;
   overflow: auto;
+  max-width: 100%;
   border-radius: 2px;
   counter-reset: sms-line;
   tab-size: 2;
@@ -20,6 +22,8 @@
   padding: 0 14px 0 52px;
   position: relative;
   min-height: 1.6em;
+  min-width: 100%;
+  width: max-content;
 }
 
 .sms .sms-code .sms-l::before {
@@ -34,6 +38,7 @@
 }
 
 .sms .sms-code .sms-l[data-sms-changed] {
+  padding-right: 76px;
   background: color-mix(in srgb, var(--_stagemap-studio-mark) 20%, transparent);
   box-shadow: inset 3px 0 0 var(--_stagemap-studio-mark);
 }
@@ -46,20 +51,29 @@
   color: var(--_stagemap-studio-mark);
 }
 
-.sms .sms-code .sms-tok-c {
+.sms .sms-code .sms-tok-com {
   color: var(--_stagemap-studio-code-mute);
+  font-style: italic;
 }
 
-.sms .sms-code .sms-tok-s {
+.sms .sms-code .sms-tok-str {
   color: var(--_stagemap-studio-code-str);
+  font-weight: 500;
 }
 
-.sms .sms-code .sms-tok-f {
+.sms .sms-code .sms-tok-fn {
   color: var(--_stagemap-studio-code-fn);
+  font-weight: 700;
 }
 
-.sms .sms-code .sms-tok-k {
+.sms .sms-code .sms-tok-op,
+.sms .sms-code .sms-tok-num {
   color: var(--_stagemap-studio-code-kw);
+}
+
+.sms .sms-code .sms-tok-arg,
+.sms .sms-code .sms-tok-name {
+  color: var(--_stagemap-studio-code-ink);
 }
 
 .sms .sms-code-note:empty {
@@ -68,8 +82,22 @@
 
 .sms .sms-code-note {
   font-size: 13px;
-  color: var(--_stagemap-studio-muted);
-  margin: 10px 0 0;
+  color: var(--_stagemap-studio-ink);
+  margin: 0 0 10px;
+  padding: 6px 10px;
+  border-left: 3px solid var(--_stagemap-studio-red);
+  background: var(--_stagemap-studio-red-soft);
+}
+
+@media (forced-colors: active) {
+  .sms .sms-code .sms-l[data-sms-changed] {
+    border-left: 3px solid Highlight;
+  }
+
+  .sms .sms-code-note {
+    border: 1px solid CanvasText;
+    border-left: 3px solid CanvasText;
+  }
 }
 
 @media (max-width: 640px) {
