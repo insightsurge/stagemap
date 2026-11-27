@@ -205,6 +205,7 @@ describe("the studio leak count", {
     studio_wait_step(app1)
     app1$wait_for_js("document.querySelector('.sms-toast').dataset.smsOn === undefined")
 
+    app1$wait_for_js("window.__smsCounts().timers === 0")
     before1 <- studio_counts(app1)
     before_j1 <- journal_nodes(app1)
     for (i in seq_len(30L)) {
@@ -220,6 +221,7 @@ describe("the studio leak count", {
     }
     studio_wait_step(app1)
     app1$wait_for_js("document.querySelector('.sms-toast').dataset.smsOn === undefined")
+    app1$wait_for_js("window.__smsCounts().timers === 0")
     after1 <- studio_counts(app1)
     after_j1 <- journal_nodes(app1)
     expect_identical(after1$listeners, before1$listeners)
@@ -247,6 +249,7 @@ describe("the studio leak count", {
     studio_wait_step(app2)
     app2$wait_for_js("document.querySelector('.sms-toast').dataset.smsOn === undefined")
 
+    app2$wait_for_js("window.__smsCounts().timers === 0")
     before2 <- studio_counts(app2)
     before_j2 <- journal_nodes(app2)
     for (i in seq_len(30L)) {
@@ -266,6 +269,7 @@ describe("the studio leak count", {
 
     studio_wait_step(app2)
     app2$wait_for_js("document.querySelector('.sms-toast').dataset.smsOn === undefined")
+    app2$wait_for_js("window.__smsCounts().timers === 0")
     after2 <- studio_counts(app2)
     after_j2 <- journal_nodes(app2)
 
