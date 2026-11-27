@@ -185,4 +185,54 @@ describe("the studio leak count", {
     expect_identical(removed$nodes, base$nodes)
     expect_studio_clean(app)
   })
+
+  it("keeps listener, observer, timer and node counts flat across 30 Ask runs and clears", {
+    app <- studio_driver("small")
+    open_ask <- function() {
+      click_now(app, "[data-sms-room='ask']")
+      app$wait_for_js(
+        "document.querySelector('[data-sms-room-of=\"ask\"]').hidden === false &&
+         getComputedStyle(document.querySelector('.sms-tray')).transform === 'none'"
+      )
+    }
+    close_ask <- function() {
+      click_now(app, "[data-sms-close='ask']")
+      app$wait_for_js("document.querySelector('[data-sms-room-of=\"ask\"]').hidden === true")
+    }
+
+    # Warm-up across all three questions and Clear
+    open_ask()
+    studio_do(app, studio_click_js("[data-sms-q='trace'] button[data-sms-collect]"))
+    app$run_js("document.querySelector('.sms-ask-switch input[value=\"orphans\"]').click()")
+    studio_do(app, studio_click_js("[data-sms-q='orphans'] button[data-sms-collect]"))
+    app$run_js("document.querySelector('.sms-ask-switch input[value=\"missing\"]').click()")
+    studio_do(app, studio_click_js("[data-sms-q='missing'] button[data-sms-collect]"))
+    studio_do(app, studio_click_js(".sms-ask-ans [data-sms-action='Clear']"))
+    app$run_js("document.querySelector('.sms-ask-switch input[value=\"trace\"]').click()")
+    close_ask()
+    studio_wait_step(app)
+    app$wait_for_js("document.querySelector('.sms-toast').dataset.smsOn === undefined")
+
+    before <- studio_counts(app)
+
+    questions <- c("trace", "orphans", "missing")
+    for (i in seq_len(30L)) {
+      q <- questions[[((i - 1L) %% length(questions)) + 1L]]
+      open_ask()
+      app$run_js(sprintf("document.querySelector('.sms-ask-switch input[value=\"%s\"]').click()", q))
+      studio_do(app, studio_click_js(sprintf("[data-sms-q='%s'] button[data-sms-collect]", q)))
+      studio_do(app, studio_click_js(".sms-ask-ans [data-sms-action='Clear']"))
+      close_ask()
+    }
+
+    studio_wait_step(app)
+    app$wait_for_js("document.querySelector('.sms-toast').dataset.smsOn === undefined")
+    after <- studio_counts(app)
+
+    expect_identical(after$listeners, before$listeners)
+    expect_identical(after$observers, before$observers)
+    expect_identical(after$timers, before$timers)
+    expect_identical(after$nodes, before$nodes)
+    expect_studio_clean(app)
+  })
 })
