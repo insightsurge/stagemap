@@ -526,6 +526,24 @@
       transform: none;
     }
   }
+
+  @media (max-width: 640px) {
+    .sms .sms-inspector:not([hidden]) {
+      animation-name: sms-rise;
+    }
+
+    @keyframes sms-rise {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+
+      to {
+        opacity: 1;
+        transform: none;
+      }
+    }
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
