@@ -383,8 +383,8 @@ What each workflow runs and when, which test files run where, and the gate mode 
 A ruleset on `main` blocks force-pushes and deleting the branch; it does not require passing checks, so the rule is:
 CI green, then ask before merging.
 
-While the repository is private, the checks run on Ubuntu only, to save the shared Actions minutes; Windows and macOS
-join when it goes public. Keep new runs on Ubuntu unless the platform is the point.
+The checks run on Windows, macOS and Ubuntu, and R CMD check also runs on R devel, the previous release and the
+oldest R the package supports, so platform and version differences show before CRAN's own checks.
 
 The site is built from `main` only, never on pull requests: a site build may need packages that outside
 contributors' pull requests can't install. The checks' own jobs (runner images, permissions, time limits, pinned
