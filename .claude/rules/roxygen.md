@@ -34,6 +34,7 @@ Labels as in `r-code.md` (CRAN / house). Reasons and sources: `docs/standards.md
   For privacy and spelling, follow [Public text](../../AGENTS.md#public-text).
 
 ## Website
-- **house:** build with `Rscript tools/build-site.R` into `site/`; the build excludes `CLAUDE.md` and `AGENTS.md`.
-  Before a PR changing docs, exports or examples, run the build and `pkgdown::check_pkgdown()`, then view the site in
-  light and dark. Link to `docs/` files with full GitHub URLs: they are not part of the site.
+- **house:** build with `Rscript tools/build-site.R` into `site/`. The build moves `CLAUDE.md` and `AGENTS.md` aside
+  while it runs: stage only named files in that time, never `git add -A`, and check `git status` for unexpected `D`
+  lines before a commit. Before a PR changing docs, exports or examples, run the build and `pkgdown::check_pkgdown()`,
+  then view the site in light and dark. Link to `docs/` files with full GitHub URLs: they are not part of the site.

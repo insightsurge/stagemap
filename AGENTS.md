@@ -1,7 +1,6 @@
 # stagemap
 
-Rules for everyone working in this repository, person or AI. Antigravity (agy) reads this file directly;
-Claude imports it from `CLAUDE.md`. Edit each rule in its topic file below.
+Rules for everyone working in this repository, person or AI. Edit each rule in its topic file below.
 
 An R package for **relation maps**: things placed by stage (columns) and, where it helps, by lane (rows), joined by
 links whose kind means something, with R functions that trace and check the map. Maps show in Shiny apps, Quarto
@@ -15,42 +14,36 @@ matching rule files automatically. Other agents must read them before starting. 
 `tests/`, `inst/` or `.github/`, read its rule file too: a new file does not trigger automatic loading.
 Labels and exceptions are explained in [R code](.claude/rules/r-code.md).
 - [R code](.claude/rules/r-code.md): arguments, messages, dependencies, behaviour and names.
-- [Documentation](.claude/rules/roxygen.md): roxygen2, examples and wording.
+- [Documentation](.claude/rules/roxygen.md): roxygen2, examples, wording and website checks.
 - [Tests](.claude/rules/tests.md): BDD, Shiny tests, CRAN skips and coverage.
 - [JS and CSS](.claude/rules/js-css.md): drawing, theming and accessibility.
 - [Bundled files](.claude/rules/bundled-files.md): licences and the acceptance checklist.
-- [DESCRIPTION and NEWS](.claude/rules/description-news.md): metadata, change notes and releases.
+- [DESCRIPTION and NEWS](.claude/rules/description-news.md): metadata, change notes, breaking changes and releases.
 - [CI](.claude/rules/ci.md): workflows and gate maintenance.
 
 ## Rules that always apply
 - **CRAN:** 0 errors, warnings and notes; no network; write only to `tempdir()` or a user path; restore changed state;
-  no load side effects; all assets ship in `inst/` (no CDN). See [R rules](.claude/rules/r-code.md#behaviour).
-- **house:** check arguments with checkmate, use cli for messages and `pkg::fn()` for dependencies;
-  [R rules](.claude/rules/r-code.md) include the checked-input exception.
-- **CRAN:** every export has `@returns` and offline `@examples`, written in roxygen2; `man/` and `NAMESPACE` come from
-  `devtools::document()`, never from hand edits.
-  See [documentation](.claude/rules/roxygen.md).
-- **house:** use BDD and Shiny tests, test argument checks and keep coverage at least 70%.
-  See [tests](.claude/rules/tests.md) for structure, skips and added-line coverage.
-- **house:** the engine is plain, unminified JS/CSS in `inst/`, deterministic (no randomness, no clock), meaning never
-  carried by colour alone, and `prefers-reduced-motion` honoured.
-- **house:** docs and UI use plain British English without hype, unmeasured numbers or version comparisons;
-  see [wording](.claude/rules/roxygen.md#wording).
+  no load side effects; all assets in `inst/` (no CDN).
+- **house:** check arguments with checkmate, use cli for messages and `pkg::fn()` for dependencies.
+- **CRAN:** every export has `@returns` and offline `@examples`, written in roxygen2.
+- **house:** BDD and Shiny tests, argument checks tested, coverage at least 70%.
+- **house:** the engine is plain, unminified, deterministic JS/CSS in `inst/`; meaning never carried by colour alone;
+  `prefers-reduced-motion` honoured.
+- **house:** docs and UI use plain British English without hype, unmeasured numbers or version comparisons.
 - **house:** add NEWS for user-facing changes; leave versions and releases to the package creator.
-  See [NEWS](.claude/rules/description-news.md#newsmd).
 
 ## Public text
 Tracked files, commits, branch names, issues, pull requests and comments are public.
-- **No AI attribution in commits, PR descriptions or comments:** commits use a person's own name and email; no
-  `Co-authored-by` naming an AI tool, session or conversation links, or "Generated with" lines.
+- **No AI attribution in commits, PR descriptions or comments:** commits use a person's own name and email, with no
+  `Co-authored-by` naming an AI tool, session links or "Generated with" lines. If `git config user.name` or
+  `user.email` names an AI tool, stop and say so before the first commit.
 - Include no machine paths, pointers to untracked notes, names of private people or repositories, private links or
   credentials. Check output and screenshots too. Never name an employer, client or internal system.
 - Use public examples and synthetic data; never real personal, patient or client data.
 - Describe the work and checks, not who or what did them. Leave status lines such as "pushed as …" and
   "authorised to …" out of issues. Report check summaries without local library or temporary paths.
-- Unknown spelling words fail the gate. List unknown words in the report or PR; never edit `inst/WORDLIST` yourself.
-  The package creator adds agreed words.
-  The package creator adds agreed words (gate `--update-wordlist`); never add a misspelling.
+- Unknown spelling words fail the gate. List them in the report or PR; the package creator adds agreed words (gate
+  `--update-wordlist`). Never edit `inst/WORDLIST` yourself or add a misspelling.
 
 ## Quality gate
 Run the gate instead of calling `devtools::check()`, lintr or Air yourself;
@@ -59,17 +52,8 @@ Run the gate instead of calling `devtools::check()`, lintr or Air yourself;
   touched test files ([tests](.claude/rules/tests.md)); say plainly which checks failed or did not run.
 - Format R with Air and JS/CSS with Biome; see [R formatting](.claude/rules/r-code.md#formatting)
   and [JS/CSS](.claude/rules/js-css.md).
-- The gate is maintained upstream and never edited here; see [maintenance](.claude/rules/ci.md).
-- CI must be green; never weaken checks. See [CI rules](.claude/rules/ci.md).
+- Never edit the gate or weaken a check to get CI green ([CI rules](.claude/rules/ci.md)).
 - Never force-push, push to `main`, use `--no-verify`, or edit `NAMESPACE`, `man/`, `renv/` or `LICENSE` by hand.
-
-## Breaking changes
-Public API changes need a label, NEWS and deprecation, with the pre-0.1.0 exception in
-[breaking changes](.claude/rules/description-news.md#breaking-changes).
-
-## Website
-Build and check pkgdown for docs, exports or examples, view light and dark, and use full GitHub URLs for `docs/`;
-see [website checks](.claude/rules/roxygen.md#website).
 
 ## Workflow
 Start with an issue and its branch. Use Conventional Commits, the PR template and the required labels.
@@ -82,17 +66,10 @@ force-pushes to `main` and its deletion. See the [workflow](.github/CONTRIBUTING
 - Report checks in the PR template's [Checks](.github/pull_request_template.md#checks) table, as summary lines
   without local paths.
 - **Docs follow behaviour:** a change to how something works updates every text that describes it (help pages,
-  articles, README, NEWS, examples, `docs/`, `tools/README.md`, `.github/workflows/README.md`,
-  `tests/testthat/README.md`, workflow comments, rules files, and any other page,
-  function or file that describes the behaviour, including ones added later) in the same pull request. It works both
-  ways: an edited article or example is checked against the help page. Search for the old wording and list the search
-  terms in the pull request.
+  articles, README, NEWS, examples, `docs/`, the other READMEs, rules files) in the same pull request. Check an edited
+  article or example against the help page too. Search for the old wording and list the search terms in the PR.
 
 ## Working as an agent
-- Work only in the worktree or branch you were given. Don't commit, push, merge or open PRs unless the task says
-  so; never force-push.
-- Before the first commit, check `git config user.name` and `user.email`: if they name an AI tool, stop and say so.
-- Before reporting done, follow the [gate requirements](tools/README.md) and
-  [test evidence rules](.claude/rules/tests.md); report skipped checks and reasons.
-  A self-reported pass never counts: the gate and CI are the evidence (and screenshots for visual work).
+- Work only in the worktree or branch you were given. Don't commit, push, merge or open PRs unless the task says so.
+- A self-reported pass never counts: the gate and CI are the evidence (and screenshots for visual work).
 - Don't patch installed packages or mock dependencies to make a check pass.

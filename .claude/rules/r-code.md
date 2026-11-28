@@ -61,10 +61,8 @@ Labels: **CRAN** = CRAN policy, Writing R Extensions or R CMD check (no exceptio
 
 ## Shiny apps (the widget in Shiny, and any app the package ships)
 The page changes at once and the server answers a moment later, so a click can act on an earlier state. Debounced
-inputs, Copy of code the server generates, controls the server sets back and frames that load later all open that gap
-(mascot hit each of them: [mascot#548](https://github.com/insightsurge/mascot/issues/548),
-[mascot#574](https://github.com/insightsurge/mascot/issues/574)). Reasons: `docs/standards.md`, section 3, "Shiny
-apps". The page side of each rule is in `js-css.md`.
+inputs, Copy of code the server generates, controls the server sets back and frames that load later all open that gap.
+Reasons: `docs/standards.md`, section 3, "Shiny apps". The page side of each rule is in `js-css.md`.
 1. **house:** the server holds the truth: what the app copies, builds or shows as a result (code, a map, a check)
    comes from server state, never from values read in the page. A control may show a choice the server hasn't had
    yet. Example: Copy copies the text of `output$map_code`, drawn from the server's `map()`, not the controls' values.
